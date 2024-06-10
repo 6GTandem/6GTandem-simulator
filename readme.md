@@ -17,11 +17,19 @@ Given that the project consistent of MATLAB and Python, the following should be 
 ### MATLAB installation
 
 Required toolboxes:
-- 
+- **TODO**
 
 ### MATLAB Engine API for Python
 
 [Install MATLAB Engine API for Python](https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html)
+
+Simplified steps:
+ - `python -m pip install matlabengine`
+ - In Python, import the engine:
+```python
+import matlab.engine
+eng = matlab.engine.start_matlab()
+```
 
 
 ## Models
