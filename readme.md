@@ -28,7 +28,8 @@ Required toolboxes:
 
 | **Model category**                       | **Model name**                       | **Included**               | **location** |
 |-------------------------------------------------------|-------------------------------------------------------|-------------------------------------------------------|-------------------------------------------------------|
-| 6GTandem system simulator                 |   
+| 6GTandem system simulator                 |  
+||    Simulator     | 
 ||    Modulated signal source and sink     |   
 | Stripe model                              |   
 || Polymer microwave/sub-THz fiber           |   
