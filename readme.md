@@ -58,7 +58,7 @@ eng = matlab.engine.start_matlab()
 || Mixer                                     |   
 || Digital BB processing (incl. source/sink) |   
 || Power consumption                         |   
-| Wireless Popagation |
+| Wireless Propagation |
 || Sub-THz wireless channel                  |   
 || Sub-10GHz wireless channel                |   
 || Combined sub-THz/sub-10GHz                |   
