@@ -22,7 +22,8 @@
 % Developed for the HEU 6GTandem Project by
 % Yuyan Cao and Buon Kiong Lau, Lund University, Sweden
 %
-% Current version: 20 Feb 2024
+% Gilles Callebaut: correct small typo in version of 20 Feb 2024 (PhiScan_deg and phiScan_deg were used)
+% Current version: 10 Jun 2024
 
 close all;
 clear;
@@ -57,6 +58,8 @@ ThetaScan_deg = 30; % scan angle \theta in degree
 PhiXFed_deg = rad2deg(beta0*dx*sind(ThetaScan_deg)*cosd(PhiScan_deg));
 PhiYFed_deg = rad2deg(beta0*dy*sind(ThetaScan_deg)*sind(PhiScan_deg));
 
+
+
 % Array Pattern synthesis
 FieldThetaSyn = 0;
 FieldPhiSyn   = 0;
@@ -76,6 +79,8 @@ for i = 1:Nx
         FieldPhiSyn   = FieldPhiSyn   + FieldPhi.*exp( 1j.*PhiArray_Rad )*exp(-1j.*deg2rad(PhiXY(i,j)))/sqrt(Nx*Ny); % array weight needs to be normalized by 1/sqrt(#array elements)
     end
 end
+
+
 
 
 FieldPhiSyn_dB = 20*log10(abs(FieldPhiSyn));
@@ -102,16 +107,16 @@ figure(3); patternCustom(FieldPhiSyn_dB,M(:,2),M(:,1)); title('Figure 3: Array R
 figure(4); patternCustom(FieldThetaSyn_dB,M(:,2),M(:,1)); title('Figure 4: Array Realized Gain (Theta)');
 
 figure(5); patternCustom(M_dB(:,3),M(:,2),M(:,1),CoordinateSystem="rectangular",Slice="phi",SliceValue =[0 90]);
-hold on; patternCustom(FieldPhiSyn_dB,M(:,2),M(:,1),CoordinateSystem="rectangular",Slice="phi",SliceValue=[phiScan_deg phiScan_deg+90]);
+hold on; patternCustom(FieldPhiSyn_dB,M(:,2),M(:,1),CoordinateSystem="rectangular",Slice="phi",SliceValue=[PhiScan_deg PhiScan_deg+90]);
 title('Figure 5: Realized GainPhi Comparison');
-legend1 = {['element phi=0'], ['element phi=90'],['array phi=', num2str(phiScan_deg)],['array phi=', num2str(phiScan_deg+90)]};
+legend1 = {'element phi=0', 'element phi=90',['array phi=', num2str(PhiScan_deg)],['array phi=', num2str(PhiScan_deg+90)]};
 legend(legend1);
 
 figure(6);
 patternCustom(M_dB(:,4),M(:,2),M(:,1),CoordinateSystem="rectangular",Slice="phi",SliceValue=[0 90]);
-hold on; patternCustom(FieldThetaSyn_dB,M(:,2),M(:,1),CoordinateSystem="rectangular",Slice="phi",SliceValue=[phiScan_deg phiScan_deg+90]);
+hold on; patternCustom(FieldThetaSyn_dB,M(:,2),M(:,1),CoordinateSystem="rectangular",Slice="phi",SliceValue=[PhiScan_deg PhiScan_deg+90]);
 title('Figure 6: Realized GainTheta Comparison');
-legend2 = {['element phi=0'], ['element phi=90'],['array phi=', num2str(phiScan_deg)],['array phi=', num2str(phiScan_deg+90)]};
+legend2 = {'element phi=0', 'element phi=90',['array phi=', num2str(PhiScan_deg)],['array phi=', num2str(PhiScan_deg+90)]};
 legend(legend2);
 
 figure(7);
