@@ -1,17 +1,17 @@
 # general configuration, such as frequency etc
 
-sub-10GHz:
+sub_10GHz:
   fc: 5e9
   bw: 10e6
 
-sub-THz:
+sub_THz:
   fc: 145e9
   bw: 5e9
   os: 5 # oversampling
 
 
 # description of the full chain
-sub-thz-link:
+sub_thz_link:
   amplifier:
     max_power: 10       # dBm
     avg_power: 5        # dBm
