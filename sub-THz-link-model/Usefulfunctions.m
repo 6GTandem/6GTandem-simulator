@@ -166,7 +166,7 @@ classdef Usefulfunctions
         end
         function [y,p]=limiter(x,limit, limithi)
             % y=limiter(x, [limit], [limithi] )
-            % Limits abs(x) to limit (defailt limit=1)
+            % Limits abs(x) to limit (default limit=1)
             if nargin<2
                 limit=1;
             end

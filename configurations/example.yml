@@ -1,0 +1,36 @@
+# general configuration, such as frequency etc
+
+sub-10GHz:
+  fc: 5e9
+  bw: 10e6
+
+sub-THz:
+  fc: 145e9
+  bw: 5e9
+  os: 5 # oversampling
+
+
+# description of the full chain
+sub-thz-link:
+  amplifier:
+    max_power: 10       # dBm
+    avg_power: 5        # dBm
+    mode: "6gtandem"    # 'ideal','linear','atan', 'tanh', 'poly3','poly3_pm', 'poly5','limiter','softlimiter','weblab','6gtandem'
+    gain: 3.2           # lin. gain
+    noise_var: 0        # variance of AWGN noise [V^2] per channel
+    Smoothness: 1       # used in Mode 'softlimiter'
+  coupler:
+    damping: 0          # dB 
+    mode: "ideal"       
+  dac:
+    trunc_level:        # limits output to +/-trunc_level
+    num_bits: 12        #number of bits used in the DAC
+  fiber: 
+  iqmodem:
+  link:
+  oscillator:
+  radiostripe:
+  transmitter:
+  antenna:
+
+

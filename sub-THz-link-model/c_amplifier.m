@@ -24,7 +24,7 @@ classdef c_amplifier < c_component
     end
     methods
         function out=c_amplifier(SimPars)
-            out = out@c_component;
+            out = out@c_component; % call the constructor of a superclass from within the constructor of a subclass.
             if nargin==0, SimPars.PA=struct; end
             if isfield(SimPars,'PA')
                 if isfield(SimPars.PA,'Mode'), out.Mode=SimPars.PA.Mode; disp(out.Mode);end
