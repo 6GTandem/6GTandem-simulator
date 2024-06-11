@@ -23,7 +23,7 @@ Required toolboxes:
 - Phased Array System Toolbox
 
 
-How to check which toolboxes are required:
+How to check which toolboxes are required (e.g., to run `do.m`):
 ```matlab
 [fList,pList] = matlab.codetools.requiredFilesAndProducts('do.m')
 {pList.Name}'
