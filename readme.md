@@ -56,7 +56,7 @@ eng = matlab.engine.start_matlab()
 | 6GTandem system simulator                 |  
 ||    Simulator     | 
 ||    Modulated signal source and sink     |   
-| Stripe model                              |   - | -| `sub-THz-fiber-model`|
+| Stripe model                              |   - | -| `sub-THz-link-model`|
 || Polymer microwave/sub-THz fiber           |   
 || Booster units                             |   
 || Radio/Booster unit amplifiers             |   
