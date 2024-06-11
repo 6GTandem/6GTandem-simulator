@@ -17,7 +17,18 @@ Given that the project consistent of MATLAB and Python, the following should be 
 ### MATLAB installation
 
 Required toolboxes:
-- **TODO**
+- MATLAB
+- Signal Processing Toolbox
+- Communications Toolbox   
+- Phased Array System Toolbox
+
+
+How to check which toolboxes are required:
+```matlab
+[fList,pList] = matlab.codetools.requiredFilesAndProducts('do.m')
+{pList.Name}'
+```
+
 
 ### MATLAB Engine API for Python
 
