@@ -1,16 +1,14 @@
 # if any troubles with the engine, please consult https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html and our readme
+import os
+from utils import *
+
 import matlab.engine
 import numpy as np
 
 eng = matlab.engine.start_matlab()
-import os
+
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-import time
-
-import matplotlib.pyplot as plt
-
-from utils import *
 
 
 if __name__ == "__main__":
@@ -40,7 +38,7 @@ if __name__ == "__main__":
 
     spec(Y, plot=True)
 
-    eng.calibrate(RS, x2, matlab.double(0,is_complex=True), nargout=0)
+    eng.calibrate(RS, x2, matlab.double(0, is_complex=True), nargout=0)
 
     Y2 = np.asarray(eng.run(RS, x2))
 
