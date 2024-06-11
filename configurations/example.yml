@@ -7,7 +7,8 @@ sub_10GHz:
 sub_THz:
   fc: 145e9
   bw: 5e9
-  os: 5 # oversampling
+  os: 5         # oversamplingµ
+  fs: 5e9*5     # sampling rate: bw*os
 
 
 # description of the full chain
@@ -26,11 +27,29 @@ sub_thz_link:
     trunc_level:        # limits output to +/-trunc_level
     num_bits: 12        #number of bits used in the DAC
   fiber: 
+    damping_per_meter: 5  # dB/m          
+    filter: [1]           # filter taps      
   iqmodem:
-  link:
+    mode: "ideal"       #'ideal', 'filter', 'static'
+    # iq imbalance params
+    iqi_coef: 0
+    iqi_num_filter_taps: 1
+    iqi_delay_imbalance: 0
+    # DC offset
+    dc_offset: 0         
   oscillator:
-  radiostripe:
+    cfo:                # carrier frequency offset (only receiver) [Hz]
+    cfo_offset:         # carrier frequency random offset (only receiver) [Hz]
+    mode: "ideal"       # pn generation 'ideal', 'cfo', 'model', 'spectrum'
+    # specific param for mode='model'
+    #TODO
+    # specific param for mode='spectrum'
+    #TODO
   transmitter:
+  #TODO
   antenna:
+  #TODO
 
 
+radio_stripes:
+  #TODO
