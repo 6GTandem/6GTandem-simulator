@@ -6,7 +6,13 @@ All files in `sub-THz-fiber-model` are written in MATLAB and called from the mai
 
 ## Installation
 
-Given that the project consistent of MATLAB and Python, the following should be installed:
+<details>
+ 
+
+ 
+  <summary>Click me for more details</summary>
+
+ Given that the project consistent of MATLAB and Python, the following should be installed:
 - Python
 - Matlab
 - MATLAB Engine API for Python
@@ -17,7 +23,18 @@ Given that the project consistent of MATLAB and Python, the following should be 
 ### MATLAB installation
 
 Required toolboxes:
-- **TODO**
+- MATLAB
+- Signal Processing Toolbox
+- Communications Toolbox   
+- Phased Array System Toolbox
+
+
+How to check which toolboxes are required (e.g., to run `do.m`):
+```matlab
+[fList,pList] = matlab.codetools.requiredFilesAndProducts('do.m')
+{pList.Name}'
+```
+
 
 ### MATLAB Engine API for Python
 
@@ -30,7 +47,7 @@ Simplified steps:
 import matlab.engine
 eng = matlab.engine.start_matlab()
 ```
-
+</details>
 
 ## Models
 
