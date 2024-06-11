@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     spec(Y, plot=True)
 
-    eng.calibrate(RS, x2, matlab.double(0,is_complex=True), nargout=0)
+    eng.calibrate(RS, x2, matlab.double(0, is_complex=True), nargout=0)
 
     Y2 = np.asarray(eng.run(RS, x2))
 
