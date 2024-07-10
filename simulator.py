@@ -1,20 +1,34 @@
 # if any troubles with the engine, please consult https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html and our readme
 import os
-from utils import *
 
 import matlab.engine
 import numpy as np
+import yaml
 
-eng = matlab.engine.start_matlab()
+from utils import *
+from plotter import plotter
+
+
+config_file = "example.yml"
+
+eng = matlab.engine.start_matlab() # ensure MATLAB is on
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
+
+config_path = os.path.join(dir_path,"configurations")
+
+# Read the YAML file
+with open(os.path.join(dir_path, "configurations", config_file), "r") as file:
+    data = yaml.safe_load(file)
+
+    plotter.plot_room(data)
 
 
 if __name__ == "__main__":
     eng.cd(dir_path, nargout=0)
     # To add a path to all subfolders
-    s = eng.genpath(os.path.join(dir_path, "sub-THz-fiber-model"))
+    s = eng.genpath(os.path.join(dir_path, "sub-THz-link-model"))
     eng.addpath(s, nargout=0)
 
     # Define a radiostripe with a transmitter and nolinks links/repeaters.
