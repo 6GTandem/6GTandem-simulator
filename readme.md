@@ -27,6 +27,7 @@ Required toolboxes:
 - Signal Processing Toolbox
 - Communications Toolbox   
 - Phased Array System Toolbox
+- Antenna Toolbox
 
 
 How to check which toolboxes are required (e.g., to run `do.m`):
