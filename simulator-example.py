@@ -19,10 +19,11 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 config_path = os.path.join(dir_path,"configurations")
 
 # Read the YAML file
-with open(os.path.join(dir_path, "configurations", config_file), "r") as file:
+with open(os.path.join(dir_path, "configurations", config_file), "r", encoding="utf8") as file:
     data = yaml.safe_load(file)
 
-    plotter.plot_room(data)
+
+plotter.plot_room(data)
 
 
 if __name__ == "__main__":

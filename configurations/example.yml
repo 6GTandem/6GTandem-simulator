@@ -9,7 +9,7 @@ sub_10GHz:
 sub_THz:
   fc: 145e9
   bw: 5e9
-  os: 5         # oversamplingµ
+  os: 5         # oversampling
   fs: 5e9*5     # sampling rate: bw*os
   amplifier:
     max_power: 10       # dBm

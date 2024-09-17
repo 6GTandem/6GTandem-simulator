@@ -25,7 +25,7 @@ def plot_room(config:dict):
     points = np.array(points)
 
     # Plot
-    ax.scatter3D(points[:, 0], points[:, 1], points[:, 2])
+    ax.scatter3D(points[:, 0], points[:, 1], points[:, 2],c="black")
     for s, e in combinations(points, 2):
         # 2 coordinates should be the same for straight lines
         diff = list(s - e)
