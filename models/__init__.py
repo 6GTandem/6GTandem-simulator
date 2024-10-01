@@ -63,10 +63,10 @@ class Component(ABC):
 
 
 class Coupler(Component):
-    def __init__(self, damping: float = 0):
+    def __init__(self, damping: float = 0, *args, **kwargs):
         self.damping = damping
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def run(self, x):
         return x * db_to_magnitude(self.damping)
@@ -90,7 +90,7 @@ class Amplifier(Component):
         >>> y = pa.run(x)
     """
 
-    def __init__(self, gain=1, max_out_amp=1, noise_var=0, smoothness=1):
+    def __init__(self, gain=1, max_out_amp=1, noise_var=0, smoothness=1, *args, **kwargs):
         """Initialize the amplifier object with the given parameters.
 
         :param gain: The low signal-gain of the amplifier.
@@ -103,7 +103,7 @@ class Amplifier(Component):
         self.noise_var = noise_var
         self.smoothness = smoothness
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     @property
     def max_output_amplitude(self):
@@ -186,11 +186,11 @@ class Amplifier(Component):
 
 
 class Dac(Component):
-    def __init__(self, trunc_level: float = np.inf, nobits: float = np.inf):
+    def __init__(self, trunc_level: float = np.inf, nobits: float = np.inf, *args, **kwargs):
         self.trunc_level = trunc_level
         self.nobits = nobits
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def run(self, yin):
         if self.trunc_level > 1e98:
@@ -207,7 +207,7 @@ class Dac(Component):
 
 class Fiber(Component):
     def __init__(self, length: float = 5, damping_per_meter: float = 5, fs: float = 15e9,
-                 filter: float = 1):
+                 filter: float = 1, *args, **kwargs):
         """Initialize a fiber component.
 
         :param delay: Delay in number of samples.
@@ -218,7 +218,7 @@ class Fiber(Component):
         self.fs = fs
         self.filter = filter
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def run(self, x):
         xout = models.utils.delay(lfilter(self.filter, 1, x), self.delay)
@@ -235,13 +235,14 @@ class Fiber(Component):
 
 
 class IQModem(Component):
-    def __init__(self, iqi_coef: int = 0, iqi_filter: int = 1, iqi_delay_imbalance: int = 0, dc_offset: int = 0):
+    def __init__(self, iqi_coef: int = 0, iqi_filter: int = 1, iqi_delay_imbalance: int = 0,
+                 dc_offset: int = 0, *args, **kwargs):
         self.iqi_coef = iqi_coef
         self.iqi_filter = iqi_filter
         self.iqi_delay_imbalance = iqi_delay_imbalance
         self.dc_offset = dc_offset
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def run(self, yin, phasor):
         assert (len(yin) == len(phasor)
@@ -266,13 +267,14 @@ class IQModem(Component):
 
 
 class Link(Component):
-    def __init__(self, amp: Amplifier, fiber: Fiber, coupler_in: Coupler, coupler_out: Coupler):
+    def __init__(self, amp: Amplifier, fiber: Fiber, coupler_in: Coupler, coupler_out: Coupler,
+                 *args, **kwargs):
         self.amp = amp
         self.fiber = fiber
         self.coupler_in = coupler_in
         self.coupler_out = coupler_out
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def run(self, y):
         z = self.fiber.run(y)
@@ -293,7 +295,8 @@ class Oscillator(Component):
     """
 
     def __init__(self, fs: float = 1.5e9, cfo: float = 0, cfo_std: float = 0, l100_db: float = -200,
-                 linf_db: float = -300, f3db: float = 0, freq: list = [], spec: list = []):
+                 linf_db: float = -300, f3db: float = 0, freq: list = [], spec: list = [], *args,
+                 **kwargs):
         """
 
         :param fs: Sampling frequency in Hertz.
@@ -317,7 +320,7 @@ class Oscillator(Component):
         self.last_phasor = 0
         self.current_phase = numpy.random.normal() * 2 * np.pi
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     @property
     def l0_db(self):
@@ -424,14 +427,15 @@ class Transmitter(Component):
         >>> y = tx.run(x)
     """
 
-    def __init__(self, oscillator: Oscillator, iqmod: IQModem, amp: Amplifier, dac: Dac, delay: float = 0):
+    def __init__(self, oscillator: Oscillator, iqmod: IQModem, amp: Amplifier, dac: Dac,
+                 delay: float = 0, *args, **kwargs):
         self.oscillator = oscillator
         self.iqmodem = iqmod
         self.amplifier = amp
         self.dac = dac
         self.delay = delay
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def run(self, x, phasor=None):
         if phasor is None:
@@ -457,7 +461,8 @@ class RadioStripe(Component):
         >>> y = rs.run(x) # Y is a matrix
     """
 
-    def __init__(self, nolinks: int, tx: Transmitter, link: Link, bandwith: float = 5e9, os=5):
+    def __init__(self, nolinks: int, tx: Transmitter, link: Link, bandwith: float = 5e9, os=5,
+                 *args, **kwargs):
         """
         :param nolinks: Number of links in the vector of links.
         """
@@ -482,7 +487,7 @@ class RadioStripe(Component):
 
             self.links.append(link)
 
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def run(self, x):
         y = np.zeros(np.shape(x), 1 + len(self.links))
