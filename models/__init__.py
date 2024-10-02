@@ -99,23 +99,18 @@ class Amplifier(Component):
         :param smoothness: Used in Mode 'softlimiter'.
         """
         self.gain = gain
-        self._max_output_amplitude = max_out_amp
+        self.max_output_amplitude = max_out_amp
         self.noise_var = noise_var
         self.smoothness = smoothness
 
         super().__init__(*args, **kwargs)
 
-    @property
-    def max_output_amplitude(self):
-        return self._max_output_amplitude
-
-    @max_output_amplitude.setter
-    def max_output_amplitude(self, max_power_dbm):
+    def set_maximum_output_power(self, max_power_dbm):
         """ Set the maximum output amplitude.
 
         :param max_power_dbm: The maximum output power in dBm.
         """
-        self._max_output_amplitude = math.sqrt(
+        self.max_output_amplitude = math.sqrt(
             50 * db_to_power(max_power_dbm) * 1e-3)
 
     def set_average_power(self, pin, pout):
@@ -135,7 +130,7 @@ class Amplifier(Component):
         self.noise_var = voltage_power / 2
 
     def run(self, x):
-        x = self.gain / self._max_output_amplitude * (x + math.sqrt(self.noise_var) * (
+        x = self.gain / self.max_output_amplitude * (x + math.sqrt(self.noise_var) * (
             numpy.random.normal(size=np.shape(x)) + 1j * numpy.random.normal(size=np.shape(x))))
 
         match self.mode:
@@ -169,11 +164,12 @@ class Amplifier(Component):
                                                 ** 2) * np.exp(1j * np.angle(xout[abs(x) > peakx]))
             case 'poly5':
                 # This factor gives 1dB compression at x=1
-                alpha = (10 / 9) - np.sqrt((20 / 9 * 10) ** (-0.05 - 80 / 81))
+                alpha = ((10 / 9) -
+                         np.sqrt(((20 / 9) * (10 ** -0.05)) - (80 / 81)))
                 # gives minimum derivative=0, at x=sqrt(2/3/alpha)
-                beta = 9 * alpha ** (2 / 20)
-                xout = self._max_output_amplitude * x * \
-                    (1 - alpha * abs(x) ** 2 + beta * abs(x) ** 4)
+                beta = (9 * (alpha ** 2)) / 20
+                xout = (self.max_output_amplitude * x *
+                        (1 - (alpha * (abs(x) ** 2)) + (beta * (abs(x) ** 4))))
             case 'limiter':
                 xout = x
                 # abs(xout) > 1 gives saturation at 1 V.
@@ -182,7 +178,7 @@ class Amplifier(Component):
             case 'softlimiter' | '6gtandem':
                 xout = models.utils.softlimiter(x, self.smoothness)
 
-        return self._max_output_amplitude * xout
+        return self.max_output_amplitude * xout
 
 
 class Dac(Component):
