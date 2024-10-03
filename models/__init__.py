@@ -64,12 +64,16 @@ class Component(ABC):
 
 class Coupler(Component):
     def __init__(self, damping: float = 0, *args, **kwargs):
+        """Initialize a coupler instance.
+
+        :param damping: The couplers damping in dB.
+        """
         self.damping = damping
 
         super().__init__(*args, **kwargs)
 
     def run(self, x):
-        return x * db_to_magnitude(self.damping)
+        return np.array(x) * db_to_magnitude(self.damping)
 
 
 class Amplifier(Component):
@@ -130,6 +134,7 @@ class Amplifier(Component):
         self.noise_var = voltage_power / 2
 
     def run(self, x):
+        x = np.array(x)
         x = self.gain / self.max_output_amplitude * (x + math.sqrt(self.noise_var) * (
             numpy.random.normal(size=np.shape(x)) + 1j * numpy.random.normal(size=np.shape(x))))
 

@@ -28,6 +28,30 @@ def read_octave_file(file_name: str):
     return data
 
 
+class CouplerModelTest(unittest.TestCase):
+    """Test if the coupler model behaves as expected."""
+
+    def test_coupler_0db(self):
+        input_data = read_octave_file("test/data/coupler_input_10db.csv")
+
+        coup = models.Coupler()
+        coup.damping = 0
+        coupler_data = coup.run(input_data)
+
+        # With 0dB damping the input and output data should be the same.
+        self.assertTrue(np.allclose(coupler_data, input_data))
+
+    def test_coupler_10db(self):
+        input_data = read_octave_file("test/data/coupler_input_10db.csv")
+        output_data = read_octave_file("test/data/coupler_output_10db.csv")
+
+        coup = models.Coupler()
+        coup.damping = -10
+        coupler_data = coup.run(input_data)
+
+        self.assertTrue(np.allclose(coupler_data, output_data))
+
+
 class AmplifierModelTest(unittest.TestCase):
     """Test if the amplifier model behaves as expected."""
 
