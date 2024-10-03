@@ -17,7 +17,7 @@ def setdbm(x, dnew):
     return out
 
 
-def limiter(x, limithi=None, limit=1):
+def limiter(x, limit=1, limithi=None):
     y = x
     if limithi is None:
         i = (abs(x) > limit)

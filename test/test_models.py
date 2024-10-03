@@ -163,3 +163,38 @@ class AmplifierModelTest(unittest.TestCase):
         pa.set_average_power(20, 10)
 
         self.assertAlmostEqual(0.316227766, pa.gain)
+
+
+class DacModelTest(unittest.TestCase):
+    """Test if the DAC model behaves as expected."""
+
+    def test_dac(self):
+        input_data = read_octave_file("test/data/dac_input.csv")
+        output_data = read_octave_file("test/data/dac_output.csv")
+
+        dac = models.Dac()
+        dac.nobits = 10
+        dac.trunc_level = 0.6
+        dac_data = dac.run(input_data)
+
+        self.assertTrue(np.allclose(dac_data, output_data))
+
+    def test_dac_30nobits(self):
+        input_data = read_octave_file("test/data/dac_input_30nobits.csv")
+        output_data = read_octave_file("test/data/dac_output_30nobits.csv")
+
+        dac = models.Dac()
+        dac.nobits = 30
+        dac.trunc_level = 0.58
+        dac_data = dac.run(input_data)
+
+        self.assertTrue(np.allclose(dac_data, output_data))
+
+    def test_dac_inf(self):
+        input_data = read_octave_file("test/data/dac_input_30nobits.csv")
+
+        dac = models.Dac()
+        dac_data = dac.run(input_data)
+
+        # With an infinite limit the input and output data should be the same.
+        self.assertTrue(np.allclose(dac_data, input_data))

@@ -194,14 +194,16 @@ class Dac(Component):
         super().__init__(*args, **kwargs)
 
     def run(self, yin):
+        yin = np.array(yin)
+
         if self.trunc_level > 1e98:
             return yin
         if self.nobits > 20:
-            yout = models.utils.limiter(yin, self.trunc_level)
+            yout, p = models.utils.limiter(yin, self.trunc_level)
         else:
-            step = 2 * self.trunc_level / (2 ** self.nonbits)
-            yout = models.utils.limiter(
-                round(yin / step) * step, self.trunc_level)
+            step = 2 * self.trunc_level / (2 ** self.nobits)
+            yout, p = models.utils.limiter(
+                np.round(yin / step) * step, self.trunc_level)
 
         return yout
 
