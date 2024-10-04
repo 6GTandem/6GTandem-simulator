@@ -248,6 +248,8 @@ class IQModem(Component):
         super().__init__(*args, **kwargs)
 
     def run(self, yin, phasor):
+        yin = np.array(yin)
+        phasor = np.array(phasor)
         assert (len(yin) == len(phasor)
                 ), "Yin and Phasor data lengths do not match."
 
@@ -337,11 +339,11 @@ class Oscillator(Component):
     def pnvar(self):
         a2 = self.a ** 2
         if (1 - a2) < 1e-10:
-            pnvar = 4 * np.pi ** (2 * 1e10 *
-                                  db_to_power(self.l100_db) / self.fs)
+            pnvar = (4 * (np.pi ** 2) * 1e10 *
+                     db_to_power(self.l100_db) / self.fs)
         else:
-            pnvar = (1 - a2) * np.pi * 1e10 * \
-                db_to_power(self.l100_db) / self.f3db
+            pnvar = ((1 - a2) * np.pi * 1e10 *
+                     db_to_power(self.l100_db) / self.f3db)
 
         return pnvar
 
@@ -353,6 +355,22 @@ class Oscillator(Component):
     @property
     def whitepnvar(self):
         return db_to_power(self.linf_db) * self.fs
+
+    @property
+    def mode(self):
+        return self._mode
+
+    @mode.setter
+    def mode(self, mode):
+        """Set a new mode.
+
+        Valid options are:
+            'ideal','cfo','model', 'spectrum', 'iid'
+        """
+        if mode not in ('ideal', 'cfo', 'model', 'spectrum', 'iid'):
+            raise ValueError(f"Invalid mode: {mode}")
+
+        self._mode = mode
 
     def run_phase(self, nosamples):
         match self.mode:
@@ -382,25 +400,26 @@ class Oscillator(Component):
 
     def variance_phase_spectrum(self):
         n = 2 ** 23
-        f = [[np.finfo(float).eps], [self.freq], [self.fs]]
-        s = [[self.spec[0]], [self.spec], [self.spec[-1]]]
-        flin = np.transpose(np.linspace(0, self.fs / 2, n + 1))
-        x = db_to_power(np.interp(np.log(f), s, np.log(flin)) / 2)
+        f = np.array([np.finfo(float).eps] + list(self.freq) + [self.fs])
+        s = np.array([self.spec[0]] + list(self.spec) + [self.spec[-1]])
+        flin = np.transpose(np.linspace(0, self.fs / 2, int(np.floor(n + 1))))
+        x = db_to_power(np.interp(np.log(flin), np.log(f), s) / 2)
         x = x * np.sqrt(flin[1] - flin[0]) * n * 2
 
         return sum(abs(x[1:]) ** 2) / 2 / len(x) ** 2
 
     def run_phase_spectrum(self, nosamples):
         n = nosamples / 2
-        f = ([np.finfo(float).eps], [np.transpose([self.freq])], [self.fs])
-        s = [[self.spec[0]], [np.transpose([self.spec])], [self.spec[-1]]]
-        flin = np.linspace(0, self.fs / 2, n + 1)
-        x = db_to_power(np.interp(np.log(f), s, np.log(flin)) / 2)
+        f = np.array([np.finfo(float).eps] + list(self.freq) + [self.fs])
+        s = np.array([self.spec[0]] + list(self.spec) + [self.spec[-1]])
+        flin = np.linspace(0, self.fs / 2, int(np.floor(n + 1)))
+        flin = flin[1:]
+        x = db_to_power(np.interp(np.log(flin), np.log(f), s) / 2)
         x = x * np.sqrt(flin[1] - flin[0]) * n * 2
-        x = x * np.sqrt(0.5) * (models.utils.randn_c(np.shape(x)))
+        x = x * np.sqrt(0.5) * (models.utils.randn_c(cols=np.shape(x)[0]))
 
-        fi = np.real(numpy.fft.ifft(
-            [[0], [x[1:]], [0], [np.flipud(np.conj(x[1:]))]]))
+        b = np.array([0] + list(x[1:]) + [0] + list(np.flipud(np.conj(x[1:]))))
+        fi = np.real(numpy.fft.ifft(b))
         fi = fi + self.run_phase_cfo(np.shape(fi))
         self.current_phase = fi[-1]
 
@@ -409,6 +428,7 @@ class Oscillator(Component):
     def run_phase_model(self, nosamples):
         u = np.sqrt(self.pnvar) * numpy.random.normal(nosamples) + self.pnmean
         fi = lfilter(1, [1 - self.a], [[self.current_phase], [u]])
+        fi = lfilter(1, [1, -self.a], np.insert(u, 0, self.current_phase))
         fi = fi[1:]
         self.current_phase = fi[-1]
 

@@ -52,37 +52,37 @@ eng = matlab.engine.start_matlab()
 
 ## Models
 
-| **Model category**                       | **Model name**                       | **Included**               | **location** |
-|-------------------------------------------------------|-------------------------------------------------------|-------------------------------------------------------|-------------------------------------------------------|
-| 6GTandem system simulator                 |  
-||    Simulator     | 
-||    Modulated signal source and sink     |   
-| Stripe model                              |   - | -| `sub-THz-link-model`|
-|| Polymer microwave/sub-THz fiber           |   
-|| Booster units                             |   
-|| Radio/Booster unit amplifiers             |   
-|| Fiber characteristics                   |   
-|| RF switches/splitters/combiners           |   
-|| Fiber couplers                            |   
-|| Radio units                               |   
-|| Phase shifters                            |   
-|| Radio unit antennas                       |   
-|| Antenna-fiber isolation (cross-talk)      |  
-|| Power consumption (PAs and LNAs)          |   
-|| CUs                                  		|  
-|| Amplifiers                                |   
-|| ADC/DAC                                   |   
-|| Oscillator                                |   
-|| Mixer                                     |   
-|| Digital BB processing (incl. source/sink) |   
-|| Power consumption                         |   
-| Wireless Propagation |
-|| Sub-THz wireless channel                  |   
-|| Sub-10GHz wireless channel                |   
-|| Combined sub-THz/sub-10GHz                |   
-| Traffic and mobility    |   
-|| Traffic models for different use cases    |   
-|| XR Mobility Dataset                       |   
-| UEs                       |   
-|| Antennas                                  |   
-|| Power consumption (UEs)              		|        
+| **Model category**        | **Model name**                            | **Included** | **location**         | **Python ported** | **Unittested** |
+| ------------------------- | ----------------------------------------- | ------------ | -------------------- | ----------------- | -------------- |
+| 6GTandem system simulator |                                           |              |                      |                   |                |
+|                           | Simulator                                 |              |                      |                   |                |
+|                           | Modulated signal source and sink          |              |                      |                   |                |
+| Stripe model              | -                                         | -            | `sub-THz-link-model` |                   |                |
+|                           | Polymer microwave/sub-THz fiber           |              |                      | yes               | no             |
+|                           | Booster units                             |              |                      |                   |                |
+|                           | Radio/Booster unit amplifiers             |              |                      |                   |                |
+|                           | Fiber characteristics                     |              |                      |                   |                |
+|                           | RF switches/splitters/combiners           |              |                      |                   |                |
+|                           | Fiber couplers                            |              |                      |                   |                |
+|                           | Radio units                               |              |                      |                   |                |
+|                           | Phase shifters                            |              |                      |                   |                |
+|                           | Radio unit antennas                       |              |                      |                   |                |
+|                           | Antenna-fiber isolation (cross-talk)      |              |                      |                   |                |
+|                           | Power consumption (PAs and LNAs)          |              |                      |                   |                |
+|                           | CUs                                       |              |                      | yes               | yes            |
+|                           | Amplifiers                                |              |                      | yes               | no             |
+|                           | ADC/DAC                                   |              |                      | yes (DAC)         | no             |
+|                           | Oscillator                                |              |                      | yes               | no             |
+|                           | Mixer                                     |              |                      |                   |                |
+|                           | Digital BB processing (incl. source/sink) |              |                      |                   |                |
+|                           | Power consumption                         |              |                      |                   |                |
+| Wireless Propagation      |                                           |              |                      |                   |                |
+|                           | Sub-THz wireless channel                  |              |                      |                   |                |
+|                           | Sub-10GHz wireless channel                |              |                      |                   |                |
+|                           | Combined sub-THz/sub-10GHz                |              |                      |                   |                |
+| Traffic and mobility      |                                           |              |                      |                   |                |
+|                           | Traffic models for different use cases    |              |                      |                   |                |
+|                           | XR Mobility Dataset                       |              |                      |                   |                |
+| UEs                       |                                           |              |                      |                   |                |
+|                           | Antennas                                  |              |                      | no                | no             |
+|                           | Power consumption (UEs)                   |              |                      |                   |                |

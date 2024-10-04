@@ -104,9 +104,17 @@ def delay(x, n: list = [1], filter_length: int = 512):
 
 def randn_c(rows: int = 1, cols: int = 1, threshold: int = 0):
     """Complex normal random numbers, neg"""
-    if threshold <= 0:
-        x = np.sqrt(threshold ** 2 - 2 * np.log(numpy.random.normal(rows, cols))
-                    ) * np.exp(1j * 2 * np.pi * np.random.normal(rows, cols))
+    if rows == 1:
+        rand1 = numpy.random.uniform(size=cols)
+        rand2 = numpy.random.uniform(size=cols)
     else:
-        x = np.sqrt(-2 * np.log(1 - (1 - np.exp(-threshold ** 2 / 2)) * numpy.random.normal(
-            rows, cols))) * np.exp(1j * 2 * np.pi * numpy.random.normal(rows, cols))
+        rand1 = numpy.random.uniform(size=(rows, cols))
+        rand2 = numpy.random.uniform(size=(rows, cols))
+    if threshold <= 0:
+        x = (np.sqrt(threshold ** 2 - 2 * np.log(rand1))
+             * np.exp(1j * 2 * np.pi * rand2))
+    else:
+        x = (np.sqrt(-2 * np.log(1 - (1 - np.exp(-threshold ** 2 / 2))
+             * rand1)) * np.exp(1j * 2 * np.pi * rand2))
+
+    return x

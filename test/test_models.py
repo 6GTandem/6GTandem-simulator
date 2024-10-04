@@ -1,6 +1,7 @@
 import models
 import unittest
 import numpy as np
+import numpy.random
 
 
 def read_octave_file(file_name: str):
@@ -164,6 +165,19 @@ class AmplifierModelTest(unittest.TestCase):
 
         self.assertAlmostEqual(0.316227766, pa.gain)
 
+    def test_amplifier_noise_var(self):
+        """Test if the noise variance works correctly."""
+        numpy.random.seed(45612)
+        input_data = read_octave_file("test/data/amp_input_noise.csv")
+        output_data = read_octave_file("test/data/amp_output_noise.csv")
+
+        pa = models.Amplifier()
+        pa.mode = 'ideal'
+        pa.set_noise_var(22, 2, 5)
+        amp_data = pa.run(input_data)
+
+        self.assertEqual(np.allclose(amp_data, output_data))
+
 
 class DacModelTest(unittest.TestCase):
     """Test if the DAC model behaves as expected."""
@@ -198,3 +212,128 @@ class DacModelTest(unittest.TestCase):
 
         # With an infinite limit the input and output data should be the same.
         self.assertTrue(np.allclose(dac_data, input_data))
+
+
+class FiberModelTest(unittest.TestCase):
+    """Test if the fiber model behaves as expected."""
+
+    def test_fiber(self):
+        input_data = read_octave_file("test/data/fiber_input.csv")
+        output_data = read_octave_file("test/data/fiber_output.csv")
+
+        fib = models.Fiber()
+        fib_data = fib.run(input_data)
+
+        self.assertTrue(np.allclose(fib_data, output_data))
+
+
+class IQModemModelTest(unittest.TestCase):
+    """Test if the iqmodem model behaves as expected."""
+
+    def test_iqmodem_ideal(self):
+        input_data = read_octave_file("test/data/iqmodem_input.csv")
+        phasor_data = read_octave_file("test/data/iqmodem_phasor.csv")
+        output_data = read_octave_file("test/data/iqmodem_output.csv")
+
+        iq = models.IQModem()
+        iq.iqi_coef = 1.5
+        iq.iqi_filter = 3
+        iq.iqi_delay_imbalance = 1.2
+        iq.dc_offset = 0.6
+        iq_data = iq.run(input_data, phasor_data)
+
+        self.assertTrue(np.allclose(iq_data, output_data))
+
+    def test_iqmodem_filter(self):
+        input_data = read_octave_file("test/data/iqmodem_input_filter.csv")
+        phasor_data = read_octave_file("test/data/iqmodem_phasor_filter.csv")
+        output_data = read_octave_file("test/data/iqmodem_output_filter.csv")
+
+        iq = models.IQModem()
+        iq.mode = 'filter'
+        iq.iqi_coef = 2.1
+        iq.iqi_filter = 2
+        iq.iqi_delay_imbalance = 1.8
+        iq.dc_offset = 0.2
+        iq_data = iq.run(input_data, phasor_data)
+
+        self.assertTrue(np.allclose(iq_data, output_data))
+
+    def test_iqmodem_static(self):
+        input_data = read_octave_file("test/data/iqmodem_input_static.csv")
+        phasor_data = read_octave_file("test/data/iqmodem_phasor_static.csv")
+        output_data = read_octave_file("test/data/iqmodem_output_static.csv")
+
+        iq = models.IQModem()
+        iq.mode = 'statuc'
+        iq.iqi_coef = 1.9
+        iq.iqi_filter = 3.2
+        iq.iqi_delay_imbalance = 0.6
+        iq.dc_offset = 2.4
+        iq_data = iq.run(input_data, phasor_data)
+
+        self.assertTrue(np.allclose(iq_data, output_data))
+
+
+class OscillatorModelTest(unittest.TestCase):
+    """Test if the oscillator model behaves as expected."""
+
+    def test_oscillator_ideal(self):
+        output_data = [1] * 200
+
+        osc = models.Oscillator()
+        osc.mode = 'ideal'
+        osc_data = osc.run(200)
+
+        self.assertTrue(np.allclose(osc_data, output_data))
+
+    def test_oscillator_cfo(self):
+        numpy.random.seed(45612)
+        output_data = read_octave_file("test/data/oscillator_output_cfo.csv")
+
+        osc = models.Oscillator()
+        osc.mode = 'cfo'
+        osc.cfo = 200e3
+        osc.cfo_std = 320e3
+        osc_data = osc.run(200)
+
+        self.assertTrue(np.allclose(osc_data, output_data))
+
+    def test_oscillator_model(self):
+        numpy.random.seed(45612)
+        output_data = read_octave_file("test/data/oscillator_output_model.csv")
+
+        osc = models.Oscillator()
+        osc.mode = 'model'
+        osc.f3db = 250e3
+        osc_data = osc.run(200)
+
+        self.assertTrue(np.allclose(osc_data, output_data))
+
+    def test_oscillator_spectrum(self):
+        numpy.random.seed(45612)
+        output_data = read_octave_file(
+            "test/data/oscillator_output_spectrum.csv")
+
+        osc = models.Oscillator()
+        osc.mode = 'spectrum'
+        osc.freq = np.linspace(1, 100e6, 10000)
+        with open("test/data/spec_response.txt", 'r') as f:
+            s = f.readline()
+        osc.spec = [float(x) for x in s.split()]
+        osc_data = osc.run(200)
+
+        self.assertTrue(np.allclose(osc_data, output_data, rtol=0.05))
+
+    def test_oscillator_variance_spectrum(self):
+        numpy.random.seed(45612)
+
+        osc = models.Oscillator()
+        osc.mode = 'spectrum'
+        osc.freq = np.linspace(1, 100e6, 10000)
+        with open("test/data/spec_response.txt", 'r') as f:
+            s = f.readline()
+        osc.spec = [float(x) for x in s.split()]
+        osc_data = osc.variance_phase_spectrum()
+
+        self.assertTrue(np.allclose(osc_data, 2526269123350.2153))
