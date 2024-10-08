@@ -36,6 +36,9 @@ def db_to_magnitude(db_value: float | int):
 
 
 class Component(ABC):
+    modes = ['ideal', 'linear', 'atan', 'tanh', 'poly3', 'poly3_pm',
+             'poly5', 'limiter', 'softlimiter', 'weblab', '6gtandem']
+
     def __init__(self, mode: str = 'ideal'):
         self._mode = mode
 
@@ -51,8 +54,7 @@ class Component(ABC):
             'ideal','linear','atan', 'tanh', 'poly3','poly3_pm',
             'poly5','limiter','softlimiter','weblab','6gtandem'
         """
-        if mode not in ('ideal', 'linear', 'atan', 'tanh', 'poly3', 'poly3_pm', 'poly5', 'limiter',
-                        'softlimiter', 'weblab', '6gtandem'):
+        if mode not in self.modes:
             raise ValueError(f"Invalid mode: {mode}")
 
         self._mode = mode
@@ -224,7 +226,7 @@ class Fiber(Component):
         super().__init__(*args, **kwargs)
 
     def run(self, x):
-        xout = models.utils.delay(lfilter(self.filter, 1, x), self.delay)
+        xout = models.utils.delay(lfilter(self.filter, 1, x), [self.delay])
 
         return models.utils.setdbm(xout, self.utils.getdbm(x) - self.damping)
 
@@ -244,6 +246,7 @@ class IQModem(Component):
         self.iqi_filter = iqi_filter
         self.iqi_delay_imbalance = iqi_delay_imbalance
         self.dc_offset = dc_offset
+        self.modes.extend(['filter', 'static'])
 
         super().__init__(*args, **kwargs)
 
@@ -257,15 +260,14 @@ class IQModem(Component):
             case 'ideal':
                 yout = yin
             case 'filter':
-                d = np.shape((self.iqi_filter - 1) / 2)
-                xc = lfilter(self.iqi_filter, 1, [
-                             [np.conj(yin)], [np.zeros(np.shape(d))]])
-                xc = xc[d + 1:]
+                d = (self.iqi_filter - 1) // 2
+                data = np.array(list(np.conj(yin)) + list(np.zeros(d)))
+                xc = lfilter(self.iqi_filter, 1, data)
+                xc = xc[d:]
                 yout = yin + xc + self.dc_offset
             case 'static':
-                yout = models.utils.delay(np.real(yin), -self.iqi_delay_imbalance / 2) + \
-                    1j * models.utils.delay(np.imag(yin),
-                                            self.iqi_delay_imbalance / 2)
+                yout = (models.utils.delay(np.real(yin), [-self.iqi_delay_imbalance / 2]) +
+                        1j * models.utils.delay(np.imag(yin), [self.iqi_delay_imbalance / 2]))
                 yout = yout + self.iqi_coef * np.conj(yout) + self.dc_offset
 
         return yout * phasor
@@ -426,8 +428,8 @@ class Oscillator(Component):
         return fi
 
     def run_phase_model(self, nosamples):
-        u = np.sqrt(self.pnvar) * numpy.random.normal(nosamples) + self.pnmean
-        fi = lfilter(1, [1 - self.a], [[self.current_phase], [u]])
+        u = np.sqrt(self.pnvar) * \
+            numpy.random.normal(size=nosamples) + self.pnmean
         fi = lfilter(1, [1, -self.a], np.insert(u, 0, self.current_phase))
         fi = fi[1:]
         self.current_phase = fi[-1]

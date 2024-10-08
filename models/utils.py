@@ -73,14 +73,17 @@ def delay(x, n: list = [1], filter_length: int = 512):
     % second, with FilterLength = 512.
     """
 
+    if type(x[0]) not in (list, np.ndarray):
+        x = [x]
     cols = len(x[0])
+    rows = len(x)
 
-    y = np.zeros((len(x), len(n) * cols))
-    for ind in n:
+    y = np.zeros((rows, len(n) * cols))
+    for i, ind in enumerate(n):
         nint = round(ind)
         y1 = np.roll(x, nint)
         if ind >= 0:
-            y1[0:nint+1, :] = np.zeros((nint, cols))
+            y1[0:nint, :] = np.zeros((nint, cols))
         else:
             y1[len(y1)+nint:, :] = np.zeros((abs(nint), cols))
 
@@ -90,16 +93,19 @@ def delay(x, n: list = [1], filter_length: int = 512):
             # Simple version if there is some oversampling
             if filter_length < 10:
                 h = rc(np.transpose(
-                    range(-filter_length, filter_length)) - frac, 0.5)
+                    np.arange(-filter_length, filter_length + 1)) - frac, 0.5)
             else:
-                h = np.sinc(np.transpose(
-                    range(-filter_length, filter_length) - frac) * np.hanning(2 * filter_length + 1))
+                h = (np.sinc(np.arange(-filter_length, filter_length +
+                     1) - frac) * np.hanning(2 * filter_length + 1))
 
-            y1 = [[y1], [np.zeros((filter_length, cols))]]
-            y1 = lfilter(h, 1, y1)
+            y1 = list(y1)
+            y1.extend(list(np.zeros((filter_length, cols))))
+            y1 = lfilter(h.T, 1, y1, axis=0)
             y1 = y1[len(y1)-len(x):, :]
 
-        y[:, (ind-1)*cols+1:ind*cols] = y1
+        y[:, (i*cols):((i+1) * cols)] = y1
+
+    return y
 
 
 def randn_c(rows: int = 1, cols: int = 1, threshold: int = 0):

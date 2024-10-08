@@ -176,7 +176,7 @@ class AmplifierModelTest(unittest.TestCase):
         pa.set_noise_var(22, 2, 5)
         amp_data = pa.run(input_data)
 
-        self.assertEqual(np.allclose(amp_data, output_data))
+        self.assertTrue(np.allclose(amp_data, output_data))
 
 
 class DacModelTest(unittest.TestCase):
@@ -252,7 +252,22 @@ class IQModemModelTest(unittest.TestCase):
         iq = models.IQModem()
         iq.mode = 'filter'
         iq.iqi_coef = 2.1
-        iq.iqi_filter = 2
+        iq.iqi_filter = 1
+        iq.iqi_delay_imbalance = 1.8
+        iq.dc_offset = 0.2
+        iq_data = iq.run(input_data, phasor_data)
+
+        self.assertTrue(np.allclose(iq_data, output_data))
+
+    def test_iqmodem_filter2(self):
+        input_data = read_octave_file("test/data/iqmodem_input_filter2.csv")
+        phasor_data = read_octave_file("test/data/iqmodem_phasor_filter2.csv")
+        output_data = read_octave_file("test/data/iqmodem_output_filter2.csv")
+
+        iq = models.IQModem()
+        iq.mode = 'filter'
+        iq.iqi_coef = 2.1
+        iq.iqi_filter = 7
         iq.iqi_delay_imbalance = 1.8
         iq.dc_offset = 0.2
         iq_data = iq.run(input_data, phasor_data)
@@ -260,14 +275,17 @@ class IQModemModelTest(unittest.TestCase):
         self.assertTrue(np.allclose(iq_data, output_data))
 
     def test_iqmodem_static(self):
-        input_data = read_octave_file("test/data/iqmodem_input_static.csv")
-        phasor_data = read_octave_file("test/data/iqmodem_phasor_static.csv")
-        output_data = read_octave_file("test/data/iqmodem_output_static.csv")
+        input_data = np.array(
+            [read_octave_file("test/data/iqmodem_input_static.csv")]).T
+        phasor_data = np.array(
+            [read_octave_file("test/data/iqmodem_phasor_static.csv")]).T
+        output_data = np.array(
+            [read_octave_file("test/data/iqmodem_output_static.csv")]).T
 
         iq = models.IQModem()
-        iq.mode = 'statuc'
+        iq.mode = 'static'
         iq.iqi_coef = 1.9
-        iq.iqi_filter = 3.2
+        iq.iqi_filter = 3
         iq.iqi_delay_imbalance = 0.6
         iq.dc_offset = 2.4
         iq_data = iq.run(input_data, phasor_data)
@@ -337,3 +355,23 @@ class OscillatorModelTest(unittest.TestCase):
         osc_data = osc.variance_phase_spectrum()
 
         self.assertTrue(np.allclose(osc_data, 2526269123350.2153))
+
+
+class RadioStripModelTest(unittest.TestCase):
+    """Test if the radio strip model behaves as expected."""
+
+    def test_radio_stripe(self):
+        output_data = [1] * 200
+
+        rs = models.RadioStripe()
+        rs_data = rs.run(200)
+
+        self.assertTrue(np.allclose(rs_data, output_data))
+
+    def test_calibration(self):
+        output_data = [1] * 200
+
+        rs = models.RadioStripe()
+        rs_data = rs.run(200)
+
+        self.assertTrue(np.allclose(rs_data, output_data))
