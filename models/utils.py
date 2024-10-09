@@ -5,12 +5,12 @@ from scipy.signal import lfilter
 
 
 def getdbm(x):
-    return 10 * np.log10(np.mean(abs(x) ** 2, axis=1) / 50 / 1e-3)
+    return 10 * np.log10(np.mean(abs(x) ** 2) / 50 / 1e-3)
 
 
 def setdbm(x, dnew):
     if getdbm(x) > -100:
-        out = x * np.tile(10 ** ((dnew - getdbm(x)) / 20), np.shape(x), 1)
+        out = x * np.tile(10 ** ((dnew - getdbm(x)) / 20), len(x))
     else:
         out = x
 
@@ -124,3 +124,136 @@ def randn_c(rows: int = 1, cols: int = 1, threshold: int = 0):
              * rand1)) * np.exp(1j * 2 * np.pi * rand2))
 
     return x
+
+
+def makespiralconstellation(m, f):
+    m = np.transpose([np.arange(1, m)])
+    ang = np.sqrt((4 * np.pi * m) ** 2 * f / 2 +
+                  np.sqrt(((4 * np.pi * m) ** 2 * f / 2) ** 2 + (4 * np.pi * m) ** 2))
+
+    return ang * np.exp(1j * ang)
+
+
+def randconst(rows, cols, m=16, type: str = 'QAM'):
+    """RANDCONST Complex constellation."""
+    match type:
+        case 'QAM':
+            match m:
+                case 2:
+                    c = [[-1], [1]]
+                case 8:
+                    c = [[-3, -1, 1, 3], [-3, -1, 1, 3]] + \
+                        1j * [np.ones((1, 4)), -np.ones((1, 4))]
+                case 32:
+                    xpoints = np.arange(-5, 6, 2)
+                    ypoints = np.arange(-3, 4, 2)
+                    x, y = np.meshgrid(xpoints, ypoints)
+                    c = x + 1j * y
+                    arr = np.arange(-3, 4, 2).T
+                    c = list(arr - 1j * 5) + list(c) + list(arr + 1j * 5)
+                case 128:
+                    xpoints = np.arange(-11, 12, 2)
+                    ypoints = np.arange(-7, 8, 2)
+                    x, y = np.meshgrid(xpoints, ypoints)
+                    c = x + 1j * y
+                    arr = np.arange(-7, 8, 2).T
+                    c = (list(arr - 1j * 11) + list(arr - 1j * 9) +
+                         list(c) + list(arr + 1j * 9) + list(arr + 1j * 11))
+                case 512:
+                    xpoints = np.arange(-15, 16, 2)
+                    ypoints = np.arange(-23, 24, 2)
+                    x, y = np.meshgrid(xpoints, ypoints)
+                    xpoints = np.arange(-3, 4, 2)
+                    ypoints = np.arange(-15, 16, 2)
+                    x2, y2 = np.meshgrid(xpoints, ypoints)
+                    c = (list(x + 1j * y) + list(x2 + 1j *
+                         y2 - 20) + list(x2 + 1j * y2 + 20))
+                case _:
+                    q = np.log2(m)
+                    if (q % 2) != 0:
+                        raise ValueError('Bad constellation size.')
+                    q = round(np.sqrt(m))
+                    r = (np.arange(1, q) - (q + 1) / 2)
+                    c = np.reshape(np.tile(r, q, 1) + 1j *
+                                   np.tile(np.transpose(r), 1, q), q ** 2, 1)
+        case 'PSK':
+            c = np.transpose(np.exp(1j * 2 * np.pi * np.arange(1, m) / m))
+        case 'SPIRAL':
+            c = makespiralconstellation(m, 0)
+        case _:
+            raise ValueError(
+                'Wrong constellation type. Choose QAM, PSK or SPIRAL')
+
+    c = np.sqrt(2) / np.std(c, 1) * c
+
+    rng = np.random.default_rng()
+    i = rng.random((rows, cols)) * len(c)
+    x = c[i]
+
+    return x, c
+
+
+def rrc(t, beta):
+    i1 = (t == 0)
+    i2 = ((4 * beta * t) ** 2 == 1)
+
+    t[i1] = 0.11  # value 0.11 not used
+    t[i2] = 0.11
+    pulse = (np.sin(np.pi * t * (1 - beta)) + 4 * beta * t *
+             np.cos(np.pi * t * (1 + beta))) / (np.pi * t * (1 - (4 * beta * t) ** 2))
+
+    pulse[i1] = (1 - beta + 4 * beta / np.pi)
+    pulse[i2] = beta / np.sqrt(2) * ((1 + 2 / np.pi) * np.sin(
+        np.pi / 4 / beta) + (1 - 2/np.pi) * np.cos(np.pi / 4 / beta))
+
+    return pulse
+
+
+def pulseshape(x, h, oversampling=5, beta=0.07, fl=25):
+    """
+    % pulseshape(x,oversampling,beta)
+    % Root-raised-cosine pulse shaping.
+    % x is a vecor or matrix where the columns are samples to pulseshape.
+    % beta is the rootraisedcosine factor.
+    % FL is the half filterlength, in symbols. Default 25.
+    % h is pulse shape. Default rrc.
+    %
+    % The function oversamples and filters with rrc(beta) filter.
+    % The resulting vector contains extra samples for filling and emtying the
+    % filters in the pulseshape and matchedfilter functions. Remove
+    % 2*oversampling*FL samples from the beginning of the vector
+    """
+
+    if fl < round(1 / beta):
+        raise ValueError('Warning: FilterLength too small to guarantee 35 dB.')
+
+    if type(oversampling) is int:
+        PulseFilter = rrc(np.arange(0, fl, 1/oversampling), beta)
+        # this makes sure that t = 0 is represented
+        PulseFilter = [np.fliplr(PulseFilter[2:]), PulseFilter]
+
+        # append zeros for filter delay
+        xz = list(x) + list(np.zeros((fl, len(x[0]))))
+
+        # multiphase filtering. Same as zeropadding and filtering.
+        xps = np.zeros((len(xz) * oversampling, len(xz[0])))
+        for d in range(oversampling):
+            xps[d::oversampling, :] = filter(
+                PulseFilter[d::oversampling], 1, xz)
+    else:
+        x = list(np.zeros((fl, 1))) + list(x)
+        # t = linspace(1, length(x)+1-1/oversampling-0.000001, round(length(x)*oversampling))
+        t = np.arange(1, len(x) + 1 - 0.001, 1/oversampling)
+        x = list(np.zeros((fl, 1))) + list(x) + list(np.zeros((fl + 1, 1)))
+        t = t + fl
+        xps = np.zeros((len(t), len(x[0])))
+
+        p1 = round(t - fl)
+        p2 = round(t + fl)
+
+        for k in range(len(t)):
+            t2 = np.arange(p1(k), p2(k)) - t[k] + eps
+            xps[k, :] = (np.sin(np.pi * t2 * (1 - beta)) + 4 * beta * t2 * np.cos(np.pi *
+                         t2 * (1 + beta))) / (np.pi * t2 * (1 - (4 * beta * t2) ** 2)) * x[p1(k):p2(k), :]
+
+    return xps
