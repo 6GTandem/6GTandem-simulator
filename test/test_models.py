@@ -2,6 +2,7 @@ import models
 import unittest
 import numpy as np
 import numpy.random
+import models.utils
 
 
 def read_octave_file(file_name: str):
@@ -26,7 +27,7 @@ def read_octave_file(file_name: str):
         else:
             data = [float(x) for x in data]
 
-    return data
+    return np.array([data]).T
 
 
 class CouplerModelTest(unittest.TestCase):
@@ -275,12 +276,9 @@ class IQModemModelTest(unittest.TestCase):
         self.assertTrue(np.allclose(iq_data, output_data))
 
     def test_iqmodem_static(self):
-        input_data = np.array(
-            [read_octave_file("test/data/iqmodem_input_static.csv")]).T
-        phasor_data = np.array(
-            [read_octave_file("test/data/iqmodem_phasor_static.csv")]).T
-        output_data = np.array(
-            [read_octave_file("test/data/iqmodem_output_static.csv")]).T
+        input_data = read_octave_file("test/data/iqmodem_input_static.csv")
+        phasor_data = read_octave_file("test/data/iqmodem_phasor_static.csv")
+        output_data = read_octave_file("test/data/iqmodem_output_static.csv")
 
         iq = models.IQModem()
         iq.mode = 'static'
@@ -307,7 +305,7 @@ class OscillatorModelTest(unittest.TestCase):
 
     def test_oscillator_cfo(self):
         numpy.random.seed(45612)
-        output_data = read_octave_file("test/data/oscillator_output_cfo.csv")
+        output_data = read_octave_file("test/data/oscillator_output_cfo.csv").T
 
         osc = models.Oscillator()
         osc.mode = 'cfo'
@@ -319,7 +317,8 @@ class OscillatorModelTest(unittest.TestCase):
 
     def test_oscillator_model(self):
         numpy.random.seed(45612)
-        output_data = read_octave_file("test/data/oscillator_output_model.csv")
+        output_data = read_octave_file(
+            "test/data/oscillator_output_model.csv").T
 
         osc = models.Oscillator()
         osc.mode = 'model'
@@ -331,7 +330,7 @@ class OscillatorModelTest(unittest.TestCase):
     def test_oscillator_spectrum(self):
         numpy.random.seed(45612)
         output_data = read_octave_file(
-            "test/data/oscillator_output_spectrum.csv")
+            "test/data/oscillator_output_spectrum.csv").T
 
         osc = models.Oscillator()
         osc.mode = 'spectrum'
@@ -361,17 +360,33 @@ class RadioStripModelTest(unittest.TestCase):
     """Test if the radio strip model behaves as expected."""
 
     def test_radio_stripe(self):
+        # input_data = read_octave_file("test/data/radiostripe_input.csv")
+        # output_data = read_octave_file("test/data/radiostrip_ouput.csv")
+        input_data = [1] * 200
         output_data = [1] * 200
 
         rs = models.RadioStripe()
-        rs_data = rs.run(200)
+        rs_data = rs.run(input_data)
 
         self.assertTrue(np.allclose(rs_data, output_data))
 
     def test_calibration(self):
-        output_data = [1] * 200
+        input_data = read_octave_file("test/data/radiostripe_input_cal.csv")
+        output_data = read_octave_file("test/data/radiostrip_ouput_cal.csv")
 
         rs = models.RadioStripe()
-        rs_data = rs.run(200)
+        rs_data = rs.run(input_data)
 
         self.assertTrue(np.allclose(rs_data, output_data))
+
+
+class UtilsTest(unittest.TestCase):
+    """Test the utility functions."""
+
+    def test_randconst(self):
+        models.utils.global_seed = 45612
+        output_data = read_octave_file("test/data/randconst_output.csv")
+
+        out, _ = models.utils.randconst(200, 1)
+
+        self.assertTrue(np.allclose(out, output_data))

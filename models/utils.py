@@ -3,6 +3,8 @@ import numpy.random
 
 from scipy.signal import lfilter
 
+global_seed = None
+
 
 def getdbm(x):
     return 10 * np.log10(np.mean(abs(x) ** 2) / 50 / 1e-3)
@@ -173,21 +175,23 @@ def randconst(rows, cols, m=16, type: str = 'QAM'):
                     if (q % 2) != 0:
                         raise ValueError('Bad constellation size.')
                     q = round(np.sqrt(m))
-                    r = (np.arange(1, q) - (q + 1) / 2)
-                    c = np.reshape(np.tile(r, q, 1) + 1j *
-                                   np.tile(np.transpose(r), 1, q), q ** 2, 1)
+                    r = np.arange(1, q + 1) - (q + 1) / 2
+                    c = np.reshape(np.tile(np.transpose([r]), (1, q)) + 1j *
+                                   np.tile(r, (q, 1)), (q ** 2, 1))
         case 'PSK':
-            c = np.transpose(np.exp(1j * 2 * np.pi * np.arange(1, m) / m))
+            c = np.transpose([np.exp(1j * 2 * np.pi * np.arange(1, m) / m)])
         case 'SPIRAL':
             c = makespiralconstellation(m, 0)
         case _:
             raise ValueError(
                 'Wrong constellation type. Choose QAM, PSK or SPIRAL')
 
-    c = np.sqrt(2) / np.std(c, 1) * c
+    c = np.sqrt(2) / np.std(c) * c
 
-    rng = np.random.default_rng()
-    i = rng.random((rows, cols)) * len(c)
+    rng = np.random.default_rng(seed=global_seed)
+    i = rng.integers(len(c), size=(rows, cols))
+    for val in i:
+        print(val[0], end=" ")
     x = c[i]
 
     return x, c

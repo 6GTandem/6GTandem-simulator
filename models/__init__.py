@@ -228,7 +228,7 @@ class Fiber(Component):
     def run(self, x):
         xout = models.utils.delay(lfilter(self.filter, 1, x), [self.delay])
 
-        return models.utils.setdbm(xout, self.utils.getdbm(x) - self.damping)
+        return models.utils.setdbm(xout, models.utils.getdbm(x) - self.damping)
 
     @property
     def delay(self):
@@ -261,7 +261,7 @@ class IQModem(Component):
                 yout = yin
             case 'filter':
                 d = (self.iqi_filter - 1) // 2
-                data = np.array(list(np.conj(yin)) + list(np.zeros(d)))
+                data = list(np.conj(yin)) + list(np.zeros((d, 1)))
                 xc = lfilter(self.iqi_filter, 1, data)
                 xc = xc[d:]
                 yout = yin + xc + self.dc_offset
@@ -274,12 +274,11 @@ class IQModem(Component):
 
 
 class Link(Component):
-    def __init__(self, amp: Amplifier, fiber: Fiber, coupler_in: Coupler, coupler_out: Coupler,
-                 *args, **kwargs):
-        self.amp = amp
-        self.fiber = fiber
-        self.coupler_in = coupler_in
-        self.coupler_out = coupler_out
+    def __init__(self, *args, **kwargs):
+        self.amp = Amplifier()
+        self.fiber = Fiber()
+        self.coupler_in = Coupler()
+        self.coupler_out = Coupler()
 
         super().__init__(*args, **kwargs)
 
@@ -384,8 +383,6 @@ class Oscillator(Component):
                 fi = self.run_phase_model(nosamples)
             case 'spectrum':
                 fi = self.run_phase_spectrum(nosamples)
-            case 'iid':
-                fi = self.run_phase_iid(nosamples)
 
         return fi
 
@@ -452,12 +449,11 @@ class Transmitter(Component):
         >>> y = tx.run(x)
     """
 
-    def __init__(self, oscillator: Oscillator, iqmod: IQModem, amp: Amplifier, dac: Dac,
-                 delay: float = 0, *args, **kwargs):
-        self.oscillator = oscillator
-        self.iqmodem = iqmod
-        self.amplifier = amp
-        self.dac = dac
+    def __init__(self, delay: float = 0, *args, **kwargs):
+        self.oscillator = Oscillator()
+        self.iqmodem = IQModem()
+        self.amplifier = Amplifier()
+        self.dac = Dac()
         self.delay = delay
 
         super().__init__(*args, **kwargs)
@@ -486,12 +482,11 @@ class RadioStripe(Component):
         >>> y = rs.run(x) # Y is a matrix
     """
 
-    def __init__(self, nolinks: int, tx: Transmitter, link: Link, bandwith: float = 5e9, os=5,
-                 *args, **kwargs):
+    def __init__(self, nolinks: int = 3, bandwith: float = 5e9, os=5, *args, **kwargs):
         """
         :param nolinks: Number of links in the vector of links.
         """
-        self.transmitter = tx
+        self.transmitter = Transmitter()
         self.bandwidth = bandwith
         self.os = os
 
@@ -515,7 +510,7 @@ class RadioStripe(Component):
         super().__init__(*args, **kwargs)
 
     def run(self, x):
-        y = np.zeros(np.shape(x), 1 + len(self.links))
+        y = np.zeros((len(x), 1 + len(self.links)))
         y[:, 1] = self.transmitter.run(x)
 
         for i, link in enumerate(self.links):
