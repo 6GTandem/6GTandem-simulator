@@ -129,7 +129,7 @@ def randn_c(rows: int = 1, cols: int = 1, threshold: int = 0):
 
 
 def makespiralconstellation(m, f):
-    m = np.transpose([np.arange(1, m)])
+    m = np.transpose([np.arange(1, m+1)])
     ang = np.sqrt((4 * np.pi * m) ** 2 * f / 2 +
                   np.sqrt(((4 * np.pi * m) ** 2 * f / 2) ** 2 + (4 * np.pi * m) ** 2))
 
@@ -190,7 +190,7 @@ def randconst(rows, cols, m=16, type: str = 'QAM'):
                     c = np.reshape(np.tile(np.transpose([r]), (1, q)) + 1j *
                                    np.tile(r, (q, 1)), (q ** 2, 1))
         case 'PSK':
-            c = np.transpose([np.exp(1j * 2 * np.pi * np.arange(1, m) / m)])
+            c = np.transpose([np.exp(1j * 2 * np.pi * np.arange(1, m+1) / m)])
         case 'SPIRAL':
             c = makespiralconstellation(m, 0)
         case _:

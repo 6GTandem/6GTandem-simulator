@@ -437,6 +437,24 @@ class UtilsTest(unittest.TestCase):
 
         self.assertTrue(np.allclose(out, output_data))
 
+    def test_randconst_psk(self):
+        """Test randconst for PSK."""
+        models.utils.global_seed = 45612
+        output_data = read_octave_file("test/data/randconst_output_psk.csv")
+
+        out, _ = models.utils.randconst(200, 1, type='PSK')
+
+        self.assertTrue(np.allclose(out, output_data))
+
+    def test_randconst_spiral(self):
+        """Test randconst for SPIRAL."""
+        models.utils.global_seed = 45612
+        output_data = read_octave_file("test/data/randconst_output_SPIRAL.csv")
+
+        out, _ = models.utils.randconst(200, 1, type='SPIRAL')
+
+        self.assertTrue(np.allclose(out, output_data))
+
     def test_rrc(self):
         input_data = read_octave_file("test/data/rrc_input.csv")
         output_data = read_octave_file("test/data/rrc_output.csv")
