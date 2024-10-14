@@ -383,11 +383,57 @@ class RadioStripModelTest(unittest.TestCase):
 class UtilsTest(unittest.TestCase):
     """Test the utility functions."""
 
-    def test_randconst(self):
+    def test_randconst_default(self):
+        """Test randconst for the default QAM16 constellation."""
         models.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output.csv")
 
         out, _ = models.utils.randconst(200, 1)
+
+        self.assertTrue(np.allclose(out, output_data))
+
+    def test_randconst_qam2(self):
+        """Test randconst for QAM2."""
+        models.utils.global_seed = 45612
+        output_data = read_octave_file("test/data/randconst_output_qam2.csv")
+
+        out, _ = models.utils.randconst(200, 1, m=2)
+
+        self.assertTrue(np.allclose(out, output_data))
+
+    def test_randconst_qam8(self):
+        """Test randconst for QAM8."""
+        models.utils.global_seed = 45612
+        output_data = read_octave_file("test/data/randconst_output_qam8.csv")
+
+        out, _ = models.utils.randconst(200, 1, m=8)
+
+        self.assertTrue(np.allclose(out, output_data))
+
+    def test_randconst_qam32(self):
+        """Test randconst for QAM32."""
+        models.utils.global_seed = 45612
+        output_data = read_octave_file("test/data/randconst_output_qam32.csv")
+
+        out, _ = models.utils.randconst(200, 1, m=32)
+
+        self.assertTrue(np.allclose(out, output_data))
+
+    def test_randconst_qam128(self):
+        """Test randconst for QAM128."""
+        models.utils.global_seed = 45612
+        output_data = read_octave_file("test/data/randconst_output_qam128.csv")
+
+        out, _ = models.utils.randconst(200, 1, m=128)
+
+        self.assertTrue(np.allclose(out, output_data))
+
+    def test_randconst_qam512(self):
+        """Test randconst for QAM512."""
+        models.utils.global_seed = 45612
+        output_data = read_octave_file("test/data/randconst_output_qam512.csv")
+
+        out, _ = models.utils.randconst(200, 1, m=512)
 
         self.assertTrue(np.allclose(out, output_data))
 

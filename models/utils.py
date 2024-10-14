@@ -142,34 +142,45 @@ def randconst(rows, cols, m=16, type: str = 'QAM'):
         case 'QAM':
             match m:
                 case 2:
-                    c = [[-1], [1]]
+                    c = np.array([[-1], [1]])
                 case 8:
-                    c = [[-3, -1, 1, 3], [-3, -1, 1, 3]] + \
-                        1j * [np.ones((1, 4)), -np.ones((1, 4))]
+                    c = np.array([[-3, -1, 1, 3], [-3, -1, 1, 3]] +
+                                 1j * np.array(list(np.ones((1, 4))) +
+                                               list(-np.ones((1, 4)))))
+                    c = np.transpose([c.flatten('F')])
                 case 32:
                     xpoints = np.arange(-5, 6, 2)
                     ypoints = np.arange(-3, 4, 2)
                     x, y = np.meshgrid(xpoints, ypoints)
+                    x = np.transpose([x.flatten('F')])
+                    y = np.transpose([y.flatten('F')])
                     c = x + 1j * y
-                    arr = np.arange(-3, 4, 2).T
-                    c = list(arr - 1j * 5) + list(c) + list(arr + 1j * 5)
+                    arr = np.transpose([np.arange(-3, 4, 2)])
+                    c = np.array(list(arr - 1j * 5) +
+                                 list(c) + list(arr + 1j * 5))
                 case 128:
                     xpoints = np.arange(-11, 12, 2)
                     ypoints = np.arange(-7, 8, 2)
                     x, y = np.meshgrid(xpoints, ypoints)
+                    x = np.transpose([x.flatten('F')])
+                    y = np.transpose([y.flatten('F')])
                     c = x + 1j * y
-                    arr = np.arange(-7, 8, 2).T
-                    c = (list(arr - 1j * 11) + list(arr - 1j * 9) +
-                         list(c) + list(arr + 1j * 9) + list(arr + 1j * 11))
+                    arr = np.transpose([np.arange(-7, 8, 2)])
+                    c = np.array(list(arr - 1j * 11) + list(arr - 1j * 9) +
+                                 list(c) + list(arr + 1j * 9) + list(arr + 1j * 11))
                 case 512:
                     xpoints = np.arange(-15, 16, 2)
                     ypoints = np.arange(-23, 24, 2)
                     x, y = np.meshgrid(xpoints, ypoints)
+                    x = np.transpose([x.flatten('F')])
+                    y = np.transpose([y.flatten('F')])
                     xpoints = np.arange(-3, 4, 2)
                     ypoints = np.arange(-15, 16, 2)
                     x2, y2 = np.meshgrid(xpoints, ypoints)
-                    c = (list(x + 1j * y) + list(x2 + 1j *
-                         y2 - 20) + list(x2 + 1j * y2 + 20))
+                    x2 = np.transpose([x2.flatten('F')])
+                    y2 = np.transpose([y2.flatten('F')])
+                    c = np.array(list(x + 1j * y) + list(x2 + 1j *
+                                                         y2 - 20) + list(x2 + 1j * y2 + 20))
                 case _:
                     q = np.log2(m)
                     if (q % 2) != 0:
@@ -244,7 +255,7 @@ def pulseshape(x, oversampling=5, beta=0.07, fl: int = 25):
 
         # multiphase filtering. Same as zeropadding and filtering.
         xps = np.zeros(shape=(len(xz) * oversampling,
-                       len(xz[0])), dtype=np.dtype('complex128'))
+                              len(xz[0])), dtype=np.dtype('complex128'))
         for d in range(oversampling):
             l2 = lfilter(pulse_filter[d::oversampling], 1, np.transpose(xz))
             xps[d::oversampling] = np.transpose(l2)
