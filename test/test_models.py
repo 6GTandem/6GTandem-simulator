@@ -390,3 +390,29 @@ class UtilsTest(unittest.TestCase):
         out, _ = models.utils.randconst(200, 1)
 
         self.assertTrue(np.allclose(out, output_data))
+
+    def test_rrc(self):
+        input_data = read_octave_file("test/data/rrc_input.csv")
+        output_data = read_octave_file("test/data/rrc_output.csv")
+
+        out = models.utils.rrc(input_data, 0.5)
+
+        self.assertTrue(np.allclose(out, output_data))
+
+    def test_pulseshape_int(self):
+        """Test the pulseshape function with an oversampling value which is integer."""
+        input_data = read_octave_file("test/data/randconst_output.csv")
+        output_data = read_octave_file("test/data/pulseshape_output.csv")
+
+        out = models.utils.pulseshape(input_data, 5, 0.1)
+
+        self.assertTrue(np.allclose(out, output_data))
+
+    def test_pulseshape_float(self):
+        """Test the pulseshape function with a floating point oversampling value."""
+        input_data = read_octave_file("test/data/randconst_output.csv")
+        output_data = read_octave_file("test/data/pulseshape_output2.csv")
+
+        out = models.utils.pulseshape(input_data, 2.5, 0.2)
+
+        self.assertTrue(np.allclose(out, output_data))

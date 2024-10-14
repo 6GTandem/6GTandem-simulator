@@ -188,10 +188,10 @@ def randconst(rows, cols, m=16, type: str = 'QAM'):
 
     c = np.sqrt(2) / np.std(c) * c
 
-    rng = np.random.default_rng(seed=global_seed)
-    i = rng.integers(len(c), size=(rows, cols))
-    for val in i:
-        print(val[0], end=" ")
+    rng = numpy.random.default_rng(seed=global_seed)
+    i = rng.integers(len(c), size=(cols, rows))
+    if cols == 1:
+        i = i[0]
     x = c[i]
 
     return x, c
@@ -213,7 +213,7 @@ def rrc(t, beta):
     return pulse
 
 
-def pulseshape(x, h, oversampling=5, beta=0.07, fl=25):
+def pulseshape(x, oversampling=5, beta=0.07, fl: int = 25):
     """
     % pulseshape(x,oversampling,beta)
     % Root-raised-cosine pulse shaping.
@@ -232,32 +232,40 @@ def pulseshape(x, h, oversampling=5, beta=0.07, fl=25):
         raise ValueError('Warning: FilterLength too small to guarantee 35 dB.')
 
     if type(oversampling) is int:
-        PulseFilter = rrc(np.arange(0, fl, 1/oversampling), beta)
+        pulse_filter = rrc(
+            np.arange(0, fl + (1/oversampling), 1/oversampling), beta)
+        flipped_filter = np.flip(pulse_filter[1:])
         # this makes sure that t = 0 is represented
-        PulseFilter = [np.fliplr(PulseFilter[2:]), PulseFilter]
+        pulse_filter = list(flipped_filter) + list(pulse_filter)
 
         # append zeros for filter delay
-        xz = list(x) + list(np.zeros((fl, len(x[0]))))
+        xz = np.zeros(shape=(fl, len(x[0])), dtype=np.dtype('complex128'))
+        xz = list(x) + list(xz)
 
         # multiphase filtering. Same as zeropadding and filtering.
-        xps = np.zeros((len(xz) * oversampling, len(xz[0])))
+        xps = np.zeros(shape=(len(xz) * oversampling,
+                       len(xz[0])), dtype=np.dtype('complex128'))
         for d in range(oversampling):
-            xps[d::oversampling, :] = filter(
-                PulseFilter[d::oversampling], 1, xz)
+            l2 = lfilter(pulse_filter[d::oversampling], 1, np.transpose(xz))
+            xps[d::oversampling] = np.transpose(l2)
     else:
-        x = list(np.zeros((fl, 1))) + list(x)
+        x = list(np.zeros(shape=(fl, 1), dtype=np.dtype('complex128'))) + list(x)
         # t = linspace(1, length(x)+1-1/oversampling-0.000001, round(length(x)*oversampling))
         t = np.arange(1, len(x) + 1 - 0.001, 1/oversampling)
-        x = list(np.zeros((fl, 1))) + list(x) + list(np.zeros((fl + 1, 1)))
+        x = np.array(list(np.zeros((fl, 1))) + list(x) +
+                     list(np.zeros((fl + 1, 1))))
         t = t + fl
-        xps = np.zeros((len(t), len(x[0])))
+        xps = np.zeros(shape=(len(t), len(x[0])), dtype=np.dtype('complex128'))
 
-        p1 = round(t - fl)
-        p2 = round(t + fl)
+        p1 = np.round(t - fl).astype(int)
+        p2 = np.round(t + fl).astype(int)
 
         for k in range(len(t)):
-            t2 = np.arange(p1(k), p2(k)) - t[k] + eps
-            xps[k, :] = (np.sin(np.pi * t2 * (1 - beta)) + 4 * beta * t2 * np.cos(np.pi *
-                         t2 * (1 + beta))) / (np.pi * t2 * (1 - (4 * beta * t2) ** 2)) * x[p1(k):p2(k), :]
+            t2 = np.arange(p1[k], p2[k] + 1) - t[k] + np.finfo(float).eps
+            a = (np.sin(np.pi * t2 * (1 - beta)) + 4 *
+                 beta * t2 * np.cos(np.pi * t2 * (1 + beta)))
+            b = (np.pi * t2 * (1 - (4 * beta * t2) ** 2))
+            c = x[p1[k]-1:p2[k], :]
+            xps[k, :] = np.matmul((a / b), c)
 
     return xps
