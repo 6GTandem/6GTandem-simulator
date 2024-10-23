@@ -100,7 +100,7 @@ class Amplifier(Component):
         """Initialize the amplifier object with the given parameters.
 
         :param gain: The low signal-gain of the amplifier.
-        :param max_out_amp:
+        :param max_out_amp: The maximum output amplitude in Volts.
         :param noise_var: The variance of the AWGN [V^2] per channel.
         :param smoothness: Used in Mode 'softlimiter'.
         """
@@ -215,8 +215,9 @@ class Fiber(Component):
                  filter: float = 1, *args, **kwargs):
         """Initialize a fiber component.
 
-        :param delay: Delay in number of samples.
-        :param damping: The damping in dB.
+        :param length: Length of the fiber in meter.
+        :param damping_per_meter: Damping in dB per meter.
+        :param filter: The impulse response of the fiber.
         """
         self.length = length
         self.damping_per_meter = damping_per_meter
