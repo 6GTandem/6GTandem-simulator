@@ -233,7 +233,7 @@ class Fiber(Component):
 
     @property
     def delay(self):
-        return (self.length * 1.5) / (3e8 * self.fs)
+        return self.length * 1.5 / 3e8 * self.fs
 
     @property
     def damping(self):
@@ -377,7 +377,7 @@ class Oscillator(Component):
     def run_phase(self, nosamples):
         match self.mode:
             case 'ideal':
-                fi = np.zeros(nosamples)
+                fi = np.zeros((nosamples, 1))
             case 'cfo':
                 fi = self.run_phase_cfo(nosamples)
             case 'model':
@@ -459,6 +459,25 @@ class Transmitter(Component):
 
         super().__init__(*args, **kwargs)
 
+    @property
+    def mode(self):
+        return self._mode
+
+    @mode.setter
+    def mode(self, mode):
+        """Set a new mode.
+
+        Valid options are:
+            'ideal','linear','atan', 'tanh', 'poly3','poly3_pm',
+            'poly5','limiter','softlimiter','weblab','6gtandem'
+        """
+        if mode not in self.modes:
+            raise ValueError(f"Invalid mode: {mode}")
+
+        self.amplifier.mode = mode
+
+        self._mode = mode
+
     def run(self, x, phasor=None):
         if phasor is None:
             phasor = self.oscillator.run(len(x))
@@ -494,14 +513,14 @@ class RadioStripe(Component):
         self.max_power = 10
         self.average_power = 5
         self.transmitter.mode = '6gtandem'
-        self.transmitter.amplifier.max_output_amplitude = self.max_power
+        self.transmitter.amplifier.set_maximum_output_power(self.max_power)
         self.transmitter.amplifier.set_average_power(15, self.average_power)
 
         self.links = []
         for l in range(nolinks):
             link = Link()
             link.amp.mode = '6gtandem'
-            link.amp.max_output_amplitude = self.max_power
+            link.amp.set_maximum_output_power(self.max_power)
             link.amp.set_average_power(self.average_power - link.fiber.damping -
                                        link.coupler_in.damping - link.coupler_out.damping, self.average_power)
             link.amp.set_noise_var(300, self.bandwidth * self.os, 10)
@@ -511,11 +530,13 @@ class RadioStripe(Component):
         super().__init__(*args, **kwargs)
 
     def run(self, x):
-        y = np.zeros((len(x), 1 + len(self.links)))
-        y[:, 1] = self.transmitter.run(x)
+        y = np.zeros((len(x), 1 + len(self.links)), dtype=np.complex128)
+        y[:, 0] = self.transmitter.run(x)[:, 0]
 
         for i, link in enumerate(self.links):
-            y[:, i+1] = link.run(y[:, i])
+            y[:, i+1] = link.run(np.transpose([y[:, i]]))[:, 0]
+
+        return y
 
     def calibrate(self, x, desired_amplifier_dbm):
         """This function sets the small-signal gain of the link amplifiers.
@@ -536,6 +557,6 @@ class RadioStripe(Component):
                 z2 = link.run(z)
                 scale = db_to_magnitude(
                     desired_amplifier_dbm - models.utils.getdbm(z2))
-                link.amplifier.gain = link.amplifier.gain * scale
+                link.amp.gain = link.amp.gain * scale
 
             z = link.run(z)

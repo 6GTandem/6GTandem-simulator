@@ -12,7 +12,7 @@ def getdbm(x):
 
 def setdbm(x, dnew):
     if getdbm(x) > -100:
-        out = x * np.tile(10 ** ((dnew - getdbm(x)) / 20), len(x))
+        out = x * np.tile(10 ** ((dnew - getdbm(x)) / 20), (len(x), 1))
     else:
         out = x
 
@@ -80,7 +80,7 @@ def delay(x, n: list = [1], filter_length: int = 512):
     cols = len(x[0])
     rows = len(x)
 
-    y = np.zeros((rows, len(n) * cols))
+    y = np.zeros((rows, len(n) * cols), dtype=np.complex128)
     for i, ind in enumerate(n):
         nint = round(ind)
         y1 = np.roll(x, nint)
