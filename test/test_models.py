@@ -13,21 +13,23 @@ def read_octave_file(file_name: str):
         for i in range(5):
             f.readline()
 
-        data = f.readline().strip()
-        data = data.split(" ")
+        for line in f:
+            line = line.strip()
+            line = line.split(" ")
 
-        # Do we have complex numbers?
-        if data[0].startswith('('):
-            dc = data.copy()
-            data = []
-            # Complex numbers are saved as tuples (re, im).
-            for x in dc:
-                re, im = x.lstrip('(').rstrip(')').split(',')
-                data.append(float(re) + (1j * float(im)))
-        else:
-            data = [float(x) for x in data]
+            # Do we have complex numbers?
+            if line[0].startswith('('):
+                ldata = []
+                # Complex numbers are saved as tuples (re, im).
+                for x in line:
+                    re, im = x.lstrip('(').rstrip(')').split(',')
+                    ldata.append(float(re) + (1j * float(im)))
+                data.append(ldata)
+            elif line[0] != '':
+                ldata = [float(x) for x in line]
+                data.append(ldata)
 
-    return np.array([data]).T
+    return np.array(data).T
 
 
 class CouplerModelTest(unittest.TestCase):
@@ -360,10 +362,10 @@ class RadioStripModelTest(unittest.TestCase):
     """Test if the radio strip model behaves as expected."""
 
     def test_radio_stripe(self):
-        # input_data = read_octave_file("test/data/radiostripe_input.csv")
-        # output_data = read_octave_file("test/data/radiostrip_ouput.csv")
-        input_data = [1] * 200
-        output_data = [1] * 200
+        numpy.random.seed(45612)
+
+        input_data = read_octave_file("test/data/radiostripe_input.csv")
+        output_data = read_octave_file("test/data/radiostripe_output.csv")
 
         rs = models.RadioStripe()
         rs_data = rs.run(input_data)
@@ -371,10 +373,13 @@ class RadioStripModelTest(unittest.TestCase):
         self.assertTrue(np.allclose(rs_data, output_data))
 
     def test_calibration(self):
-        input_data = read_octave_file("test/data/radiostripe_input_cal.csv")
-        output_data = read_octave_file("test/data/radiostrip_ouput_cal.csv")
+        numpy.random.seed(45612)
+
+        input_data = read_octave_file("test/data/radiostripe_input.csv")
+        output_data = read_octave_file("test/data/radiostripe_cal_output.csv")
 
         rs = models.RadioStripe()
+        rs.calibrate(input_data, 20)
         rs_data = rs.run(input_data)
 
         self.assertTrue(np.allclose(rs_data, output_data))
