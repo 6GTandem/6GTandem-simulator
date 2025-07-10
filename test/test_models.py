@@ -147,7 +147,7 @@ class AmplifierModelTest(unittest.TestCase):
 
         self.assertTrue(np.allclose(amp_data, output_data))
 
-    def test_amplifier_noise_var(self):
+    def test_amplifier_set_noise_var(self):
         """Test that the method for setting the noise variance is working properly."""
         pa = models.Amplifier()
         pa.set_noise_var(10, 2, 13)
@@ -164,7 +164,7 @@ class AmplifierModelTest(unittest.TestCase):
     def test_amplifier_avg_power(self):
         """Test that the method for setting the noise variance is working properly."""
         pa = models.Amplifier()
-        pa.set_average_power(20, 10)
+        pa.set_gain(20, 10)
 
         self.assertAlmostEqual(0.316227766, pa.gain)
 

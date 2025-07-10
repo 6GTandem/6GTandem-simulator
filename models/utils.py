@@ -19,6 +19,34 @@ def setdbm(x, dnew):
     return out
 
 
+def db_to_power(db_value: float | int):
+    """Convert a value in decibels (dB) to a power value.
+
+    The power/decibel relationship is as follows:
+    db_value = 10 * log10(power_value)
+    """
+    return 10.0 ** (db_value / 10.0)
+
+
+def power_to_db(power_value: float | int):
+    """Convert a power value to decibels (dB).
+
+    The power/decibel relationship is as follows:
+    db_value = 10 * log10(power_value)
+    """
+    return 10 * np.log10(power_value)
+
+
+def db_to_magnitude(db_value: float | int):
+    """Convert a value in decibels (dB) to a magnitude value.
+
+    The power/decibel relationship is as follows:
+    db_value = 20 * log10(power_value)
+    """
+    return 10.0 ** (db_value / 20.0)
+
+
+
 def limiter(x, limit=1, limithi=None):
     y = x
     if limithi is None:
