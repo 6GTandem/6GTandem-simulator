@@ -119,10 +119,12 @@ class Amplifier(Component):
         self.max_output_amplitude = math.sqrt(
             50 * db_to_power(max_power_dbm) * 1e-3)
 
-    def set_average_power(self, pin, pout):
+    def set_gain(self, pin, pout):
         """The correct gain for a desired output power is calculated.
 
         Only holds true if there is no non-linearity. There is some discrepancy with NL.
+
+        <Matlab function> set_average_power
         """
         self.gain = db_to_magnitude(pout - pin)
 
@@ -175,8 +177,7 @@ class Amplifier(Component):
                          np.sqrt(((20 / 9) * (10 ** -0.05)) - (80 / 81)))
                 # gives minimum derivative=0, at x=sqrt(2/3/alpha)
                 beta = (9 * (alpha ** 2)) / 20
-                xout = (self.max_output_amplitude * x *
-                        (1 - (alpha * (abs(x) ** 2)) + (beta * (abs(x) ** 4))))
+                xout = (x * (1 - (alpha * (abs(x) ** 2)) + (beta * (abs(x) ** 4))))
             case 'limiter':
                 xout = x
                 # abs(xout) > 1 gives saturation at 1 V.
@@ -514,15 +515,14 @@ class RadioStripe(Component):
         self.average_power = 5
         self.transmitter.mode = '6gtandem'
         self.transmitter.amplifier.set_maximum_output_power(self.max_power)
-        self.transmitter.amplifier.set_average_power(15, self.average_power)
+        self.transmitter.amplifier.set_gain(15, self.average_power)
 
-        self.links = []
-        for l in range(nolinks):
-            link = Link()
+        self.links = [Link() for l in range(nolinks)]
+        for link in self.links:
             link.amp.mode = '6gtandem'
             link.amp.set_maximum_output_power(self.max_power)
-            link.amp.set_average_power(self.average_power - link.fiber.damping -
-                                       link.coupler_in.damping - link.coupler_out.damping, self.average_power)
+            link.amp.set_gain(self.average_power - link.fiber.damping -
+                              link.coupler_in.damping - link.coupler_out.damping, self.average_power)
             link.amp.set_noise_var(300, self.bandwidth * self.os, 10)
 
             self.links.append(link)
@@ -560,3 +560,42 @@ class RadioStripe(Component):
                 link.amp.gain = link.amp.gain * scale
 
             z = link.run(z)
+
+    @classmethod
+    def from_configuration(cls, config):
+        """Construct a RadioStripe from a configuration dictionary.
+
+        :param config_file: Dictionary containing all the necessary configuration information.
+        """
+        bw = config["sub_THz"]["bw"]
+        rs = cls()
+
+        # Configure the amplifier
+        amp_cfg = config["sub_THz"]["amplifier"]
+        rs.transmitter.amplifier.set_maximum_output_power(amp_cfg["max_power"])
+        rs.transmitter.amplifier.mode = amp_cfg["mode"]
+        rs.transmitter.amplifier.gain = amp_cfg["gain"]
+        rs.transmitter.amplifier.set_noise_var(300, bw, amp_cfg["noise_var"])
+        rs.transmitter.amplifier.smoothness = amp_cfg["smoothness"]
+
+        # Configure the limk amplifiers
+
+        # Configure the coupler
+        coupler_cfg = config["sub_THz"]["coupler"]
+        for link in rs.links:
+            link.coupler_in.damping = coupler_cfg["damping"]
+            link.coupler_in.mode = coupler_cfg["mode"]
+            link.coupler_out.damping = coupler_cfg["damping"]
+            link.coupler_out.mode = coupler_cfg["mode"]
+
+        # Configure the dac
+        dac_cfg = config["sub_THz"]["dac"]
+
+        # Configure the fiber
+        fiber_cfg = config["sub_THz"]["fiber"]
+
+        # Configure the iqmodem
+        iqmodem_cfg = config["sub_THz"]["iqmodem"]
+
+        # Configure the oscillator
+        osc_cfg = config["sub_THz"]["oscillator"]

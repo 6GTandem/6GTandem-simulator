@@ -17,7 +17,7 @@ sub_THz:
     mode: "6gtandem"    # 'ideal','linear','atan', 'tanh', 'poly3','poly3_pm', 'poly5','limiter','softlimiter','weblab','6gtandem'
     gain: 3.2           # lin. gain
     noise_var: 0        # variance of AWGN noise [V^2] per channel
-    Smoothness: 1       # used in Mode 'softlimiter'
+    smoothness: 1       # used in Mode 'softlimiter'
   coupler:
     damping: 0          # dB 
     mode: "ideal"       
