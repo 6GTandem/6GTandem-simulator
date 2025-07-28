@@ -1,9 +1,9 @@
 import numpy as np
 import numpy.random
 
-from .component import Component
+from ..component.component import Component
 from scipy.signal import lfilter
-from .utils import power_to_db, db_to_power, randn_c
+from ..utils import power_to_db, db_to_power, randn_c
 
 
 class Oscillator(Component):

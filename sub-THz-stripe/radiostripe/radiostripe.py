@@ -1,9 +1,9 @@
 import numpy as np
 
-from .transmitter import Transmitter
-from .link import Link
-from .component import Component
-from .utils import db_to_magnitude, getdbm
+from ..booster_unit.booster_unit import BoosterUnit
+from ..radio_unit.radio_unit import RadioUnit
+from ..component.component import Component
+from ..utils import db_to_magnitude, getdbm
 
 
 class RadioStripe(Component):
@@ -16,7 +16,7 @@ class RadioStripe(Component):
         >>> y = rs.run(x) # Y is a matrix
     """
 
-    def __init__(self, links: int | list[Link] = 3, bandwith: float = 5e9, os=5, *args, **kwargs):
+    def __init__(self, links: int | list[RadioUnit] = 3, bandwith: float = 5e9, os=5, *args, **kwargs):
         """
         :param nolinks: Number of links in the vector of links.
         """
@@ -36,7 +36,7 @@ class RadioStripe(Component):
                 link.amp.mode = '6gtandem'
                 link.amp.set_maximum_output_power(self.max_power)
                 link.amp.set_gain(self.average_power - link.fiber.damping -
-                                link.coupler_in.damping - link.coupler_out.damping, self.average_power)
+                                  link.coupler_in.damping - link.coupler_out.damping, self.average_power)
                 link.amp.set_noise_var(300, self.bandwidth * self.os, 10)
         else:
             self.links = links

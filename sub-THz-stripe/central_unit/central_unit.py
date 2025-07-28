@@ -1,12 +1,12 @@
-from .oscillator import Oscillator
-from .iqmodem import IQModem
-from .amplifier import Amplifier
-from .dac import Dac
-from .component import Component
-from .utils import delay
+from ..oscillator.oscillator import Oscillator
+from ..iqmodem.iqmodem import IQModem
+from ..amplifier.amplifier import Amplifier
+from ..dac.dac import Dac
+from ..component.component import Component
+from ..utils import delay
 
 
-class Transmitter(Component):
+class CentralUnit(Component):
     """Definition of a transmitter
 
     Components: c_oscillator, c_iqmod, c_pa, c_dac, c_antenna
@@ -17,7 +17,7 @@ class Transmitter(Component):
 
     def __init__(self, osc: Oscillator | None = None, iqmodem: IQModem | None = None, amp: Amplifier | None = None,
                  dac: Dac | None = None, delay: float = 0, *args, **kwargs):
-        """Instantiate an transmitter based on an oscillator, iqmodem, amplifier and dac.
+        """Instantiate a transmitter based on an oscillator, iqmodem, amplifier and dac.
         """
         if osc is not None:
             self.oscillator = Oscillator()

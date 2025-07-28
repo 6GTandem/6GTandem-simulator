@@ -1,7 +1,7 @@
 import numpy as np
 
-from .component import Component
-from .utils import limiter
+from ..component.component import Component
+from ..utils import limiter
 
 
 class Dac(Component):

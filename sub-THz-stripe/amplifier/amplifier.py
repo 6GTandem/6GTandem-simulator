@@ -2,8 +2,8 @@ import math
 import numpy as np
 import numpy.random
 
-from .component import Component
-from .utils import db_to_power, db_to_magnitude, softlimiter
+from ..component.component import Component
+from ..utils import db_to_power, db_to_magnitude, softlimiter
 
 
 class Amplifier(Component):

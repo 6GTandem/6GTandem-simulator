@@ -1,7 +1,7 @@
 import numpy as np
 
-from .component import Component
-from .utils import delay
+from ..component.component import Component
+from ..utils import delay
 from scipy.signal import lfilter
 
 

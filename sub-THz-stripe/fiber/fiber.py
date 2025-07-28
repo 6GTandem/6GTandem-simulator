@@ -1,5 +1,5 @@
-from .component import Component
-from .utils import delay, setdbm, getdbm
+from ..component.component import Component
+from ..utils import delay, setdbm, getdbm
 from scipy.signal import lfilter
 
 

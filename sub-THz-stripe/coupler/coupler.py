@@ -1,7 +1,7 @@
 import numpy as np
 
-from .component import Component
-from .utils import db_to_magnitude
+from ..component.component import Component
+from ..utils import db_to_magnitude
 
 
 class Coupler(Component):
