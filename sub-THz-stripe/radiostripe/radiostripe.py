@@ -1,6 +1,5 @@
 import numpy as np
 
-from ..booster_unit.booster_unit import BoosterUnit
 from ..radio_unit.radio_unit import RadioUnit
 from ..component.component import Component
 from ..utils import db_to_magnitude, getdbm

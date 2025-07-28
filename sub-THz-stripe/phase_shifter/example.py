@@ -7,7 +7,7 @@ if __name__ == "__main__":
     resolution = 2
 
     ps = PhaseShifter(shifters, resolution)
-    data = np.array([1] * 20)
+    data = np.ones((4, 20))
     shifts = [0, 1, 2, 3]
 
     odata = ps.run(data, shifts)

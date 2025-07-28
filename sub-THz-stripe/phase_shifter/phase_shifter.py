@@ -22,9 +22,12 @@ class PhaseShifter(Component):
         :param shifts: List of phase shift indexes to apply to the input data.
                        The phase shift index is an integer between 0 - (2 ^ resolution) - 1
         """
+        def shift(x, k):
+            return x * np.exp((1j * 2 * np.pi * k) / (2 ** self.resolution))
+
         y = []
-        for k in shifts:
-            y.append(x * np.exp((1j * 2 * np.pi * k) / (2 ** self.resolution)))
+        for r, k in zip(x, shifts):
+            y.append(shift(r, k))
 
         return np.array(y)
 
