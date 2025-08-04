@@ -6,15 +6,13 @@ if __name__ == "__main__":
     data = np.ones(20)
     shifts = [0, 1, 2, 3]
 
-    odata = ru.run(data, shifts)
+    odata = ru.transmit(data, shifts)
 
     print(data)
     print(np.abs(odata))
     print(np.angle(odata))
 
-    ru.state = "rx"
-
-    rxdata = ru.run(odata, [0, 3, 2, 1])
+    rxdata = ru.receive(odata, [0, 3, 2, 1])
 
     print(np.abs(rxdata))
     print(np.angle(rxdata))

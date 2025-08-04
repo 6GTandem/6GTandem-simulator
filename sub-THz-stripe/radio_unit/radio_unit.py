@@ -8,7 +8,7 @@ from ..phase_shifter.phase_shifter import PhaseShifter
 
 class RadioUnit(Component):
     def __init__(self, amp: Amplifier | None = None, coup_in: Coupler | None = None,
-                 coup_out: Coupler | None = None, splitter: Splitter | None = None, combiner: Combiner | None = None, pshift: PhaseShifter | None = None, state: str = "tx", *args, **kwargs):
+                 coup_out: Coupler | None = None, splitter: Splitter | None = None, combiner: Combiner | None = None, pshift: PhaseShifter | None = None, *args, **kwargs):
         """Instantiate a Radio Unit.
 
         TODO: Add Phase shifters and antennas to the RadioUnit.
@@ -28,9 +28,6 @@ class RadioUnit(Component):
                       Switch    -> Splitter -> Phase shifter -> Antenna
 
         """
-        # Keep track of what mode the radio unit is in. Is it receiving or transmitting?
-        self.state = state
-
         # Instantiate the components if they are not given.
         if amp is None:
             self.amp = Amplifier()
@@ -47,27 +44,31 @@ class RadioUnit(Component):
 
         super().__init__(*args, **kwargs)
 
-    def run(self, idata, shifts):
-        match self.state:
-            case "tx":
-                # From the input coupler to the antennas.
-                c1data = self.coupler_in.run(idata)
-                sdata = self.splitter.run(c1data)
-                psdata = self.phase_shifter.run(sdata, shifts)
-                adata = self.amp.run(psdata)
-                # TODO: Add Antenna
-                odata = adata
-            case "rx":
-                # From the antennas to the input coupler.
-                # TODO: Add Antenna
-                adata = self.amp.run(idata)
-                psdata = self.phase_shifter.run(adata, shifts)
-                cdata = self.combiner.run(psdata)
-                odata = self.coupler_in.run(cdata)
-            case "boost":
-                # From the input coupler to the output coupler.
-                c1data = self.coupler_in.run(idata)
-                adata = self.amp.run(c1data)
-                odata = self.coupler_out.run(adata)
+    def transmit(self, idata, shifts: list[int]):
+        # From the input coupler to the antennas.
+        c1data = self.coupler_in.run(idata)
+        sdata = self.splitter.run(c1data)
+        psdata = self.phase_shifter.run(sdata, shifts)
+        adata = self.amp.run(psdata)
+        # TODO: Add Antenna
+        odata = adata
+
+        return odata
+
+    def receive(self, idata, shifts: list[int]):
+        # From the antennas to the input coupler.
+        # TODO: Add Antenna
+        adata = self.amp.run(idata)
+        psdata = self.phase_shifter.run(adata, shifts)
+        cdata = self.combiner.run(psdata)
+        odata = self.coupler_in.run(cdata)
+
+        return odata
+
+    def boost(self, idata):
+        # From the input coupler to the output coupler.
+        c1data = self.coupler_in.run(idata)
+        adata = self.amp.run(c1data)
+        odata = self.coupler_out.run(adata)
 
         return odata

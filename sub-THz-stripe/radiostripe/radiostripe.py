@@ -1,6 +1,7 @@
 import numpy as np
 
 from ..radio_unit.radio_unit import RadioUnit
+from ..fiber.fiber import Fiber
 from ..component.component import Component
 from ..utils import db_to_magnitude, getdbm
 
@@ -13,41 +14,88 @@ class RadioStripe(Component):
     Usage:
         >>> rs = RadioStripe()
         >>> y = rs.run(x) # Y is a matrix
+
+    Current assumptions:
+        - Only one radio unit is active at a time.
+        - All radiostripes have one common central unit. This is instantiated outside of this class.
+        - All components can have different settings but are initialized with the same parameters if none are given.
+
+    RadioStripe:
+        Fiber -> RadioUnit -> Fiber -> RadioUnit -> ...
     """
 
-    def __init__(self, links: int | list[RadioUnit] = 3, bandwith: float = 5e9, os=5, *args, **kwargs):
+    def __init__(self, radio_units: int | list[RadioUnit] = 3, fibers: int | list[Fiber] = 3, active_unit: int = 0, *args, **kwargs):
         """
-        :param nolinks: Number of links in the vector of links.
+        :param : .
         """
-        self.transmitter = Transmitter()
-        self.bandwidth = bandwith
-        self.os = os
+        self._active_unit = 0
 
-        self.max_power = 10
-        self.average_power = 5
-        self.transmitter.mode = '6gtandem'
-        self.transmitter.amplifier.set_maximum_output_power(self.max_power)
-        self.transmitter.amplifier.set_gain(15, self.average_power)
+        self.radio_units = []
+        if type(radio_units) is int:
+            for n in range(radio_units):
+                self.radio_units.append(RadioUnit())
+        elif type(radio_units) is list:
+            self.radio_units = radio_units
 
-        if type(links) is int:
-            self.links = [Link() for l in range(links)]
-            for link in self.links:
-                link.amp.mode = '6gtandem'
-                link.amp.set_maximum_output_power(self.max_power)
-                link.amp.set_gain(self.average_power - link.fiber.damping -
-                                  link.coupler_in.damping - link.coupler_out.damping, self.average_power)
-                link.amp.set_noise_var(300, self.bandwidth * self.os, 10)
-        else:
-            self.links = links
+        self.fibers = []
+        if type(fibers) is int:
+            for n in range(fibers):
+                self.fibers.append(Fiber())
+        elif type(fibers) is list:
+            self.fibers = fibers
+
+        assert len(self.radio_units) == len(
+            self.fibers), "Amount of radio units/fibers don't match."
+
+        self.active_unit = active_unit
 
         super().__init__(*args, **kwargs)
 
-    def run(self, x):
-        y = np.zeros((len(x), 1 + len(self.links)), dtype=np.complex128)
-        y[:, 0] = self.transmitter.run(x)[:, 0]
+    @property
+    def active_unit(self):
+        return self._active_unit
 
-        for i, link in enumerate(self.links):
-            y[:, i+1] = link.run(np.transpose([y[:, i]]))[:, 0]
+    @active_unit.setter
+    def active_unit(self, nactive_unit: int):
+        """Set a new radio unit to be the active one being used.
+
+        :param nactive_unit: 0-based index for the new active unit. [0, len(radio_units)[
+        """
+        self._active_unit = nactive_unit
+
+    def transmit(self, x: np.ndarray, shifts: list[int]):
+        """IQ-data coming from the central unit is passed through the radio stripe and transmitted by the active RU.
+
+        :param x: IQ-data in the form of a 1 dimensional array.
+        :param shifts: See `PhaseShifter`.
+
+        :returns: A (n x m) matrix with the amount of rows n equal to the amount of splits (See `Splitter`).
+        """
+        # Data comes from the central unit and first passes through the chain of RUs.
+        y = np.zeros((len(x), 1 + len(self.radio_units)),
+                     dtype=np.complex128)
+        for ru in self.radio_units[:self.active_unit]:
+            y = ru.boost(x)
+
+        # Data transmitted by the active radio unit.
+        y = self.radio_units[self.active_unit].transmit(y, shifts)
+
+        return y
+
+    def receive(self, x: np.ndarray, shifts: list[int]):
+        """Takes incoming IQ-data on the antennas and runs it along the stripe towards the central unit.
+
+        :param x: IQ-data in the form of an (n x m) array with n the amount of rows being equal to the amount of splits.
+        :param shifts: See `PhaseShifter`.
+
+        :returns: A single 1-dimensional IQ-data array.
+        """
+        # Data is received by the active radio unit.
+        y = self.radio_units[self.active_unit].receive(x, shifts)
+
+        # Data passes through the radio units between the active unit and the central unit.
+        for ru in self.radio_units[:self.active_unit][::-1]:
+            y = ru.boost(y)
 
         return y
 
@@ -58,21 +106,15 @@ class RadioStripe(Component):
         The calibration is valid for a given input signal, and recalibration must be performed if
         the signal statistics changes.
         """
-        for j in range(3):
-            z = self.transmitter.run(x)
-            scale = db_to_magnitude(
-                desired_amplifier_dbm - getdbm(z))
-            self.transmitter.amplifier.gain = self.transmitter.amplifier.gain * scale
-
-        z = self.transmitter.run(x)
-        for link in self.links:
+        z = self.radio_units[0].boost(x)
+        for ru in self.radio_units:
             for j in range(3):
-                z2 = link.run(z)
+                z2 = ru.boost(z)
                 scale = db_to_magnitude(
                     desired_amplifier_dbm - getdbm(z2))
-                link.amp.gain = link.amp.gain * scale
+                ru.amp.gain = ru.amp.gain * scale
 
-            z = link.run(z)
+            z = ru.boost(z)
 
     @classmethod
     def from_configuration(cls, config):

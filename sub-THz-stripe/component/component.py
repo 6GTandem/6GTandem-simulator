@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 
 class Component(ABC):
     modes = ['ideal', 'linear', 'atan', 'tanh', 'poly3', 'poly3_pm',
@@ -23,7 +23,3 @@ class Component(ABC):
             raise ValueError(f"Invalid mode: {mode}")
 
         self._mode = mode
-
-    @abstractmethod
-    def run(self, x):
-        ...
