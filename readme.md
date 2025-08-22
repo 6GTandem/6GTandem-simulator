@@ -62,7 +62,7 @@ eng = matlab.engine.start_matlab()
 |                      | Booster units (2.3)                               | yes (link)        |                      | yes               | no             |                |
 |                      | Radio/Booster unit amplifiers (2.3.1)             | yes               |                      | yes               | no             |                |
 |                      | RF switches/splitters/combiners (2.3.2)           | yes               | `splitter.py` `combiner.py`        | yes               | N.A.           |                |
-|                      | Fiber couplers (2.3.3)                            | yes               |                      | yes               | yes            |                |
+|                      | Fiber couplers (2.3.3)                            | yes               |                      | yes               | yes            |  Requested              |       |
 |                      | Radio units (2.4)                                 |                   |                      |                   |                |                |
 |                      | Phase shifters (2.4.1)                            |                   |                      |                   |                |                |
 |                      | Radio unit antennas (2.4.2)                       | **No**            |                      |                   |                |                | only angle-dependent attenuation (gain)   |
