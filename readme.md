@@ -52,36 +52,36 @@ eng = matlab.engine.start_matlab()
 
 ## Models
 
-| **Model category**   | **Model name**                                    | **Included**      | **location**         | **Python ported** | **Unittested** |
-| -------------------- | ------------------------------------------------- | ----------------- | -------------------- | ----------------- | -------------- |
-| System-Level         |                                                   |                   |                      |                   |                |
-|                      | 6GTandem system simulator (1.5)                   |                   |                      |                   |                |
-| Stripe               |                                                   |                   | `sub-THz-link-model` |                   |                |
-|                      | Stripe model (2.1.2)                              |                   |                      |                   |
-|                      | Polymer microwave/sub-THz fiber (2.2)             | yes               |                      | yes               | no             |
-|                      | Booster units (2.3)                               | yes (link)        |                      | yes               | no             |
-|                      | Radio/Booster unit amplifiers (2.3.1)             | yes               |                      | yes               | no             |
-|                      | RF switches/splitters/combiners (2.3.2)           |                   |                      |                   |                |
-|                      | Fiber couplers (2.3.3)                            | yes               |                      | yes               | yes            |
-|                      | Radio units (2.4)                                 |                   |                      |                   |                |
-|                      | Phase shifters (2.4.1)                            |                   |                      |                   |                |
-|                      | Radio unit antennas (2.4.2)                       |                   |                      |                   |                |
-|                      | Antenna-fiber isolation (cross-talk) (2.4.3)      |                   |                      |                   |                |
-|                      | Power consumption (PAs and LNAs) (2.4.4)          |                   |                      |                   |                |
-|                      | Central Unit (CU) (2.5)                           | yes (transmitter) |                      | yes               | no             |
-|                      | Amplifiers (2.5.1)                                | yes               |                      | yes               | no             |
-|                      | ADC/DAC (2.5.2)                                   | DAC only          |                      | yes (DAC)         | no             |
-|                      | Oscillator (2.5.3)                                | yes               |                      | yes               | no             |
-|                      | Mixer (2.5.4)                                     | yes               |                      | yes               | yes            |
-|                      | Digital BB processing (incl. source/sink) (2.5.5) |                   |                      |                   |                |
-|                      | Power consumption (2.5.6)                         |                   |                      |                   |                |
-| Wireless Propagation |                                                   |                   |                      |                   |                |
-|                      | Sub-THz wireless channel (3.1)                    |                   |                      |                   |                |
-|                      | Sub-10GHz wireless channel (3.2)                  |                   |                      |                   |                |
-|                      | Combined sub-THz/sub-10GHz (3.3)                  |                   |                      |                   |                |
-| Traffic and mobility |                                                   |                   |                      |                   |                |
-|                      | Traffic models for different use cases (4.2)      |                   |                      |                   |                |
-|                      | XR Mobility Dataset (4.3)                         |                   |                      |                   |                |
-| User Equipment (UE)  |                                                   |                   |                      |                   |                |
-|                      | Antennas (5.3)                                    |                   |                      | no                | no             |
-|                      | Power consumption (UE) (5.4)                      |                   |                      |                   |                |
+| **Model category**   | **Model name**                                    | **Included**      | **location**         | **Python ported** | **Unittested** | **HW/measurment**   | **Comments**   |
+| -------------------- | ------------------------------------------------- | ----------------- | -------------------- | ----------------- | -------------- | -------------- || -------------- |
+| System-Level         |                                                   |                   |                      |                   |                |                |
+|                      | 6GTandem system simulator (1.5)                   |                   |                      |                   |                |                |
+| Stripe               |                                                   |                   | `sub-THz-link-model` |                   |                |                |
+|                      | Stripe model (2.1.2)                              |                   |                      |                   |                |                |
+|                      | Polymer microwave/sub-THz fiber (2.2)             | yes               |                      | yes               | no             | **No** |                |
+|                      | Booster units (2.3)                               | yes (link)        |                      | yes               | no             |                |
+|                      | Radio/Booster unit amplifiers (2.3.1)             | yes               |                      | yes               | no             |                |
+|                      | RF switches/splitters/combiners (2.3.2)           | yes               | `splitter.py` `combiner.py`        | yes               | N.A.           |                |
+|                      | Fiber couplers (2.3.3)                            | yes               |                      | yes               | yes            |                |
+|                      | Radio units (2.4)                                 |                   |                      |                   |                |                |
+|                      | Phase shifters (2.4.1)                            |                   |                      |                   |                |                |
+|                      | Radio unit antennas (2.4.2)                       | **No**            |                      |                   |                |                | only angle-dependent attenuation (gain)   |
+|                      | Antenna-fiber isolation (cross-talk) (2.4.3)      |                   |                      |                   |                |                |
+|                      | Power consumption (PAs and LNAs) (2.4.4)          |                   |                      |                   |                |                |
+|                      | Central Unit (CU) (2.5)                           | yes (transmitter) |                      | yes               | no             |                |
+|                      | Amplifiers (2.5.1)                                | yes               |                      | yes               | no             | LNA/PA?        |
+|                      | ADC/DAC (2.5.2)                                   | DAC only          |                      | yes (DAC)         | no             |                |
+|                      | Oscillator (2.5.3)                                | yes               |                      | yes               | no             |                |
+|                      | Mixer (2.5.4)                                     | yes               |                      | yes               | yes            |                |
+|                      | Digital BB processing (incl. source/sink) (2.5.5) |                   |                      |                   |                |                |
+|                      | Power consumption (2.5.6)                         |                   |                      |                   |                |                |
+| Wireless Propagation |                                                   |                   |                      |                   |                |                |
+|                      | Sub-THz wireless channel (3.1)                    |                   |                      |                   |                |                |
+|                      | Sub-10GHz wireless channel (3.2)                  |                   |                      |                   |                |                |
+|                      | Combined sub-THz/sub-10GHz (3.3)                  |                   |                      |                   |                |                |
+| Traffic and mobility |                                                   |                   |                      |                   |                |                |
+|                      | Traffic models for different use cases (4.2)      |                   |                      |                   |                |                |
+|                      | XR Mobility Dataset (4.3)                         |                   |                      |                   |                |                |
+| User Equipment (UE)  |                                                   |                   |                      |                   |                |                |
+|                      | Antennas (5.3)                                    |                   |                      | no                | no             |                |
+|                      | Power consumption (UE) (5.4)                      |                   |                      |                   |                |                |
