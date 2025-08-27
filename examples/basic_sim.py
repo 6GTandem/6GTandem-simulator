@@ -51,7 +51,7 @@ if __name__ == "__main__":
     print(f'x shape: {x.shape}')
 
     Y = []
-    Y.append(x)
+    Y.append(x[0])
 
     # Run signal over stripe. The input is a vector N*1.
     for cdata in rs.transmit(x, shifts):
