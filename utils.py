@@ -2,13 +2,13 @@ from scipy.signal import welch, get_window
 import matplotlib.pyplot as plt
 import numpy as np
 
-def spec(inputsignal, fs=1, N=1024, plot=False):
-    
 
-    num_signals = inputsignal.shape[1]
+def spec(inputsignal, fs=1, N=1024, plot=False):
+
+    num_signals = inputsignal.shape[0]
 
     for k in range(num_signals):
-        x = inputsignal[:, k]
+        x = inputsignal[k]
         N = min(N, len(x) - 1)
         window = get_window("hann", N)
         f, Pxx = welch(

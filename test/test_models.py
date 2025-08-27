@@ -1,8 +1,8 @@
-import models
+import sub_THz_stripe
 import unittest
 import numpy as np
 import numpy.random
-import models.utils
+import sub_THz_stripe.utils
 
 
 def read_octave_file(file_name: str):
@@ -29,7 +29,7 @@ def read_octave_file(file_name: str):
                 ldata = [float(x) for x in line]
                 data.append(ldata)
 
-    return np.array(data).T
+    return np.array(data)
 
 
 class CouplerModelTest(unittest.TestCase):
@@ -38,7 +38,7 @@ class CouplerModelTest(unittest.TestCase):
     def test_coupler_0db(self):
         input_data = read_octave_file("test/data/coupler_input_10db.csv")
 
-        coup = models.Coupler()
+        coup = sub_THz_stripe.Coupler()
         coup.damping = 0
         coupler_data = coup.run(input_data)
 
@@ -49,7 +49,7 @@ class CouplerModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/coupler_input_10db.csv")
         output_data = read_octave_file("test/data/coupler_output_10db.csv")
 
-        coup = models.Coupler()
+        coup = sub_THz_stripe.Coupler()
         coup.damping = -10
         coupler_data = coup.run(input_data)
 
@@ -63,7 +63,7 @@ class AmplifierModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/amp_input_linear.csv")
         output_data = read_octave_file("test/data/amp_output_linear.csv")
 
-        pa = models.Amplifier()
+        pa = sub_THz_stripe.Amplifier()
         pa.mode = 'linear'
         pa.gain = 2.5
         amp_data = pa.run(input_data)
@@ -74,7 +74,7 @@ class AmplifierModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/amp_input_atan.csv")
         output_data = read_octave_file("test/data/amp_output_atan.csv")
 
-        pa = models.Amplifier()
+        pa = sub_THz_stripe.Amplifier()
         pa.mode = 'atan'
         pa.gain = 2.8
         amp_data = pa.run(input_data)
@@ -85,7 +85,7 @@ class AmplifierModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/amp_input_tanh.csv")
         output_data = read_octave_file("test/data/amp_output_tanh.csv")
 
-        pa = models.Amplifier()
+        pa = sub_THz_stripe.Amplifier()
         pa.mode = 'tanh'
         pa.gain = 3.2
         amp_data = pa.run(input_data)
@@ -96,7 +96,7 @@ class AmplifierModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/amp_input_poly3.csv")
         output_data = read_octave_file("test/data/amp_output_poly3.csv")
 
-        pa = models.Amplifier()
+        pa = sub_THz_stripe.Amplifier()
         pa.mode = 'poly3'
         pa.gain = 1.6
         amp_data = pa.run(input_data)
@@ -107,7 +107,7 @@ class AmplifierModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/amp_input_poly3_pm.csv")
         output_data = read_octave_file("test/data/amp_output_poly3_pm.csv")
 
-        pa = models.Amplifier()
+        pa = sub_THz_stripe.Amplifier()
         pa.mode = 'poly3_pm'
         pa.gain = 4.1
         amp_data = pa.run(input_data)
@@ -118,7 +118,7 @@ class AmplifierModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/amp_input_poly5.csv")
         output_data = read_octave_file("test/data/amp_output_poly5.csv")
 
-        pa = models.Amplifier()
+        pa = sub_THz_stripe.Amplifier()
         pa.mode = 'poly5'
         pa.gain = 2.6
         amp_data = pa.run(input_data)
@@ -129,7 +129,7 @@ class AmplifierModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/amp_input_limiter.csv")
         output_data = read_octave_file("test/data/amp_output_limiter.csv")
 
-        pa = models.Amplifier()
+        pa = sub_THz_stripe.Amplifier()
         pa.mode = 'limiter'
         pa.gain = 1.8
         amp_data = pa.run(input_data)
@@ -140,7 +140,7 @@ class AmplifierModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/amp_input_softlimiter.csv")
         output_data = read_octave_file("test/data/amp_output_softlimiter.csv")
 
-        pa = models.Amplifier()
+        pa = sub_THz_stripe.Amplifier()
         pa.mode = 'softlimiter'
         pa.gain = 2.0
         amp_data = pa.run(input_data)
@@ -149,21 +149,21 @@ class AmplifierModelTest(unittest.TestCase):
 
     def test_amplifier_set_noise_var(self):
         """Test that the method for setting the noise variance is working properly."""
-        pa = models.Amplifier()
+        pa = sub_THz_stripe.Amplifier()
         pa.set_noise_var(10, 2, 13)
 
         self.assertAlmostEqual(1.377329576e-19, pa.noise_var)
 
     def test_amplifier_amplitude_db(self):
         """Test that the method for setting the noise variance is working properly."""
-        pa = models.Amplifier()
+        pa = sub_THz_stripe.Amplifier()
         pa.set_maximum_output_power(20)
 
         self.assertAlmostEqual(2.236067977, pa.max_output_amplitude)
 
     def test_amplifier_avg_power(self):
         """Test that the method for setting the noise variance is working properly."""
-        pa = models.Amplifier()
+        pa = sub_THz_stripe.Amplifier()
         pa.set_gain(20, 10)
 
         self.assertAlmostEqual(0.316227766, pa.gain)
@@ -174,7 +174,7 @@ class AmplifierModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/amp_input_noise.csv")
         output_data = read_octave_file("test/data/amp_output_noise.csv")
 
-        pa = models.Amplifier()
+        pa = sub_THz_stripe.Amplifier()
         pa.mode = 'ideal'
         pa.set_noise_var(22, 2, 5)
         amp_data = pa.run(input_data)
@@ -189,7 +189,7 @@ class DacModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/dac_input.csv")
         output_data = read_octave_file("test/data/dac_output.csv")
 
-        dac = models.Dac()
+        dac = sub_THz_stripe.Dac()
         dac.nobits = 10
         dac.trunc_level = 0.6
         dac_data = dac.run(input_data)
@@ -200,7 +200,7 @@ class DacModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/dac_input_30nobits.csv")
         output_data = read_octave_file("test/data/dac_output_30nobits.csv")
 
-        dac = models.Dac()
+        dac = sub_THz_stripe.Dac()
         dac.nobits = 30
         dac.trunc_level = 0.58
         dac_data = dac.run(input_data)
@@ -210,7 +210,7 @@ class DacModelTest(unittest.TestCase):
     def test_dac_inf(self):
         input_data = read_octave_file("test/data/dac_input_30nobits.csv")
 
-        dac = models.Dac()
+        dac = sub_THz_stripe.Dac()
         dac_data = dac.run(input_data)
 
         # With an infinite limit the input and output data should be the same.
@@ -224,7 +224,7 @@ class FiberModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/fiber_input.csv")
         output_data = read_octave_file("test/data/fiber_output.csv")
 
-        fib = models.Fiber()
+        fib = sub_THz_stripe.Fiber()
         fib_data = fib.run(input_data)
 
         self.assertTrue(np.allclose(fib_data, output_data))
@@ -238,7 +238,7 @@ class IQModemModelTest(unittest.TestCase):
         phasor_data = read_octave_file("test/data/iqmodem_phasor.csv")
         output_data = read_octave_file("test/data/iqmodem_output.csv")
 
-        iq = models.IQModem()
+        iq = sub_THz_stripe.IQModem()
         iq.iqi_coef = 1.5
         iq.iqi_filter = 3
         iq.iqi_delay_imbalance = 1.2
@@ -252,7 +252,7 @@ class IQModemModelTest(unittest.TestCase):
         phasor_data = read_octave_file("test/data/iqmodem_phasor_filter.csv")
         output_data = read_octave_file("test/data/iqmodem_output_filter.csv")
 
-        iq = models.IQModem()
+        iq = sub_THz_stripe.IQModem()
         iq.mode = 'filter'
         iq.iqi_coef = 2.1
         iq.iqi_filter = 1
@@ -267,7 +267,7 @@ class IQModemModelTest(unittest.TestCase):
         phasor_data = read_octave_file("test/data/iqmodem_phasor_filter2.csv")
         output_data = read_octave_file("test/data/iqmodem_output_filter2.csv")
 
-        iq = models.IQModem()
+        iq = sub_THz_stripe.IQModem()
         iq.mode = 'filter'
         iq.iqi_coef = 2.1
         iq.iqi_filter = 7
@@ -282,7 +282,7 @@ class IQModemModelTest(unittest.TestCase):
         phasor_data = read_octave_file("test/data/iqmodem_phasor_static.csv")
         output_data = read_octave_file("test/data/iqmodem_output_static.csv")
 
-        iq = models.IQModem()
+        iq = sub_THz_stripe.IQModem()
         iq.mode = 'static'
         iq.iqi_coef = 1.9
         iq.iqi_filter = 3
@@ -299,7 +299,7 @@ class OscillatorModelTest(unittest.TestCase):
     def test_oscillator_ideal(self):
         output_data = [1] * 200
 
-        osc = models.Oscillator()
+        osc = sub_THz_stripe.Oscillator()
         osc.mode = 'ideal'
         osc_data = osc.run(200)
 
@@ -309,7 +309,7 @@ class OscillatorModelTest(unittest.TestCase):
         numpy.random.seed(45612)
         output_data = read_octave_file("test/data/oscillator_output_cfo.csv").T
 
-        osc = models.Oscillator()
+        osc = sub_THz_stripe.Oscillator()
         osc.mode = 'cfo'
         osc.cfo = 200e3
         osc.cfo_std = 320e3
@@ -322,7 +322,7 @@ class OscillatorModelTest(unittest.TestCase):
         output_data = read_octave_file(
             "test/data/oscillator_output_model.csv").T
 
-        osc = models.Oscillator()
+        osc = sub_THz_stripe.Oscillator()
         osc.mode = 'model'
         osc.f3db = 250e3
         osc_data = osc.run(200)
@@ -334,7 +334,7 @@ class OscillatorModelTest(unittest.TestCase):
         output_data = read_octave_file(
             "test/data/oscillator_output_spectrum.csv").T
 
-        osc = models.Oscillator()
+        osc = sub_THz_stripe.Oscillator()
         osc.mode = 'spectrum'
         osc.freq = np.linspace(1, 100e6, 10000)
         with open("test/data/spec_response.txt", 'r') as f:
@@ -347,7 +347,7 @@ class OscillatorModelTest(unittest.TestCase):
     def test_oscillator_variance_spectrum(self):
         numpy.random.seed(45612)
 
-        osc = models.Oscillator()
+        osc = sub_THz_stripe.Oscillator()
         osc.mode = 'spectrum'
         osc.freq = np.linspace(1, 100e6, 10000)
         with open("test/data/spec_response.txt", 'r') as f:
@@ -367,7 +367,7 @@ class RadioStripModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/radiostripe_input.csv")
         output_data = read_octave_file("test/data/radiostripe_output.csv")
 
-        rs = models.RadioStripe()
+        rs = sub_THz_stripe.RadioStripe()
         rs_data = rs.run(input_data)
 
         self.assertTrue(np.allclose(rs_data, output_data))
@@ -378,7 +378,7 @@ class RadioStripModelTest(unittest.TestCase):
         input_data = read_octave_file("test/data/radiostripe_input.csv")
         output_data = read_octave_file("test/data/radiostripe_cal_output.csv")
 
-        rs = models.RadioStripe()
+        rs = sub_THz_stripe.RadioStripe()
         rs.calibrate(input_data, 20)
         rs_data = rs.run(input_data)
 
@@ -390,73 +390,73 @@ class UtilsTest(unittest.TestCase):
 
     def test_randconst_default(self):
         """Test randconst for the default QAM16 constellation."""
-        models.utils.global_seed = 45612
+        sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output.csv")
 
-        out, _ = models.utils.randconst(200, 1)
+        out, _ = sub_THz_stripe.utils.randconst(200, 1)
 
         self.assertTrue(np.allclose(out, output_data))
 
     def test_randconst_qam2(self):
         """Test randconst for QAM2."""
-        models.utils.global_seed = 45612
+        sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_qam2.csv")
 
-        out, _ = models.utils.randconst(200, 1, m=2)
+        out, _ = sub_THz_stripe.utils.randconst(200, 1, m=2)
 
         self.assertTrue(np.allclose(out, output_data))
 
     def test_randconst_qam8(self):
         """Test randconst for QAM8."""
-        models.utils.global_seed = 45612
+        sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_qam8.csv")
 
-        out, _ = models.utils.randconst(200, 1, m=8)
+        out, _ = sub_THz_stripe.utils.randconst(200, 1, m=8)
 
         self.assertTrue(np.allclose(out, output_data))
 
     def test_randconst_qam32(self):
         """Test randconst for QAM32."""
-        models.utils.global_seed = 45612
+        sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_qam32.csv")
 
-        out, _ = models.utils.randconst(200, 1, m=32)
+        out, _ = sub_THz_stripe.utils.randconst(200, 1, m=32)
 
         self.assertTrue(np.allclose(out, output_data))
 
     def test_randconst_qam128(self):
         """Test randconst for QAM128."""
-        models.utils.global_seed = 45612
+        sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_qam128.csv")
 
-        out, _ = models.utils.randconst(200, 1, m=128)
+        out, _ = sub_THz_stripe.utils.randconst(200, 1, m=128)
 
         self.assertTrue(np.allclose(out, output_data))
 
     def test_randconst_qam512(self):
         """Test randconst for QAM512."""
-        models.utils.global_seed = 45612
+        sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_qam512.csv")
 
-        out, _ = models.utils.randconst(200, 1, m=512)
+        out, _ = sub_THz_stripe.utils.randconst(200, 1, m=512)
 
         self.assertTrue(np.allclose(out, output_data))
 
     def test_randconst_psk(self):
         """Test randconst for PSK."""
-        models.utils.global_seed = 45612
+        sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_psk.csv")
 
-        out, _ = models.utils.randconst(200, 1, type='PSK')
+        out, _ = sub_THz_stripe.utils.randconst(200, 1, type='PSK')
 
         self.assertTrue(np.allclose(out, output_data))
 
     def test_randconst_spiral(self):
         """Test randconst for SPIRAL."""
-        models.utils.global_seed = 45612
+        sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_SPIRAL.csv")
 
-        out, _ = models.utils.randconst(200, 1, type='SPIRAL')
+        out, _ = sub_THz_stripe.utils.randconst(200, 1, type='SPIRAL')
 
         self.assertTrue(np.allclose(out, output_data))
 
@@ -464,7 +464,7 @@ class UtilsTest(unittest.TestCase):
         input_data = read_octave_file("test/data/rrc_input.csv")
         output_data = read_octave_file("test/data/rrc_output.csv")
 
-        out = models.utils.rrc(input_data, 0.5)
+        out = sub_THz_stripe.utils.rrc(input_data, 0.5)
 
         self.assertTrue(np.allclose(out, output_data))
 
@@ -473,7 +473,7 @@ class UtilsTest(unittest.TestCase):
         input_data = read_octave_file("test/data/randconst_output.csv")
         output_data = read_octave_file("test/data/pulseshape_output.csv")
 
-        out = models.utils.pulseshape(input_data, 5, 0.1)
+        out = sub_THz_stripe.utils.pulseshape(input_data, 5, 0.1)
 
         self.assertTrue(np.allclose(out, output_data))
 
@@ -482,6 +482,6 @@ class UtilsTest(unittest.TestCase):
         input_data = read_octave_file("test/data/randconst_output.csv")
         output_data = read_octave_file("test/data/pulseshape_output2.csv")
 
-        out = models.utils.pulseshape(input_data, 2.5, 0.2)
+        out = sub_THz_stripe.utils.pulseshape(input_data, 2.5, 0.2)
 
         self.assertTrue(np.allclose(out, output_data))

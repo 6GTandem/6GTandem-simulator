@@ -92,13 +92,15 @@ class Oscillator(Component):
     def run_phase(self, nosamples):
         match self.mode:
             case 'ideal':
-                fi = np.zeros((nosamples, 1))
+                fi = np.zeros((1, nosamples))
             case 'cfo':
                 fi = self.run_phase_cfo(nosamples)
             case 'model':
                 fi = self.run_phase_model(nosamples)
             case 'spectrum':
                 fi = self.run_phase_spectrum(nosamples)
+            case _:
+                fi = np.zeros((1, nosamples))
 
         return fi
 

@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import lfilter
 
 from ..component.component import Component
-from ..utils import setdbm, getdbm
+from ..utils import db_to_magnitude
 
 
 class Coupler(Component):
@@ -19,4 +19,4 @@ class Coupler(Component):
     def run(self, x):
         xout = lfilter(self.filter, 1, x)
 
-        return setdbm(xout, getdbm(x) - self.damping)
+        return xout * db_to_magnitude(self.damping)

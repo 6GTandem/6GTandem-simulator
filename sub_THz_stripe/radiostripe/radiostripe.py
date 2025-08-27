@@ -72,15 +72,16 @@ class RadioStripe(Component):
         :returns: A (n x m) matrix with the amount of rows n equal to the amount of splits (See `Splitter`).
         """
         # Data comes from the central unit and first passes through the chain of RUs.
-        y = np.zeros((len(x), 1 + len(self.radio_units)),
-                     dtype=np.complex128)
-        for ru in self.radio_units[:self.active_unit]:
-            y = ru.boost(x)
+        y = x
+        for ru, fib in zip(self.radio_units[:self.active_unit], self.fibers[:self.active_unit]):
+            y = ru.boost(y)
+            y = fib.run(y)
+            yield y
 
         # Data transmitted by the active radio unit.
         y = self.radio_units[self.active_unit].transmit(y, shifts)
 
-        return y
+        yield y
 
     def receive(self, x: np.ndarray, shifts: list[int]):
         """Takes incoming IQ-data on the antennas and runs it along the stripe towards the central unit.
