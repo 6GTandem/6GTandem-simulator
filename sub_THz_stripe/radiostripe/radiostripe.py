@@ -74,8 +74,8 @@ class RadioStripe(Component):
         # Data comes from the central unit and first passes through the chain of RUs.
         y = x
         for ru, fib in zip(self.radio_units[:self.active_unit], self.fibers[:self.active_unit]):
-            y = ru.boost(y)
             y = fib.run(y)
+            y = ru.boost(y)
             yield y
 
         # Data transmitted by the active radio unit.
