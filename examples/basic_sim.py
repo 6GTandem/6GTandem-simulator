@@ -46,12 +46,17 @@ if __name__ == "__main__":
     shifts = [0, 0, 0, 0]
     rs = RadioStripe(nolinks, nolinks, active_unit=4)
 
-    # Generate random data todo this should come from the central unit
-    x = getGaussianSymbols()
+    nr_samples = 1000
+    waveform = "Gaussian-impaired" #"Gaussian-ideal"
+    cu = CentralUnit(nr_samples, waveform, True, True, True, True)
+    x = cu.run()
+
     print(f'x shape: {x.shape}')
+    print(f'{np.mean(np.abs(x**2))}')
+
 
     Y = []
-    Y.append(x)
+    Y.append(x[0])
 
     # Run signal over stripe. The input is a vector N*1.
     for cdata in rs.transmit(x, shifts):
@@ -61,7 +66,3 @@ if __name__ == "__main__":
 
     rs.calibrate(x, 0)
 
-    Y2 = rs.transmit(x, shifts)
-
-    spec(Y2, plot=True)
-2
