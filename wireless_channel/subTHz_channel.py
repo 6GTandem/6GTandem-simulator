@@ -9,6 +9,8 @@ class Channel:
     """
 
     # todo: check if default nr subcarriers is same as sionna data
+    # todo: only works when num symples = num subcarriers
+    # todo: account for oversampling, and multiple ofdm symbols => slice X_time into OFDM symbols of length Nr_subcarriers before FFT. Then apply channel per OFDM symbol.
 
     def __init__(self, channelmodel: str = 'subTHz-Rayleigh',
                  Nr_subcarriers: int = 1024, Nr_ue_antennas: int = 1, Nr_ru_antennas: int =1,
