@@ -50,7 +50,7 @@ class CentralUnit(Component):
 
         self._mode = mode
 
-    def getGaussianSymbols(self, K=1, Ndata=5000, p=1):
+    def getGaussianSymbols(self, K=1, Ndata=1024, p=1):
         """Doc
         :param Ndata: number of symbols to generate
         :param p: signal variance
