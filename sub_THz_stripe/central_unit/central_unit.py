@@ -6,6 +6,7 @@ from ..component.component import Component
 from ..utils import delay
 import numpy as np
 
+
 class CentralUnit(Component):
     """Definition of a transmitter
 
@@ -15,25 +16,18 @@ class CentralUnit(Component):
         >>> y = tx.run(x)
     """
 
-    def __init__(self, n : int = 1000, waveform : str = "Gaussian-ideal", osc: Oscillator | None = None, iqmodem: IQModem | None = None, amp: Amplifier | None = None,
-                 dac: Dac | None = None, delay: float = 0, *args, **kwargs):
+    def __init__(self, oscillator: Oscillator, iqmodem: IQModem, amplifier: Amplifier, dac: Dac, delay: float = 0, n: int = 1000, waveform: str = "Gaussian-ideal", *args, **kwargs):
         """Instantiate a transmitter based on an oscillator, iqmodem, amplifier and dac.
         n : number of IQ samples
         waveform: wave form can be selected from the list: ["Gaussian-ideal", "Gaussian-imparied", "OFDM", "CP-OFDM"]
         """
         self.waveform = waveform
-
-        # todo check what this does? now creates new object but object seems to be passed as argments?
-        if osc is not None:
-            self.oscillator = Oscillator()
-        if iqmodem is not None:
-            self.iqmodem = IQModem()
-        if amp is not None:
-            self.amplifier = Amplifier()
-        if dac is not None:
-            self.dac = Dac()
-
         self.delay = delay
+
+        self.oscillator = oscillator
+        self.iqmodem = iqmodem
+        self.amplifier = amplifier
+        self.dac = dac
 
         super().__init__(*args, **kwargs)
 
@@ -84,7 +78,7 @@ class CentralUnit(Component):
             x = self.iqmodem.run(x, phasor)
             x = self.amplifier.run(x)
             return x
-        else: # todo how to name this and how to include these things into ofdm?
+        else:  # todo how to name this and how to include these things into ofdm?
             if phasor is None:
                 phasor = self.oscillator.run(len(x))
 
