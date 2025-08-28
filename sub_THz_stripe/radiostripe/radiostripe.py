@@ -85,17 +85,15 @@ class RadioStripe(Component):
         """
         # Data comes from the central unit and first passes through the chain of RUs.
         y = x
-        for ru, fib in zip(
-            self.radio_units[: self.active_unit], self.fibers[: self.active_unit]
-        ):
+        for i, (ru, fib) in enumerate(zip(
+            self.radio_units[: self.active_unit+1], self.fibers[: self.active_unit+1]
+        )):
             y = fib.run(y)
-            y = ru.boost(y)
+            if i == self.active_unit:
+                y = ru.transmit(y, shifts)
+            else:
+                y = ru.boost(y)
             yield y
-
-        # Data transmitted by the active radio unit.
-        y = self.radio_units[self.active_unit].transmit(y, shifts)
-
-        yield y
 
     def receive(self, x: np.ndarray, shifts: list[int]):
         """Takes incoming IQ-data on the antennas and runs it along the stripe towards the central unit.
