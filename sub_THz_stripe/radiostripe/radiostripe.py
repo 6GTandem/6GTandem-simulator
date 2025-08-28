@@ -98,18 +98,42 @@ class RadioStripe(Component):
     def receive(self, x: np.ndarray, shifts: list[int]):
         """Takes incoming IQ-data on the antennas and runs it along the stripe towards the central unit.
 
+        :param x: IQ-data in the form of an (n x m) array with n the amount of rows being equal to the amount of splits.
+        :param shifts: See `PhaseShifter`.
+
+        :returns: A single 1-dimensional IQ-data array.
+        """
+        # Data is received by the active radio unit.
+        y = self.radio_units[self.active_unit].receive(x, shifts)
+        y = self.fibers[self.active_unit].run(y)
+        yield y
+
+        # Data passes through the radio units between the active unit and the central unit.
+        for ru, fib in zip(
+            self.radio_units[: self.active_unit - 1][::-1],
+            self.fibers[: self.active_unit - 1][::-1],
+        ):
+            y = ru.boost(y)
+            y = fib.run(y)
+            yield y
+
+    def receive_all(self, x: np.ndarray, shifts: list[int]):
+        """Takes incoming IQ-data on the antennas and runs it along the stripe towards the central unit.
+
         :param x: List containing all the IQ data being received on all the radio units. The data at x[0] is the unit
                   closest to the central unit.
         :param shifts: See `PhaseShifter`.
 
         :returns: IQ-data array arriving at the end of the stripe.
         """
-        y = np.zeros(x[0].shape, dtype=np.complex128)
+        y_in = np.zeros(x[0].shape, dtype=np.complex128)
         for ru, fib, data in zip(self.radio_units[::-1], self.fibers[::-1], x):
             rdata = ru.receive(data, shifts)
-            y = np.sum((rdata, y))
-            y = fib.run(y)
-            yield y
+            y_in = ru.boost(y_in)
+            y_combined = np.sum((rdata, y_in))
+            y_out = fib.run(y_combined)
+            y_in = y_out # becomes new in
+            yield y_out
 
     def calibrate(self, x, desired_amplifier_dbm):
         """This function sets the small-signal gain of the link amplifiers.

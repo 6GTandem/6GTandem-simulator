@@ -1,4 +1,3 @@
-
 ## Hardware Measurements per Model
 
 Below are sections for each model to be populated with all available hardware measurements.
@@ -21,9 +20,12 @@ _To be populated_
 *Hardware measurements:*  
 _No hardware measurements available_
 
+![PMF No Tape](PMF/PMF.png)
+
 #### PMF: No Tape
 *Hardware measurements:*  
 See folder: `models/pmf/no_tape/`  
+  
 **External references:** [Add reference here]  
 **Measured by:** [Add name or institution here]  
 **Manufactured by:** [Add manufacturer here]
