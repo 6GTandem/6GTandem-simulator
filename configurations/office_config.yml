@@ -19184,7 +19184,10 @@ ue_positions:
 - x: 8.0
   y: 23.0
   z: 1.5
-sub_thz: {}
+sub_thz:
+  fc: 157750000000.0
+  bw: 12500000000.0
+  num_subcarriers: 1024
 sub10GHz:
   fc: 3500000000.0
   bw: 20000000.0

@@ -31,7 +31,7 @@ stripe_start_pos = tuple(rt_params.get("stripe_start_pos", [2.0, 2.5, 3.5]))
 ROOM = rt_params.get("room", {"x": 10, "y": 25, "z": 5.45})
 
 # Load additional params for sub_thz and sub10GHz from YAML, following example.yml structure
-sub_thz_params = rt_params.get("sub_thz_config", {})
+sub_thz_params = rt_params.get("subTHz_config", {})
 sub10GHz_params = rt_params.get("sub10GHz_config", {})
 antenna_params = rt_params.get("antenna_config", {})
 
