@@ -12,7 +12,11 @@ room:
   y: 25
   z: 5.45
 radio_stripes:
-- - radio_unit:
+- - central_unit:
+      x: 2.0
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 2.0
       y: 2.5
       z: 3.5
@@ -180,7 +184,11 @@ radio_stripes:
       x: 2.0
       y: 23.0
       z: 3.5
-- - radio_unit:
+- - central_unit:
+      x: 2.5
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 2.5
       y: 2.5
       z: 3.5
@@ -348,7 +356,11 @@ radio_stripes:
       x: 2.5
       y: 23.0
       z: 3.5
-- - radio_unit:
+- - central_unit:
+      x: 3.0
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 3.0
       y: 2.5
       z: 3.5
@@ -516,7 +528,11 @@ radio_stripes:
       x: 3.0
       y: 23.0
       z: 3.5
-- - radio_unit:
+- - central_unit:
+      x: 3.5
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 3.5
       y: 2.5
       z: 3.5
@@ -684,7 +700,11 @@ radio_stripes:
       x: 3.5
       y: 23.0
       z: 3.5
-- - radio_unit:
+- - central_unit:
+      x: 4.0
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 4.0
       y: 2.5
       z: 3.5
@@ -852,7 +872,11 @@ radio_stripes:
       x: 4.0
       y: 23.0
       z: 3.5
-- - radio_unit:
+- - central_unit:
+      x: 4.5
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 4.5
       y: 2.5
       z: 3.5
@@ -1020,7 +1044,11 @@ radio_stripes:
       x: 4.5
       y: 23.0
       z: 3.5
-- - radio_unit:
+- - central_unit:
+      x: 5.0
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 5.0
       y: 2.5
       z: 3.5
@@ -1188,7 +1216,11 @@ radio_stripes:
       x: 5.0
       y: 23.0
       z: 3.5
-- - radio_unit:
+- - central_unit:
+      x: 5.5
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 5.5
       y: 2.5
       z: 3.5
@@ -1356,7 +1388,11 @@ radio_stripes:
       x: 5.5
       y: 23.0
       z: 3.5
-- - radio_unit:
+- - central_unit:
+      x: 6.0
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 6.0
       y: 2.5
       z: 3.5
@@ -1524,7 +1560,11 @@ radio_stripes:
       x: 6.0
       y: 23.0
       z: 3.5
-- - radio_unit:
+- - central_unit:
+      x: 6.5
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 6.5
       y: 2.5
       z: 3.5
@@ -1692,7 +1732,11 @@ radio_stripes:
       x: 6.5
       y: 23.0
       z: 3.5
-- - radio_unit:
+- - central_unit:
+      x: 7.0
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 7.0
       y: 2.5
       z: 3.5
@@ -1860,7 +1904,11 @@ radio_stripes:
       x: 7.0
       y: 23.0
       z: 3.5
-- - radio_unit:
+- - central_unit:
+      x: 7.5
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 7.5
       y: 2.5
       z: 3.5
@@ -2028,7 +2076,11 @@ radio_stripes:
       x: 7.5
       y: 23.0
       z: 3.5
-- - radio_unit:
+- - central_unit:
+      x: 8.0
+      y: 2.0
+      z: 3.5
+  - radio_unit:
       x: 8.0
       y: 2.5
       z: 3.5
@@ -19158,3 +19210,4 @@ antenna:
   N_antennas_per_axis: 2
   pattern: iso
   polarization: cross
+central_unit_fiber_length: 0.5

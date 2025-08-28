@@ -17,7 +17,6 @@ class IQModem(Component):
         super().__init__(*args, **kwargs)
 
     def run(self, yin, phasor):
-        yin = np.array(yin)
         phasor = np.array(phasor)
         assert (len(yin) == len(phasor)
                 ), "Yin and Phasor data lengths do not match."
@@ -27,7 +26,7 @@ class IQModem(Component):
                 yout = yin
             case 'filter':
                 d = (self.iqi_filter - 1) // 2
-                data = list(np.conj(yin)) + list(np.zeros((d, 1)))
+                data = np.concatenate((np.conj(yin), np.zeros((1, d))), axis=1)
                 xc = lfilter(self.iqi_filter, 1, data)
                 xc = xc[d:]
                 yout = yin + xc + self.dc_offset
