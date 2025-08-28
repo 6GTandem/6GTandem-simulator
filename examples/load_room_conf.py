@@ -28,5 +28,6 @@ stripes = []
 for stripe_cfg in config["radio_stripes"]:
     stripes.append(RadioStripe.from_config_locations(stripe_cfg))
 
-# stripes = stripes[0:3]
+stripes = stripes[5:11:2]
+# continue with 3 stripes, separated by 1m
 plotter.plot_stripes(config, stripes)
