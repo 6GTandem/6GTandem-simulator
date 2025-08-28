@@ -108,6 +108,15 @@ def build_radio_stripes() -> List[List[Dict[str, float]]]:
     x0, y0, z0 = stripe_start_pos
     for stripe_idx in range(N_stripes):
         stripe_list: List[Dict[str, float]] = []
+        stripe_list.append(
+            {
+                "central_unit": {
+                    "x": x0 + stripe_idx * space_between_stripes,
+                    "y": y0 - space_between_RUs,
+                    "z": z0,
+                }
+            }
+        )
         for ru_idx in range(N_RUs):
             x = x0 + stripe_idx * space_between_stripes
             y = y0 + ru_idx * space_between_RUs
@@ -139,6 +148,7 @@ def main() -> None:
         "sub_thz": sub_thz_params,
         "sub10GHz": sub10GHz_params,
         "antenna": antenna_params,
+        "central_unit_fiber_length": 0.5,
     }
 
     output_yaml.parent.mkdir(parents=True, exist_ok=True)

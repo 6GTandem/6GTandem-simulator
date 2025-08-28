@@ -37,8 +37,9 @@ def plot_stripes(config:dict, stripes:list[RadioStripe]):
         ax.scatter3D(units[:, 0], units[:, 1], units[:, 2], c="red")
         ax.plot3D(units[:, 0], units[:, 1], units[:, 2], color="red")
 
+        ax.scatter3D(stripe.central_unit.x, stripe.central_unit.y, stripe.central_unit.z, c="yellow")
+
     plt.show()
-    
 
 
 def plot_room(config:dict):
@@ -79,9 +80,10 @@ def plot_room(config:dict):
         print(f"{len(config['radio_stripes'])} Stripes found")
         units = []
         for unit in stripe:
-            unit = unit["radio_unit"]
-            if "x" in unit:
-                units.append([unit["x"], unit["y"], unit["z"]])
+            if "radio_unit" in unit:
+                unit = unit["radio_unit"]
+                if "x" in unit:
+                    units.append([unit["x"], unit["y"], unit["z"]])
         units = np.array(units)
         print(units)
         ax.scatter3D(units[:, 0], units[:, 1], units[:, 2], c="red")

@@ -16,13 +16,31 @@ class CentralUnit(Component):
         >>> y = tx.run(x)
     """
 
-    def __init__(self, oscillator: Oscillator, iqmodem: IQModem, amplifier: Amplifier, dac: Dac, delay: float = 0, n: int = 1000, waveform: str = "Gaussian-ideal", *args, **kwargs):
+    def __init__(
+        self,
+        x,
+        y,
+        z,
+        oscillator: Oscillator = None,
+        iqmodem: IQModem = None,
+        amplifier: Amplifier = None,
+        dac: Dac = None,
+        delay: float = 0,
+        n: int = 1000,
+        waveform: str = "Gaussian-ideal",
+        *args,
+        **kwargs,
+    ):
         """Instantiate a transmitter based on an oscillator, iqmodem, amplifier and dac.
         n : number of IQ samples
         waveform: wave form can be selected from the list: ["Gaussian-ideal", "Gaussian-imparied", "OFDM", "CP-OFDM"]
         """
         self.waveform = waveform
         self.delay = delay
+
+        self.x = x
+        self.y = y
+        self.z = z
 
         self.oscillator = oscillator
         self.iqmodem = iqmodem
