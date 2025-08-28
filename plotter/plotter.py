@@ -3,6 +3,44 @@ import matplotlib.pyplot as plt
 import numpy as np
 from itertools import product, combinations
 
+from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
+
+
+def plot_stripes(config:dict, stripes:list[RadioStripe]):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    ax.set_aspect("auto")
+
+    # Plot the room (corners and edges)
+    x_size = config["room"]["x"]
+    y_size = config["room"]["y"]
+    z_size = config["room"]["z"]
+
+    points = []
+    for x in [0, x_size]:
+        for y in [0, y_size]:
+            for z in [0, z_size]:
+                points.append([x, y, z])
+    points = np.array(points)
+    ax.scatter3D(points[:, 0], points[:, 1], points[:, 2], c="black")
+    for s, e in combinations(points, 2):
+        diff = list(s - e)
+        if diff.count(0) == 2:
+            ax.plot3D(*zip(s, e), color="k")
+
+    # Plot the stripes
+    for stripe in stripes:
+        units = []
+        for ru in stripe.radio_units:
+            units.append([ru.x, ru.y, ru.z])
+        units = np.array(units)
+        ax.scatter3D(units[:, 0], units[:, 1], units[:, 2], c="red")
+        ax.plot3D(units[:, 0], units[:, 1], units[:, 2], color="red")
+
+    plt.show()
+    
+
+
 def plot_room(config:dict):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")

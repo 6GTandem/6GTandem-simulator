@@ -44,7 +44,7 @@ class RadioStripe(Component):
         elif type(fibers) is list:
             self.fibers = fibers
 
-        assert len(self.radio_units) == len(
+        assert len(self.radio_units)-1 == len(
             self.fibers), "Amount of radio units/fibers don't match."
 
         self.active_unit = active_unit
@@ -181,6 +181,14 @@ class RadioStripe(Component):
             loc = unit_cfg.get("radio_unit", {})
             # Pass location to RadioUnit, other parameters default
             radio_units.append(RadioUnit(x=loc.get("x", 0), y=loc.get("y", 0), z=loc.get("z", 0)))
-        # Number of fibers = number of radio units
-        fibers = len(radio_units)
+
+        fibers = []
+        for i in range(len(radio_units) - 1):
+            p1 = np.array([radio_units[i].x, radio_units[i].y, radio_units[i].z])
+            p2 = np.array(
+                [radio_units[i + 1].x, radio_units[i + 1].y, radio_units[i + 1].z]
+            )
+            length = np.linalg.norm(p2 - p1)
+            fibers.append(Fiber(length=length))
+        print(f"Constructed {len(radio_units)} radio units and {len(fibers)} fibers.")
         return cls(radio_units=radio_units, fibers=fibers)

@@ -18,16 +18,24 @@ import xarray as xr
 import yaml
 
 
-# ---- Defaults ----
-N_RUs = 42
-N_stripes = 13
-space_between_RUs = 0.5  # m
-space_between_stripes = 0.5  # m
-stripe_start_pos = (2.0, 2.5, 3.5)  # x, y, z
+# ---- Load parameters from office_rt_config.yml ----
+rt_config_path = Path("office_rt_config.yml")
+with open(rt_config_path, "r") as f:
+    rt_params = yaml.safe_load(f)
 
-ROOM = {"x": 10, "y": 25, "z": 5.45}  # room dimensions
+N_RUs = rt_params.get("N_RUs", 42)
+N_stripes = rt_params.get("N_stripes", 13)
+space_between_RUs = rt_params.get("space_between_RUs", 0.5)
+space_between_stripes = rt_params.get("space_between_stripes", 0.5)
+stripe_start_pos = tuple(rt_params.get("stripe_start_pos", [2.0, 2.5, 3.5]))
+ROOM = rt_params.get("room", {"x": 10, "y": 25, "z": 5.45})
+
+# Load additional params for sub_thz and sub10GHz from YAML, following example.yml structure
+sub_thz_params = rt_params.get("sub_thz_config", {})
+sub10GHz_params = rt_params.get("sub10GHz_config", {})
+antenna_params = rt_params.get("antenna_config", {})
+
 output_file = "office_config.yml"
-
 UE_NC_PATH = Path("ue_locations_5681.nc")
 
 
@@ -112,7 +120,6 @@ def build_radio_stripes() -> List[List[Dict[str, float]]]:
 def main() -> None:
     import sys
 
-    # Optional filename argument
     output_yaml = Path(output_file)
 
     ue_positions = load_ue_positions(UE_NC_PATH)
@@ -129,6 +136,9 @@ def main() -> None:
         "room": ROOM,
         "radio_stripes": radio_stripes,
         "ue_positions": ue_positions,
+        "sub_thz": sub_thz_params,
+        "sub10GHz": sub10GHz_params,
+        "antenna": antenna_params,
     }
 
     output_yaml.parent.mkdir(parents=True, exist_ok=True)

@@ -19132,3 +19132,29 @@ ue_positions:
 - x: 8.0
   y: 23.0
   z: 1.5
+sub_thz: {}
+sub10GHz:
+  fc: 3500000000.0
+  bw: 20000000.0
+  num_subcarriers: 1024
+  num_APs: 4
+  ap_pos_ceil_1:
+  - 5.25
+  - 7.25
+  - 3.5
+  ap_pos_ceil_2:
+  - 5.25
+  - 18.25
+  - 3.5
+  ap_pos_wall_1:
+  - 2
+  - 13
+  - 2.5
+  ap_pos_wall_2:
+  - 5.25
+  - 23.5
+  - 2.5
+antenna:
+  N_antennas_per_axis: 2
+  pattern: iso
+  polarization: cross
