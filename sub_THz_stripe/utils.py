@@ -129,7 +129,7 @@ def delay(x, n: list = [1], filter_length: int = 512):
                 h = (np.sinc(np.arange(-filter_length, filter_length +
                      1) - frac) * np.hanning(2 * filter_length + 1))
 
-            y1 = np.concat([y1, np.zeros((rows, filter_length))], axis=1)
+            y1 = np.concatenate([y1, np.zeros((rows, filter_length))], axis=1)
             y1 = lfilter(h, 1, y1, axis=0)
             y1 = y1[:, y1.shape[1]-x.shape[1]:]
 
