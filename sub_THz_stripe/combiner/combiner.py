@@ -6,4 +6,4 @@ class Combiner(Component):
     def run(self, x):
         """Combines incoming data into one stream by adding everything up.
         """
-        return np.sum(x, axis=0)
+        return np.array([np.sum(x, axis=0)])
