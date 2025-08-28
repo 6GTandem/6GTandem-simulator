@@ -1,5 +1,7 @@
 import numpy as np
 
+from sub_THz_stripe.central_unit.central_unit import CentralUnit
+
 from ..radio_unit.radio_unit import RadioUnit
 from ..fiber.fiber import Fiber
 from ..component.component import Component
@@ -17,18 +19,27 @@ class RadioStripe(Component):
 
     Current assumptions:
         - Only one radio unit is active at a time.
-        - All radiostripes have one common central unit. This is instantiated outside of this class.
+        - All radiostripes have one common central unit, each stripe has a dedicated port on the CU. This is instantiated outside of this class.
         - All components can have different settings but are initialized with the same parameters if none are given.
 
     RadioStripe:
         Fiber -> RadioUnit -> Fiber -> RadioUnit -> ...
     """
 
-    def __init__(self, radio_units: int | list[RadioUnit] = 3, fibers: int | list[Fiber] = 3, active_unit: int = 0, *args, **kwargs):
+    def __init__(
+        self,
+        radio_units: int | list[RadioUnit] = 3,
+        fibers: int | list[Fiber] = 3,
+        active_unit: int = 0,
+        central_unit: CentralUnit = None,
+        *args,
+        **kwargs,
+    ):
         """
         :param : .
         """
         self._active_unit = 0
+        self.central_unit = central_unit
 
         self.radio_units = []
         if type(radio_units) is int:
@@ -45,7 +56,8 @@ class RadioStripe(Component):
             self.fibers = fibers
 
         assert len(self.radio_units) == len(
-            self.fibers), "Amount of radio units/fibers don't match."
+            self.fibers
+        ), "Amount of radio units/fibers don't match."
 
         self.active_unit = active_unit
 
@@ -73,15 +85,15 @@ class RadioStripe(Component):
         """
         # Data comes from the central unit and first passes through the chain of RUs.
         y = x
-        for ru, fib in zip(self.radio_units[:self.active_unit], self.fibers[:self.active_unit]):
+        for i, (ru, fib) in enumerate(zip(
+            self.radio_units[: self.active_unit+1], self.fibers[: self.active_unit+1]
+        )):
             y = fib.run(y)
-            y = ru.boost(y)
+            if i == self.active_unit:
+                y = ru.transmit(y, shifts)
+            else:
+                y = ru.boost(y)
             yield y
-
-        # Data transmitted by the active radio unit.
-        y = self.radio_units[self.active_unit].transmit(y, shifts)
-
-        yield y
 
     def receive(self, x: np.ndarray, shifts: list[int]):
         """Takes incoming IQ-data on the antennas and runs it along the stripe towards the central unit.
@@ -110,8 +122,7 @@ class RadioStripe(Component):
         for ru in self.radio_units:
             for j in range(3):
                 z2 = ru.boost(z)
-                scale = db_to_magnitude(
-                    desired_amplifier_dbm - getdbm(z2))
+                scale = db_to_magnitude(desired_amplifier_dbm - getdbm(z2))
                 ru.amp.gain = ru.amp.gain * scale
 
             z = ru.boost(z)
@@ -164,3 +175,40 @@ class RadioStripe(Component):
         # Configure the oscillator
         osc_cfg = config["sub_THz"]["oscillator"]
         rs.transmitter.oscillator.cfo = osc_cfg["cfo"]
+
+    @classmethod
+    def from_config_locations(cls, stripe_config):
+        """
+        Initialize a RadioStripe from a stripe configuration containing radio unit locations.
+        Only location is considered; all other parameters are default.
+        :param stripe_config: List of dicts, each with a 'radio_unit' key containing 'x', 'y', 'z'.
+        :return: RadioStripe instance with radio units at specified locations.
+        """
+        radio_units = []
+        units = []
+
+        central_unit = None
+
+        for unit_cfg in stripe_config:
+            if "radio_unit" in unit_cfg:
+                loc = unit_cfg.get("radio_unit", None)
+                ru = RadioUnit(x=loc.get("x", 0), y=loc.get("y", 0), z=loc.get("z", 0))
+                radio_units.append(ru)
+                u = ru
+            if "central_unit" in unit_cfg:
+                loc = unit_cfg.get("central_unit", None)
+                central_unit = CentralUnit(
+                    x=loc.get("x", 0), y=loc.get("y", 0), z=loc.get("z", 0)
+                )
+                u = central_unit
+            if loc:
+                units.append(u)
+
+        fibers = []
+        for i in range(len(radio_units)):
+            p1 = np.array([units[i].x, units[i].y, units[i].z])
+            p2 = np.array([units[i + 1].x, units[i + 1].y, units[i + 1].z])
+            length = np.linalg.norm(p2 - p1)
+            fibers.append(Fiber(length=length))
+        print(f"Constructed {len(radio_units)} radio units and {len(fibers)} fibers.")
+        return cls(radio_units=radio_units, fibers=fibers, central_unit=central_unit)

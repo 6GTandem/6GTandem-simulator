@@ -307,7 +307,7 @@ class OscillatorModelTest(unittest.TestCase):
 
     def test_oscillator_cfo(self):
         numpy.random.seed(45612)
-        output_data = read_octave_file("test/data/oscillator_output_cfo.csv").T
+        output_data = read_octave_file("test/data/oscillator_output_cfo.csv")
 
         osc = sub_THz_stripe.Oscillator()
         osc.mode = 'cfo'
@@ -320,7 +320,7 @@ class OscillatorModelTest(unittest.TestCase):
     def test_oscillator_model(self):
         numpy.random.seed(45612)
         output_data = read_octave_file(
-            "test/data/oscillator_output_model.csv").T
+            "test/data/oscillator_output_model.csv")
 
         osc = sub_THz_stripe.Oscillator()
         osc.mode = 'model'
@@ -332,7 +332,7 @@ class OscillatorModelTest(unittest.TestCase):
     def test_oscillator_spectrum(self):
         numpy.random.seed(45612)
         output_data = read_octave_file(
-            "test/data/oscillator_output_spectrum.csv").T
+            "test/data/oscillator_output_spectrum.csv")
 
         osc = sub_THz_stripe.Oscillator()
         osc.mode = 'spectrum'
@@ -393,7 +393,7 @@ class UtilsTest(unittest.TestCase):
         sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output.csv")
 
-        out, _ = sub_THz_stripe.utils.randconst(200, 1)
+        out, _ = sub_THz_stripe.utils.randconst(1, 200)
 
         self.assertTrue(np.allclose(out, output_data))
 
@@ -402,7 +402,7 @@ class UtilsTest(unittest.TestCase):
         sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_qam2.csv")
 
-        out, _ = sub_THz_stripe.utils.randconst(200, 1, m=2)
+        out, _ = sub_THz_stripe.utils.randconst(1, 200, m=2)
 
         self.assertTrue(np.allclose(out, output_data))
 
@@ -411,7 +411,7 @@ class UtilsTest(unittest.TestCase):
         sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_qam8.csv")
 
-        out, _ = sub_THz_stripe.utils.randconst(200, 1, m=8)
+        out, _ = sub_THz_stripe.utils.randconst(1, 200, m=8)
 
         self.assertTrue(np.allclose(out, output_data))
 
@@ -420,7 +420,7 @@ class UtilsTest(unittest.TestCase):
         sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_qam32.csv")
 
-        out, _ = sub_THz_stripe.utils.randconst(200, 1, m=32)
+        out, _ = sub_THz_stripe.utils.randconst(1, 200, m=32)
 
         self.assertTrue(np.allclose(out, output_data))
 
@@ -429,7 +429,7 @@ class UtilsTest(unittest.TestCase):
         sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_qam128.csv")
 
-        out, _ = sub_THz_stripe.utils.randconst(200, 1, m=128)
+        out, _ = sub_THz_stripe.utils.randconst(1, 200, m=128)
 
         self.assertTrue(np.allclose(out, output_data))
 
@@ -438,7 +438,7 @@ class UtilsTest(unittest.TestCase):
         sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_qam512.csv")
 
-        out, _ = sub_THz_stripe.utils.randconst(200, 1, m=512)
+        out, _ = sub_THz_stripe.utils.randconst(1, 200, m=512)
 
         self.assertTrue(np.allclose(out, output_data))
 
@@ -447,7 +447,7 @@ class UtilsTest(unittest.TestCase):
         sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_psk.csv")
 
-        out, _ = sub_THz_stripe.utils.randconst(200, 1, type='PSK')
+        out, _ = sub_THz_stripe.utils.randconst(1, 200, type='PSK')
 
         self.assertTrue(np.allclose(out, output_data))
 
@@ -456,7 +456,7 @@ class UtilsTest(unittest.TestCase):
         sub_THz_stripe.utils.global_seed = 45612
         output_data = read_octave_file("test/data/randconst_output_SPIRAL.csv")
 
-        out, _ = sub_THz_stripe.utils.randconst(200, 1, type='SPIRAL')
+        out, _ = sub_THz_stripe.utils.randconst(1, 200, type='SPIRAL')
 
         self.assertTrue(np.allclose(out, output_data))
 

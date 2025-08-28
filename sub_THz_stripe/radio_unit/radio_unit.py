@@ -7,7 +7,7 @@ from ..phase_shifter.phase_shifter import PhaseShifter
 
 
 class RadioUnit(Component):
-    def __init__(self, amp: Amplifier | None = None, coup_in: Coupler | None = None,
+    def __init__(self, x,y,z, amp: Amplifier | None = None, coup_in: Coupler | None = None,
                  coup_out: Coupler | None = None, splitter: Splitter | None = None, combiner: Combiner | None = None, pshift: PhaseShifter | None = None, *args, **kwargs):
         """Instantiate a Radio Unit.
 
@@ -41,6 +41,9 @@ class RadioUnit(Component):
             self.combiner = Combiner()
         if pshift is None:
             self.phase_shifter = PhaseShifter(4, 2)
+        self.x = x
+        self.y = y
+        self.z = z
 
         super().__init__(*args, **kwargs)
 

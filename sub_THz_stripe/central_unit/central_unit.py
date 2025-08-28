@@ -24,6 +24,10 @@ class CentralUnit(Component):
         self.waveform = waveform
         self.delay = delay
 
+        self.x = x
+        self.y = y
+        self.z = z
+
         self.oscillator = oscillator
         self.iqmodem = iqmodem
         self.amplifier = amplifier
