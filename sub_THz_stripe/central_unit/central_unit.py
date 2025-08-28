@@ -84,6 +84,20 @@ class CentralUnit(Component):
         return s.astype(np.complex64)
 
     def run(self, x=None, phasor=None):
+        """
+        Generates and processes waveform symbols based on the selected waveform type.
+        Parameters:
+            x (optional): Input symbols. For most waveform types, these should be RRC pulse-shaped QAM symbols.
+                          For "Gaussian-ideal" and "Gaussian-impaired", symbols are generated internally.
+            phasor (optional): Phasor values for modulation. If not provided, generated using the oscillator.
+        Returns:
+            np.ndarray: The processed output waveform after DAC, IQ modulation, amplification, and optional delay.
+        Notes:
+            - For "Gaussian-ideal", Gaussian symbols are generated and returned.
+            - For "Gaussian-impaired", Gaussian symbols are generated, processed through DAC, IQ modem, and amplifier.
+            - For other waveform types, input symbols are processed through DAC, IQ modem, amplifier, and optional delay.
+            - The function is designed to eventually generate RRC pulse-shaped QAM symbols internally, removing the need for 'x' as an input.
+        """
         # todo: code of Thomas E. required RRC pulse shaped qam symbols to be input here (x)
         # todo: however this should be generated here on the fly! and removed as input parameters!
         if self.waveform == "Gaussian-ideal":
