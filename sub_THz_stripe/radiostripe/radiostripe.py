@@ -17,7 +17,7 @@ class RadioStripe(Component):
 
     Current assumptions:
         - Only one radio unit is active at a time.
-        - All radiostripes have one common central unit. This is instantiated outside of this class.
+        - All radiostripes have one common central unit, each stripe has a dedicated port on the CU. This is instantiated outside of this class.
         - All components can have different settings but are initialized with the same parameters if none are given.
 
     RadioStripe:
@@ -167,3 +167,20 @@ class RadioStripe(Component):
         # Configure the oscillator
         osc_cfg = config["sub_THz"]["oscillator"]
         rs.transmitter.oscillator.cfo = osc_cfg["cfo"]
+
+    @classmethod
+    def from_config_locations(cls, stripe_config):
+        """
+        Initialize a RadioStripe from a stripe configuration containing radio unit locations.
+        Only location is considered; all other parameters are default.
+        :param stripe_config: List of dicts, each with a 'radio_unit' key containing 'x', 'y', 'z'.
+        :return: RadioStripe instance with radio units at specified locations.
+        """
+        radio_units = []
+        for unit_cfg in stripe_config:
+            loc = unit_cfg.get("radio_unit", {})
+            # Pass location to RadioUnit, other parameters default
+            radio_units.append(RadioUnit(x=loc.get("x", 0), y=loc.get("y", 0), z=loc.get("z", 0)))
+        # Number of fibers = number of radio units
+        fibers = len(radio_units)
+        return cls(radio_units=radio_units, fibers=fibers)
