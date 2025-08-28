@@ -3,8 +3,8 @@ from ..iqmodem.iqmodem import IQModem
 from ..amplifier.amplifier import Amplifier
 from ..dac.dac import Dac
 from ..component.component import Component
-from ..utils import delay
-import numpy as np
+from ..utils import delay, randconst, pulseshape
+from ..waveform.waveforms import generate_gaussian_symbols
 
 
 class CentralUnit(Component):
@@ -16,21 +16,7 @@ class CentralUnit(Component):
         >>> y = tx.run(x)
     """
 
-    def __init__(
-        self,
-        x,
-        y,
-        z,
-        oscillator: Oscillator = None,
-        iqmodem: IQModem = None,
-        amplifier: Amplifier = None,
-        dac: Dac = None,
-        delay: float = 0,
-        n: int = 1000,
-        waveform: str = "Gaussian-ideal",
-        *args,
-        **kwargs,
-    ):
+    def __init__(self, oscillator: Oscillator, iqmodem: IQModem, amplifier: Amplifier, dac: Dac, delay: float = 0, nosamples: int = 1000, phasor: np.ndarray | None = None, waveform: str = "Gaussian", *args, **kwargs):
         """Instantiate a transmitter based on an oscillator, iqmodem, amplifier and dac.
         n : number of IQ samples
         waveform: wave form can be selected from the list: ["Gaussian-ideal", "Gaussian-imparied", "OFDM", "CP-OFDM"]
@@ -46,6 +32,8 @@ class CentralUnit(Component):
         self.iqmodem = iqmodem
         self.amplifier = amplifier
         self.dac = dac
+        self.nosamples = nosamples
+        self.phasor = phasor
 
         super().__init__(*args, **kwargs)
 
@@ -100,25 +88,30 @@ class CentralUnit(Component):
         """
         # todo: code of Thomas E. required RRC pulse shaped qam symbols to be input here (x)
         # todo: however this should be generated here on the fly! and removed as input parameters!
-        if self.waveform == "Gaussian-ideal":
-            return self.getGaussianSymbols()
-        elif self.waveform == "Gaussian-impaired":
-            x = self.getGaussianSymbols()
-            if phasor is None:
-                phasor = self.oscillator.run(len(x))
-            x = self.dac.run(x)
-            x = self.iqmodem.run(x, phasor)
-            x = self.amplifier.run(x)
-            return x
-        else:  # todo how to name this and how to include these things into ofdm?
-            if phasor is None:
-                phasor = self.oscillator.run(len(x))
+        match self.waveform:
+            case "Gaussian":
+                xout = generate_gaussian_symbols(ndata=self.nosamples)
+            case "QAM":
+                # generate a QAM signal, and use RRC pulse shaping
+                os = 5
+                # number of symbols, and oversampling factor
+                xout, c = randconst(1, self.nosamples)
+                xout = pulseshape(xout, os, 0.1)
+            case _:
+                raise ValueError(f"Unknown waveform: {self.waveform}")
 
-            x1 = self.dac.run(x)
-            x2 = self.iqmodem.run(x1, phasor)
-            xout = self.amplifier.run(x2)
+        if self.mode != "ideal":
+            xout = generate_gaussian_symbols()
+
+            phasor = self.phasor
+            if phasor is None:
+                phasor = self.oscillator.run(xout.shape[1])
+
+            xout = self.dac.run(xout)
+            xout = self.iqmodem.run(xout, phasor)
+            xout = self.amplifier.run(xout)
 
             if self.delay != 0:
-                xout = delay(xout, self.delay)
+                xout = delay(xout, [self.delay])
 
         return xout

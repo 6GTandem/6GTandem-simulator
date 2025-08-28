@@ -157,7 +157,7 @@ def randn_c(rows: int = 1, cols: int = 1, threshold: int = 0):
 
 
 def makespiralconstellation(m, f):
-    m = np.transpose([np.arange(1, m+1)])
+    m = np.arange(1, m+1)
     ang = np.sqrt((4 * np.pi * m) ** 2 * f / 2 +
                   np.sqrt(((4 * np.pi * m) ** 2 * f / 2) ** 2 + (4 * np.pi * m) ** 2))
 
@@ -170,43 +170,43 @@ def randconst(rows, cols, m=16, type: str = 'QAM'):
         case 'QAM':
             match m:
                 case 2:
-                    c = np.array([[-1], [1]])
+                    c = np.array([-1, 1])
                 case 8:
                     c = np.array([[-3, -1, 1, 3], [-3, -1, 1, 3]] +
                                  1j * np.array(list(np.ones((1, 4))) +
                                                list(-np.ones((1, 4)))))
-                    c = np.transpose([c.flatten('F')])
+                    c = c.flatten('F')
                 case 32:
                     xpoints = np.arange(-5, 6, 2)
                     ypoints = np.arange(-3, 4, 2)
                     x, y = np.meshgrid(xpoints, ypoints)
-                    x = np.transpose([x.flatten('F')])
-                    y = np.transpose([y.flatten('F')])
+                    x = x.flatten('F')
+                    y = y.flatten('F')
                     c = x + 1j * y
-                    arr = np.transpose([np.arange(-3, 4, 2)])
+                    arr = np.arange(-3, 4, 2)
                     c = np.array(list(arr - 1j * 5) +
                                  list(c) + list(arr + 1j * 5))
                 case 128:
                     xpoints = np.arange(-11, 12, 2)
                     ypoints = np.arange(-7, 8, 2)
                     x, y = np.meshgrid(xpoints, ypoints)
-                    x = np.transpose([x.flatten('F')])
-                    y = np.transpose([y.flatten('F')])
+                    x = x.flatten('F')
+                    y = y.flatten('F')
                     c = x + 1j * y
-                    arr = np.transpose([np.arange(-7, 8, 2)])
+                    arr = np.arange(-7, 8, 2)
                     c = np.array(list(arr - 1j * 11) + list(arr - 1j * 9) +
                                  list(c) + list(arr + 1j * 9) + list(arr + 1j * 11))
                 case 512:
                     xpoints = np.arange(-15, 16, 2)
                     ypoints = np.arange(-23, 24, 2)
                     x, y = np.meshgrid(xpoints, ypoints)
-                    x = np.transpose([x.flatten('F')])
-                    y = np.transpose([y.flatten('F')])
+                    x = x.flatten('F')
+                    y = y.flatten('F')
                     xpoints = np.arange(-3, 4, 2)
                     ypoints = np.arange(-15, 16, 2)
                     x2, y2 = np.meshgrid(xpoints, ypoints)
-                    x2 = np.transpose([x2.flatten('F')])
-                    y2 = np.transpose([y2.flatten('F')])
+                    x2 = x2.flatten('F')
+                    y2 = y2.flatten('F')
                     c = np.array(list(x + 1j * y) + list(x2 + 1j *
                                                          y2 - 20) + list(x2 + 1j * y2 + 20))
                 case _:
@@ -215,9 +215,10 @@ def randconst(rows, cols, m=16, type: str = 'QAM'):
                         raise ValueError('Bad constellation size.')
                     q = round(np.sqrt(m))
                     r = np.arange(1, q + 1) - (q + 1) / 2
-                    c = np.tile(r, q) + 1j * np.tile(r, q)
+                    c = np.reshape(np.tile(np.transpose(
+                        [r]), (1, q)) + 1j * np.tile(r, (q, 1)), (q ** 2,))
         case 'PSK':
-            c = np.transpose([np.exp(1j * 2 * np.pi * np.arange(1, m+1) / m)])
+            c = np.exp(1j * 2 * np.pi * np.arange(1, m+1) / m)
         case 'SPIRAL':
             c = makespiralconstellation(m, 0)
         case _:
@@ -286,23 +287,26 @@ def pulseshape(x, oversampling=5, beta=0.07, fl: int = 25):
             l2 = lfilter(pulse_filter[d::oversampling], 1, xz)
             xps[:, d::oversampling] = l2
     else:
-        x = list(np.zeros(shape=(fl, 1), dtype=np.dtype('complex128'))) + list(x)
+        zs = np.zeros(shape=(1, fl), dtype=np.dtype('complex128'))
+        x = np.concatenate((zs, x), axis=1)
         # t = linspace(1, length(x)+1-1/oversampling-0.000001, round(length(x)*oversampling))
-        t = np.arange(1, len(x) + 1 - 0.001, 1/oversampling)
-        x = np.array(list(np.zeros((fl, 1))) + list(x) +
-                     list(np.zeros((fl + 1, 1))))
+        t = np.arange(1, x.shape[1] + 1 - 0.001, 1/oversampling)
+        x = np.concatenate(
+            (np.zeros((1, fl)), x, np.zeros((1, fl + 1))), axis=1)
+
         t = t + fl
-        xps = np.zeros(shape=(len(t), len(x[0])), dtype=np.dtype('complex128'))
+        xps = np.zeros(shape=(x.shape[0], len(t)),
+                       dtype=np.dtype('complex128'))
 
         p1 = np.round(t - fl).astype(int)
         p2 = np.round(t + fl).astype(int)
 
         for k in range(len(t)):
             t2 = np.arange(p1[k], p2[k] + 1) - t[k] + np.finfo(float).eps
-            a = (np.sin(np.pi * t2 * (1 - beta)) + 4 *
-                 beta * t2 * np.cos(np.pi * t2 * (1 + beta)))
-            b = (np.pi * t2 * (1 - (4 * beta * t2) ** 2))
-            c = x[p1[k]-1:p2[k], :]
-            xps[k, :] = np.matmul((a / b), c)
+            a = np.array([np.sin(np.pi * t2 * (1 - beta)) + 4 *
+                          beta * t2 * np.cos(np.pi * t2 * (1 + beta))])
+            b = np.array([np.pi * t2 * (1 - (4 * beta * t2) ** 2)])
+            c = np.transpose(x[:, p1[k]-1:p2[k]])
+            xps[:, k] = np.matmul((a / b), c)
 
     return xps
