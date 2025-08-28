@@ -1,4 +1,3 @@
-# if any troubles with the engine, please consult https://www.mathworks.com/help/matlab/matlab_external/install-the-matlab-engine-for-python.html and our readme
 import os
 
 import numpy as np

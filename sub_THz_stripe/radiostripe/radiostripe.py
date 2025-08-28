@@ -93,12 +93,14 @@ class RadioStripe(Component):
         """
         # Data is received by the active radio unit.
         y = self.radio_units[self.active_unit].receive(x, shifts)
+        y = self.fibers[self.active_unit].run(y)
+        yield y
 
         # Data passes through the radio units between the active unit and the central unit.
-        for ru in self.radio_units[:self.active_unit][::-1]:
+        for ru, fib in zip(self.radio_units[:self.active_unit-1][::-1], self.fibers[:self.active_unit-1][::-1]):
             y = ru.boost(y)
-
-        return y
+            y = fib.run(y)
+            yield y
 
     def calibrate(self, x, desired_amplifier_dbm):
         """This function sets the small-signal gain of the link amplifiers.

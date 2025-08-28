@@ -215,7 +215,7 @@ def randconst(rows, cols, m=16, type: str = 'QAM'):
                         raise ValueError('Bad constellation size.')
                     q = round(np.sqrt(m))
                     r = np.arange(1, q + 1) - (q + 1) / 2
-                    c = np.tile(r, (q,)) + 1j * np.tile(r, (q,))
+                    c = np.tile(r, q) + 1j * np.tile(r, q)
         case 'PSK':
             c = np.transpose([np.exp(1j * 2 * np.pi * np.arange(1, m+1) / m)])
         case 'SPIRAL':
@@ -228,11 +228,9 @@ def randconst(rows, cols, m=16, type: str = 'QAM'):
 
     rng = numpy.random.default_rng(seed=global_seed)
     i = rng.integers(len(c), size=(rows, cols))
-    if rows == 1:
-        i = i[0]
     x = c[i]
 
-    return np.array([x]), c
+    return x, c
 
 
 def rrc(t, beta):
