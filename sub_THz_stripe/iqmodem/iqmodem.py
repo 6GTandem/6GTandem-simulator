@@ -6,7 +6,7 @@ from scipy.signal import lfilter
 
 
 class IQModem(Component):
-    def __init__(self, iqi_coef: int = 0, iqi_filter: int = 1, iqi_delay_imbalance: int = 0,
+    def __init__(self, iqi_coef: int = 0, iqi_filter: list[int] = [1], iqi_delay_imbalance: int = 0,
                  dc_offset: int = 0, *args, **kwargs):
         self.iqi_coef = iqi_coef
         self.iqi_filter = iqi_filter
@@ -25,9 +25,9 @@ class IQModem(Component):
             case 'ideal':
                 yout = yin
             case 'filter':
-                d = (self.iqi_filter - 1) // 2
+                d = (len(self.iqi_filter) - 1) // 2
                 data = np.concatenate((np.conj(yin), np.zeros((1, d))), axis=1)
-                xc = lfilter(self.iqi_filter, 1, data)
+                xc = lfilter(self.iqi_filter, [1], data)
                 xc = xc[d:]
                 yout = yin + xc + self.dc_offset
             case 'static':

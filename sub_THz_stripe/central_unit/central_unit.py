@@ -1,3 +1,5 @@
+import numpy as np
+
 from ..oscillator.oscillator import Oscillator
 from ..iqmodem.iqmodem import IQModem
 from ..amplifier.amplifier import Amplifier

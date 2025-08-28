@@ -255,7 +255,7 @@ class IQModemModelTest(unittest.TestCase):
         iq = sub_THz_stripe.IQModem()
         iq.mode = 'filter'
         iq.iqi_coef = 2.1
-        iq.iqi_filter = 1
+        iq.iqi_filter = [1]
         iq.iqi_delay_imbalance = 1.8
         iq.dc_offset = 0.2
         iq_data = iq.run(input_data, phasor_data)
@@ -270,7 +270,7 @@ class IQModemModelTest(unittest.TestCase):
         iq = sub_THz_stripe.IQModem()
         iq.mode = 'filter'
         iq.iqi_coef = 2.1
-        iq.iqi_filter = 7
+        iq.iqi_filter = [7]
         iq.iqi_delay_imbalance = 1.8
         iq.dc_offset = 0.2
         iq_data = iq.run(input_data, phasor_data)
@@ -285,7 +285,7 @@ class IQModemModelTest(unittest.TestCase):
         iq = sub_THz_stripe.IQModem()
         iq.mode = 'static'
         iq.iqi_coef = 1.9
-        iq.iqi_filter = 3
+        iq.iqi_filter = [3]
         iq.iqi_delay_imbalance = 0.6
         iq.dc_offset = 2.4
         iq_data = iq.run(input_data, phasor_data)

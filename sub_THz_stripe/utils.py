@@ -130,10 +130,10 @@ def delay(x, n: list = [1], filter_length: int = 512):
                      1) - frac) * np.hanning(2 * filter_length + 1))
 
             y1 = np.concat([y1, np.zeros((rows, filter_length))], axis=1)
-            y1 = lfilter(h, 1, y1, axis=0)
+            y1 = lfilter(h, 1, y1)
             y1 = y1[:, y1.shape[1]-x.shape[1]:]
 
-        y[(i*rows):((i+1) * rows)] = y1
+        y[(i*rows):((i+1) * rows), :] = y1
 
     return y
 
