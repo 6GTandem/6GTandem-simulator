@@ -17,7 +17,7 @@ class CentralUnit(Component):
         >>> y = tx.run(x)
     """
 
-    def __init__(self, x, y, z, oscillator: Oscillator = None, iqmodem: IQModem = None, amplifier: Amplifier = None,
+    def __init__(self, x: float = 0.0, y: float = 0.0, z: float = 0.0, oscillator: Oscillator = None, iqmodem: IQModem = None, amplifier: Amplifier = None,
                  dac: Dac = None, delay: float = 0, nosamples: int = 1000, phasor: np.ndarray | None = None
                  , *args, **kwargs):
         """Instantiate a transmitter based on an oscillator, iqmodem, amplifier and dac.
@@ -72,10 +72,9 @@ class CentralUnit(Component):
             - For other waveform types, input symbols are processed through DAC, IQ modem, amplifier, and optional delay.
             - The function is designed to eventually generate RRC pulse-shaped QAM symbols internally, removing the need for 'x' as an input.
         """
+        xout = x
 
         if self.mode != "ideal":
-            xout = x
-
             phasor = self.phasor
             if phasor is None:
                 phasor = self.oscillator.run(xout.shape[1])
@@ -86,5 +85,6 @@ class CentralUnit(Component):
 
             if self.delay != 0:
                 xout = delay(xout, [self.delay])
+
 
         return xout

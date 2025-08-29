@@ -20,6 +20,7 @@ class Channel:
                  Nr_subcarriers: int = 1024, Nr_ue_antennas: int = 1, Nr_ru_antennas: int =1,
                  Nr_rus: int=5, Nr_stripes: int=2):
         # todo load all this based on csi
+        self.channelmodel = channelmodel
         self.Nr_stripes = Nr_stripes
         self.Nr_rus = Nr_rus
         self.Nr_ue_antennas = Nr_ue_antennas
@@ -28,8 +29,6 @@ class Channel:
 
         if channelmodel == 'subTHz-Rayleigh':
             self.csi = self.subTHz_Rayleigh()
-        elif channelmodel == 'sionna':
-            raise NotImplementedError("sionna channel model is not implemented yet.")
 
     @classmethod
     def from_sionna(cls, ue_coordinates):
@@ -56,13 +55,21 @@ class Channel:
         )
         ue_idx = int(matched_user['user_id'].values.item())
 
-        # todo based on UE idx load CSI
+        # based on UE idx load CSI
+        csi_file = f'channels_thz_ue_{ue_idx}.nc'
+        ds_sub_thz = xr.load_dataset(os.path.join(dir_path, "sionna_dataset", "sub_thz_channels", csi_file))
+        csi = ds_sub_thz["channel"].values
 
-        # todo based on CSI unpack all parameters needed for channel class instance
+        # extract needed params for Channel class
+        channelmodel = 'sionna'
+        Nr_subcarriers = ds_sub_thz.sizes['subcarrier']
+        Nr_ue_antennas = ds_sub_thz.sizes['rx_ant']
+        Nr_ru_antennas = ds_sub_thz.sizes['tx_ant']
+        Nr_rus = ds_sub_thz["RU_idx"].max().item() + 1
+        Nr_stripes = ds_sub_thz["stripe_idx"].max().item() + 1
 
-        # todo construct class
-        #channel = Channel()
-        return -1
+        channel = Channel(channelmodel, Nr_subcarriers, Nr_ue_antennas, Nr_ru_antennas, Nr_rus, Nr_stripes)
+        return channel
 
     def subTHz_Rayleigh(self, p: int = 1):
         """
@@ -109,7 +116,9 @@ class Channel:
         return Y_time
 
 
-    def transmit_dl(self, X_list, active_ru_per_stripe):
+    def transmit_dl(self, X_list, active_ru_per_stripe, waveform):
+
+        #todo debug and see if makes sens!!!
         """"
         transmit per stripe from a RU to UE
 
@@ -118,36 +127,56 @@ class Channel:
             Each element is either:
                 - None  (if no RU in that stripe transmits)
                 - np.ndarray of shape [Nr_ru_antennas x Nr_samples] for the chosen RU
-         active_ru_per_stripe (list of int or None):
-                    For each stripe, the index of the transmitting RU.
-                    If None, that stripe is silent.
          Returns:
                 np.ndarray: Received signal at UE of shape
                             [Nr_ue_antennas x Nr_subcarriers]
         """
 
-        Y_dl = np.zeros((self.Nr_ue_antennas, self.Nr_subcarriers), dtype=complex)
+        Y_f = np.zeros((waveform.n_ofdm_symbols, self.Nr_ue_antennas, self.Nr_subcarriers), dtype=complex)
 
         for stripe_idx, ru_idx in enumerate(active_ru_per_stripe):
             if ru_idx is None or X_list[stripe_idx] is None:
                 continue  # no transmission from this stripe
 
             # Time-domain transmit signal for this RU
-            X_time = X_list[stripe_idx]  # shape: [Nr_ru_antennas x Nr_samples]
+            X_time = X_list[stripe_idx]  # shape: nr_RU_antennas x n_ofdm_symbols x ( n_carriers * oversampling + cp_length)
 
             # FFT to frequency domain
-            X_f = np.fft.fft(X_time, n=self.Nr_subcarriers,
-                             axis=-1)  # [Nr_ru_antennas x Nr_subcarriers]
+            X_f = np.zeros((self.Nr_ru_antennas, waveform.n_ofdm_symbols, waveform.fft_size) ,dtype=complex)
+            for m in range(self.Nr_ru_antennas):
+                X_f[m, :, :] = waveform.ofdm_time_to_freq(X_time[m, :, :])  #n_ofdm_symbols x (n_carriers * oversampling)
 
             # select channel
             H = self.csi[stripe_idx, ru_idx, :, :, :]  # [Nr_ue_antennas x Nr_ru_antennas x Nr_subcarriers]
 
-            for k in range(self.Nr_subcarriers):
-                Y_dl[:, k] += H[:, :, k] @ X_f[:, k]
+            # apply the channel
+            for sym in range(waveform.n_ofdm_symbols):
+                for k in range(self.Nr_subcarriers):
+                    # X_f[:, sym, k] shape: [Nr_ru_antennas]
+                    # H[:, :, k] shape: [Nr_ue_antennas x Nr_ru_antennas]
+                    Y_f[sym, :, k] += H[:, :, k] @ X_f[:, sym, k] # sum because signals come from multiple strips
+
 
         # move back to time domain
-        Y_time = np.fft.ifft(Y_dl, n=self.Nr_subcarriers, axis=-1)
+        Y_time = waveform.ofdm_freq_to_time(Y_f)
         return Y_time
+
+    def __str__(self):
+        """
+        Return a human-readable string summary of the Channel object.
+        This is called when you do `print(channel)`.
+        """
+        info = (
+            f"Channel model          : {self.channelmodel}\n"
+            f"Number of stripes      : {self.Nr_stripes}\n"
+            f"Number of RUs          : {self.Nr_rus}\n"
+            f"Number of UE antennas  : {self.Nr_ue_antennas}\n"
+            f"Number of RU antennas  : {self.Nr_ru_antennas}\n"
+            f"Number of subcarriers  : {self.Nr_subcarriers}\n"
+        )
+        if hasattr(self, "csi"):
+            info += f"CSI shape              : {self.csi.shape}\n"
+        return info
 
 
 

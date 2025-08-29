@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+
 def spec(inputsignal, fs=1, N=1024, plot=False):
 
     num_signals = inputsignal.shape[0]
