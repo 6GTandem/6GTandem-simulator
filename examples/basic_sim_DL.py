@@ -1,67 +1,59 @@
 import os
-
+import sys
 import numpy as np
 import yaml
-from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
-from sub_THz_stripe.central_unit.central_unit import CentralUnit
-from sub_THz_stripe import utils
+from wireless_channel.waveforms import Waveform
 
+# Add project root to sys.path for utils import
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
+from wireless_channel.subTHz_channel import Channel
 from utils import spec
 from plotter import plotter
 
 
-config_file = "example.yml"
-
-dir_path = os.path.dirname(os.path.realpath(__file__))
-
-parent_dir = os.path.dirname(dir_path)
-
-config_path = os.path.join(parent_dir, "configurations")
-
-# Read the YAML file
-with open(os.path.join(config_path, config_file), "r", encoding="utf8") as file:
-    data = yaml.safe_load(file)
-
-
-def getGaussianSymbols(K=1, Ndata=5000, p=1):
-    """Doc
-    :param Ndata: number of symbols to generate
-    :param p: signal variance
-    :return: K x Ndata: symbols sampled from a complex gaussian with variance p
-
-    Note that this generates a variable which is drawn from a complex gaussian distribution with variance p
-    which is equivalent to a + bj with a and b sampled from a gaussian distribution with variance p/2.
-    Here we first sample a and b from a gaussian with mean 0 and variance 1, by multiplying with sqrt(p)/sqrt(2)
-    we obtain variance p/2 for both a and b, given that var(constant * X) = constant^2 var(X)
-    """
-    s = np.sqrt(p) / np.sqrt(2) * (np.random.randn(K, Ndata) +
-                                   1j * np.random.randn(K, Ndata))
-    return s.astype(np.complex64)
-
-
 if __name__ == "__main__":
-    # Define a radiostripe with a transmitter and nolinks links/repeaters. todo this should be loaded from config file
-    nolinks = 5
-    shifts = [0, 0, 0, 0]
-    rs = RadioStripe(nolinks, nolinks, active_unit=4)
+    # read config file
+    config_file = "office_config.yml"
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    config_path = os.path.join(dir_path, "..", "configurations")
+    with open(os.path.join(config_path, config_file), "r", encoding="utf8") as file:
+        config = yaml.safe_load(file)
 
-    nr_samples = 1000
-    waveform = "Gaussian-impaired" #"Gaussian-ideal"
-    cu = CentralUnit(nr_samples, waveform, True, True, True, True)
-    x = cu.run()
+    # plot full room with all stripes and all possible ue locations
+    plotter.plot_room(config)
+    print(f"{len(config['radio_stripes'])} stripes in the room")
 
-    print(f'x shape: {x.shape}')
-    print(f'{np.mean(np.abs(x**2))}')
+    # build all radio stripes
+    stripes = []
+    for stripe_cfg in config["radio_stripes"]:
+        stripes.append(RadioStripe.from_config_locations(stripe_cfg))
 
+    # continue with 3 stripes, separated by 1m
+    stripes = stripes[5:11:2]
+    plotter.plot_stripes(config, stripes)
 
-    Y = []
-    Y.append(x[0])
+    # construct waveform
+    waveform_config = config["waveform_config"]
+    freq_band_config = config['sub_thz']
+    wf = Waveform.from_config(waveform_config, freq_band_config)
+    print(wf)
 
-    # Run signal over stripe. The input is a vector N*1.
-    for cdata in rs.transmit(x, shifts):
-        Y.append(cdata[0])
+    # todo load channels
+    # select first ue position:
+    # todo this might be a bit backward, you might first need to interact with the
+    # channels dataset meta data to figure out which UE you want... but ok for now
+    ue_pos = config["ue_positions"][5]
+    channel = Channel.from_sionna(ue_pos)
+    print(f'ue postion: )------- {ue_pos=}')
 
-    spec(np.array(Y[:-1]), plot=True)
+    # todo build CU
 
-    rs.calibrate(x, 0)
+    # todo send over strip
+
+    # todo send over channel
+
+    # todo combine at UE (phase shifters, combiners?)
 

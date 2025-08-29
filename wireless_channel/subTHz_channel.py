@@ -1,4 +1,8 @@
 import numpy as np
+import os
+import xarray as xr
+
+
 class Channel:
     """
     Defines the wireless channel
@@ -12,9 +16,10 @@ class Channel:
     # todo: only works when num symples = num subcarriers
     # todo: account for oversampling, and multiple ofdm symbols => slice X_time into OFDM symbols of length Nr_subcarriers before FFT. Then apply channel per OFDM symbol.
 
-    def __init__(self, channelmodel: str = 'subTHz-Rayleigh',
+    def __init__(self, channelmodel: str = 'sionna',
                  Nr_subcarriers: int = 1024, Nr_ue_antennas: int = 1, Nr_ru_antennas: int =1,
                  Nr_rus: int=5, Nr_stripes: int=2):
+        # todo load all this based on csi
         self.Nr_stripes = Nr_stripes
         self.Nr_rus = Nr_rus
         self.Nr_ue_antennas = Nr_ue_antennas
@@ -26,6 +31,38 @@ class Channel:
         elif channelmodel == 'sionna':
             raise NotImplementedError("sionna channel model is not implemented yet.")
 
+    @classmethod
+    def from_sionna(cls, ue_coordinates):
+        """
+        Construct a Waveform from a configuration dictionary.
+
+        :param waveform_config: dictionary containing waveform parameters
+        :param freq_band_config: dictionary containing frequency band parameters (fc, bw, num_carriers)
+        :return: Waveform instance
+        """
+        # todo load locations metadata => ue_idx
+        config_file = "ue_locations_5681.nc"
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        config_path = os.path.join(dir_path, "..", "configurations")
+        ue_ds = xr.load_dataset(os.path.join(config_path, config_file))
+
+        # based on coordinates get UE idx
+        x, y, z = ue_coordinates['x'], ue_coordinates['y'], ue_coordinates['z']
+        matched_user = ue_ds.where(
+            (ue_ds['x'] == x) &
+            (ue_ds['y'] == y) &
+            (ue_ds['z'] == z),
+            drop=True
+        )
+        ue_idx = int(matched_user['user_id'].values.item())
+
+        # todo based on UE idx load CSI
+
+        # todo based on CSI unpack all parameters needed for channel class instance
+
+        # todo construct class
+        #channel = Channel()
+        return -1
 
     def subTHz_Rayleigh(self, p: int = 1):
         """

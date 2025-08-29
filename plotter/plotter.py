@@ -6,7 +6,7 @@ from itertools import product, combinations
 from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
 
 
-def plot_stripes(config:dict, stripes:list[RadioStripe]):
+def plot_stripes(config:dict, stripes:list):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
     ax.set_aspect("auto")
@@ -28,16 +28,36 @@ def plot_stripes(config:dict, stripes:list[RadioStripe]):
         if diff.count(0) == 2:
             ax.plot3D(*zip(s, e), color="k")
 
+    # keep references for legend
+    ru_handle = None
+    cu_handle = None
+
     # Plot the stripes
     for stripe in stripes:
         units = []
         for ru in stripe.radio_units:
             units.append([ru.x, ru.y, ru.z])
         units = np.array(units)
-        ax.scatter3D(units[:, 0], units[:, 1], units[:, 2], c="red")
+        ru_handle = ax.scatter3D(units[:, 0], units[:, 1], units[:, 2], c="red", label="Radio Unit") # radio units
         ax.plot3D(units[:, 0], units[:, 1], units[:, 2], color="red")
 
-        ax.scatter3D(stripe.central_unit.x, stripe.central_unit.y, stripe.central_unit.z, c="yellow")
+        cu_handle = ax.scatter3D(stripe.central_unit.x, stripe.central_unit.y, stripe.central_unit.z,
+                                 c="yellow", label="Central Unit") # central unit
+
+    # Add XYZ coordinate system at the origin
+    origin = np.array([[0, 0, 0]])
+    axes =  np.eye(3)  # unit vectors in x, y, z
+    ax.quiver(origin[:,0], origin[:,1], origin[:,2],
+              axes[:,0], axes[:,1], axes[:,2],
+              color=["k", "k", "k"], length=0.5, normalize=True)
+    ax.text(1, 0, 0, "X", color="k")
+    ax.text(0,  1, 0, "Y", color="k")
+    ax.text(0, 0, 1, "Z", color="k")
+
+    # Legend (only add once per type)
+    handles, labels = ax.get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))  # remove duplicates
+    ax.legend(by_label.values(), by_label.keys())
 
     plt.show()
 
