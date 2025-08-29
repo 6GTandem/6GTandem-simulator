@@ -6,7 +6,6 @@ from ..amplifier.amplifier import Amplifier
 from ..dac.dac import Dac
 from ..component.component import Component
 from ..utils import delay, randconst, pulseshape
-from ..waveform.waveforms import generate_gaussian_symbols
 
 
 class CentralUnit(Component):
