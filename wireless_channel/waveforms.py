@@ -157,6 +157,68 @@ class Waveform():
             ofdm_time.append(ofdm_symbol)
         return np.array(ofdm_time) # shape: n_ofdm_symbols x ( n_carriers * oversampling + cp_length)
 
+    def pad_subcarriers(self, subcarriers):
+        """
+        Pad zeros in the middle of the subcarriers to restore the oversampled FFT size.
+
+        Parameters
+        ----------
+        subcarriers : np.ndarray
+            Frequency-domain signal with n_carriers points.
+            Shape: (n_ofdm_symbols, n_carriers)
+
+        Returns
+        -------
+        np.ndarray
+            Frequency-domain signal with fft_size points (oversampled).
+            Shape: (n_ofdm_symbols, fft_size)
+        """
+        n_symbols, n_carriers = subcarriers.shape
+        if n_carriers != self.n_carriers:
+            raise ValueError(f"Input must have {self.n_carriers} carriers, got {n_carriers}.")
+
+        fft_size = self.fft_size
+        half = n_carriers // 2
+        freq_oversampled = np.zeros((n_symbols, fft_size), dtype=complex)
+
+        # Copy the first half to the beginning
+        freq_oversampled[:, :half] = subcarriers[:, :half]
+        # Copy the second half to the end
+        freq_oversampled[:, -half:] = subcarriers[:, half:]
+
+        return freq_oversampled
+
+
+    def extract_subcarriers(self, ofdm_freq_oversampled=None):
+        """
+        Extract the original subcarriers from the oversampled OFDM frequency-domain signal.
+
+        Parameters
+        ----------
+        ofdm_freq_oversampled : np.ndarray, optional
+            Frequency-domain OFDM signal with fft_size points.
+            Shape: (n_ofdm_symbols, fft_size)
+            If None, uses self.ofdm_freq.
+
+        Returns
+        -------
+        np.ndarray
+            Frequency-domain signal with n_carriers points only.
+            Shape: (n_ofdm_symbols, n_carriers)
+        """
+        if ofdm_freq_oversampled is None:
+            ofdm_freq_oversampled = self.ofdm_freq
+
+        n_symbols, fft_size = ofdm_freq_oversampled.shape
+        half = self.n_carriers // 2
+
+        # Take the first half and last half of the original carriers
+        subcarriers = np.zeros((n_symbols, self.n_carriers), dtype=complex)
+        subcarriers[:, :half] = ofdm_freq_oversampled[:, :half]
+        subcarriers[:, half:] = ofdm_freq_oversampled[:, -half:]
+
+        return subcarriers
+
     def awgn(self, signal, snr_dB):
         snr_linear = 10 ** (snr_dB / 10)
         power_signal = np.mean(np.abs(signal) ** 2)

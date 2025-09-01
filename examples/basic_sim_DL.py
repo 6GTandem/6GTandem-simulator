@@ -10,9 +10,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
 from sub_THz_stripe.central_unit.central_unit import CentralUnit
+from sub_THz_stripe.radio_unit.radio_unit import RadioUnit
 from wireless_channel.subTHz_channel import Channel
 from utils import spec
 from plotter import plotter
+
 
 
 if __name__ == "__main__":
@@ -22,6 +24,9 @@ if __name__ == "__main__":
     config_path = os.path.join(dir_path, "..", "configurations")
     with open(os.path.join(config_path, config_file), "r", encoding="utf8") as file:
         config = yaml.safe_load(file)
+
+    # todo load from config
+    nr_antennas = 4
 
     # plot full room with all stripes and all possible ue locations
     plotter.plot_room(config)
@@ -35,6 +40,8 @@ if __name__ == "__main__":
     # continue with 3 stripes, separated by 1m
     stripes = stripes[5:11:2]
     plotter.plot_stripes(config, stripes)
+    for stripe_idx, stripe in enumerate(stripes):
+        print(f'stripe: {stripe_idx}: {stripe}')
 
     # construct waveform class
     waveform_config = config["waveform_config"]
@@ -45,7 +52,7 @@ if __name__ == "__main__":
     # generate ofdm waveform in time domain
     bits = wf.generate_bits()
     qam = wf.qam_modulate()
-    ofdm_time = wf.ofdm_modulate()
+    ofdm_time = wf.ofdm_modulate() # shape: nr_ofdm_symb x (fftsize + cp length)
     wf.plot_psd(ofdm_time)
 
     # load channels
@@ -60,19 +67,60 @@ if __name__ == "__main__":
 
     # todo build CU
     cu = CentralUnit() # todo are these configs loadable?
-    ofdm_time_after_cu = cu.run(ofdm_time) # shape: nr_ofdm_symbols x fft_size
+    ofdm_time_after_cu = cu.run(ofdm_time) # shape: nr_ofdm_symbols x (fft_size + cp length)
     print(f' shape of ofdm timee: {ofdm_time_after_cu.shape}')
     print(f'np alike: {np.allclose(ofdm_time, ofdm_time_after_cu)}')
     # todo check with impairments if something changes
 
-    # todo send over stripe
+    # send over stripes
+    active_ru_idxes = [2, 4, 6]
+    print(f'transmitting over the stripe...')
+    iq_at_last_rus = []
+    for stripe_idx, stripe in enumerate(stripes):
+        print(f'stripe: {stripe_idx} - active ru {active_ru_idxes[stripe_idx]}')
+        # set active units
+        stripe.active_unit = active_ru_idxes[stripe_idx]
 
-    # todo send over channel
-    # todo when sent over stripe can be a list with multiple signals form multiple stripe
-    # also now only 1 antenna
-    active_ru_per_stripe = [4] # todo get from config (now just dummy get forth RU)
-    channel.transmit_dl([ofdm_time_after_cu], active_ru_per_stripe, wf)
-    # todo debug this
+        # transmit over stripe
+        iq_data = ofdm_time_after_cu.reshape(1, -1) # flatten to (1 x nr_iq_symbols)
+        #todo for now just same IQ data over all stripes, change if we want multiplexing
+        print(f'shape of iq data: {iq_data.shape}') # 1 d array
+        phase_shifts = [0, 0, 0, 0]
+        # loop over RUs
+        for ru_idx, iq_out in enumerate(stripe.transmit(iq_data, phase_shifts)):
+            print(f'ru {ru_idx}: iq out shape: {iq_out.shape}')
+            # store iq at active RU
+            if ru_idx == active_ru_idxes[stripe_idx]:
+                # reshape back to shape: nr_ofdm_symbols x (fft_size + cp_length)
+                iq_out_reshaped = iq_out.reshape(nr_antennas, wf.n_ofdm_symbols, -1)
+                print(f'reshaped after stripe: {iq_out_reshaped.shape}')
+                iq_at_last_rus.append(iq_out_reshaped)
 
-    # todo combine at UE (phase shifters, combiners?)
+
+    # send over channel
+    y_ue = channel.transmit_dl(iq_at_last_rus, active_ru_idxes, wf)
+    # expected shape nr_ue_antennas x nr_ofdm_symb x fft_length+cp_length
+    print(f'received signal at ue: {y_ue.shape}')
+
+    # RU that acts as UE => no couplers!
+    ue = RadioUnit(ue_pos['x'], ue_pos['y'], ue_pos['z'])
+    print(f'ue RU: {ue}')
+    shifts = [0, 0, 0, ]
+    y_combined_time = ue.receive(y_ue, shifts)
+    print(f'y combined shape: {y_combined_time.shape}')
+    y_combined_time = np.squeeze(y_combined_time, axis=0)
+
+    # convert back to f domain
+    y_combined_freq = wf.ofdm_time_to_freq(y_combined_time)
+
+    # ofdm to qam
+    y_qam = wf.ofdm_to_qam(y_combined_freq)
+    wf.plot_constellation(qam, y_qam)
+
+    # qam to bits
+    y_bits = wf.qam_to_bits(y_qam)
+
+    # compute ber
+    ber = wf.compute_ber(bits, y_bits)
+    print(f'BER: {ber}')
 

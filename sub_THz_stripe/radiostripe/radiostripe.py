@@ -78,7 +78,7 @@ class RadioStripe(Component):
     def transmit(self, x: np.ndarray, shifts: list[int]):
         """IQ-data coming from the central unit is passed through the radio stripe and transmitted by the active RU.
 
-        :param x: IQ-data in the form of a 1 dimensional array.
+        :param x: IQ-data in the form (1 x n_iq_samples).
         :param shifts: See `PhaseShifter`.
 
         :returns: A (n x m) matrix with the amount of rows n equal to the amount of splits (See `Splitter`).
@@ -236,3 +236,13 @@ class RadioStripe(Component):
             fibers.append(Fiber(length=length))
         print(f"Constructed {len(radio_units)} radio units and {len(fibers)} fibers.")
         return cls(radio_units=radio_units, fibers=fibers, central_unit=central_unit)
+
+    def __str__(self):
+        return (
+            f"RadioStripe(\n"
+            f"  Central Unit: {self.central_unit if self.central_unit else 'None'},\n"
+            f"  Active Unit Index: {self.active_unit},\n"
+            f"  Radio Units: {len(self.radio_units)},\n"
+            f"  Fibers: {len(self.fibers)}\n"
+            f")"
+        )

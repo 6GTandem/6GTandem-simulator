@@ -75,3 +75,19 @@ class RadioUnit(Component):
         odata = self.coupler_out.run(adata)
 
         return odata
+
+    def __str__(self):
+        """Human-readable summary of the Radio Unit."""
+        info = (
+            f"RadioUnit @ ({self.x}, {self.y}, {self.z})\n"
+            f"  Amplifier:      {self.amp.__class__.__name__}\n"
+            f"  Coupler In:     {self.coupler_in.__class__.__name__}\n"
+            f"  Coupler Out:    {self.coupler_out.__class__.__name__}\n"
+            f"  Splitter:       {self.splitter.__class__.__name__} "
+            f"(outputs={getattr(self.splitter, 'n_outputs', 'N/A')})\n"
+            f"  Combiner:       {self.combiner.__class__.__name__}\n"
+            f"  Phase Shifter:  {self.phase_shifter.__class__.__name__} "
+            f"(n={getattr(self.phase_shifter, 'n_elements', 'N/A')}, "
+            f"bits={getattr(self.phase_shifter, 'n_bits', 'N/A')})\n"
+        )
+        return info
