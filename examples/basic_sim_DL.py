@@ -33,28 +33,28 @@ if __name__ == "__main__":
     plotter.plot_room(config)
     logger.debug("%d stripes in the room", len(config['radio_stripes']))
 
-    # build all radio stripes
-    stripes = []
-    for stripe_cfg in config["radio_stripes"]:
-        stripes.append(RadioStripe.from_config_locations(stripe_cfg))
-
-    # continue with 3 stripes, separated by 1m
-    stripes = [stripes[5]]  # stripes[5:11:2]
-    plotter.plot_stripes(config, stripes)
-    for stripe_idx, stripe in enumerate(stripes):
-        logger.debug("stripe: %d: %s", stripe_idx, stripe)
-
     # construct waveform class
     waveform_config = config["waveform_config"]
-    freq_band_config = config['sub_thz']
+    freq_band_config = config["sub_thz"]
     wf = Waveform.from_config(waveform_config, freq_band_config)
     logger.debug("%s", wf)
 
     # generate ofdm waveform in time domain
     bits = wf.generate_bits()
     qam = wf.qam_modulate()
-    ofdm_time = wf.ofdm_modulate() # shape: nr_ofdm_symb x (fftsize + cp length)
+    ofdm_time = wf.ofdm_modulate()  # shape: nr_ofdm_symb x (fftsize + cp length)
     wf.plot_psd(ofdm_time)
+
+    # build all radio stripes
+    stripes = []
+    for stripe_cfg in config["radio_stripes"]:
+        stripes.append(RadioStripe.from_config_locations(stripe_cfg, wf))
+
+    # continue with 3 stripes, separated by 1m
+    stripes = [stripes[5]]  # stripes[5:11:2]
+    plotter.plot_stripes(config, stripes)
+    for stripe_idx, stripe in enumerate(stripes):
+        logger.debug("stripe: %d: %s", stripe_idx, stripe)
 
     # load channels
     ue_pos = config["ue_positions"][0]
@@ -74,7 +74,13 @@ if __name__ == "__main__":
         logger.debug('stripe: %d - active ru %d', stripe_idx, active_ru_idxes[stripe_idx])
         stripe.active_unit = active_ru_idxes[stripe_idx]
 
+        wf.plot_iq_time(ofdm_time_after_cu, title="Before reshape")
+
         iq_data = ofdm_time_after_cu.reshape(1, -1) # flatten to (1 x nr_iq_symbols)
+
+        iq_data = iq_data.reshape(wf.n_ofdm_symbols, -1)  # flatten to (1 x nr_iq_symbols)
+        wf.plot_iq_time(iq_data, title="After reshape")
+
         logger.debug('shape of iq data: %s', iq_data.shape) # 1 d array
         phase_shifts = [0, 0, 0, 0]
         for ru_idx, iq_out in enumerate(stripe.transmit(iq_data, phase_shifts)):
@@ -87,6 +93,8 @@ if __name__ == "__main__":
     y_ue = channel.transmit_dl(iq_at_last_rus, active_ru_idxes, wf)
     logger.debug('received signal at ue: %s', y_ue.shape)
 
+    wf.plot_iq_time(y_ue[0], title="After wireless channel")
+
     ue = RadioUnit(ue_pos['x'], ue_pos['y'], ue_pos['z'])
     logger.debug('ue RU: %s', ue)
     shifts = [0, 0, 0, 0]
@@ -94,13 +102,15 @@ if __name__ == "__main__":
     logger.debug('y combined shape: %s', y_combined_time.shape)
     y_combined_time = np.squeeze(y_combined_time, axis=0)
 
+    wf.plot_iq_time(y_combined_time, title="At UE")
+
     y_combined_freq = wf.ofdm_time_to_freq(y_combined_time)
-    # todo do we need equalization?
+    # # todo do we need equalization?
 
     y_qam = wf.ofdm_to_qam(y_combined_freq)
-    wf.plot_constellation(qam, y_qam)
+    # wf.plot_constellation(y_qam, symbols_tx=qam, title="RX'ed symbols")
 
     y_bits = wf.qam_to_bits(y_qam)
 
     ber = wf.compute_ber(bits, y_bits)
-    logger.debug('BER: %f', ber)
+    # logger.debug('BER: %f', ber)

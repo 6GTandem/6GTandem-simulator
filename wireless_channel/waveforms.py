@@ -98,15 +98,15 @@ class Waveform():
         self.qam_symbols = (I + 1j * Q) / np.sqrt((2 / 3) * (self.qam_order - 1))
         return self.qam_symbols
 
-    def plot_constellation(self):
-        if self.qam_symbols is None:
-            raise ValueError("QAM symbols not generated yet.")
-        plt.scatter(np.real(self.qam_symbols), np.imag(self.qam_symbols))
-        plt.title(f"{self.qam_order}-QAM Constellation")
-        plt.xlabel("I")
-        plt.ylabel("Q")
-        plt.axis("equal")
-        plt.show()
+    # def plot_constellation(self):
+    #     if self.qam_symbols is None:
+    #         raise ValueError("QAM symbols not generated yet.")
+    #     plt.scatter(np.real(self.qam_symbols), np.imag(self.qam_symbols))
+    #     plt.title(f"{self.qam_order}-QAM Constellation")
+    #     plt.xlabel("I")
+    #     plt.ylabel("Q")
+    #     plt.axis("equal")
+    #     plt.show()
 
     def ofdm_modulate(self):
         qam_symbols = self.qam_symbols
@@ -188,7 +188,6 @@ class Waveform():
 
         return freq_oversampled
 
-
     def extract_subcarriers(self, ofdm_freq_oversampled=None):
         """
         Extract the original subcarriers from the oversampled OFDM frequency-domain signal.
@@ -261,15 +260,22 @@ class Waveform():
         n_errors = np.sum(bits_tx != bits_rx)
         return n_errors / len(bits_tx)
 
-    def plot_constellation(self, symbols_tx, symbols_rx):
+    def plot_constellation(self, symbols_rx, title=None, symbols_tx=None):
         plt.scatter(np.real(symbols_rx), np.imag(symbols_rx), label='Rx symbols')
-        plt.scatter(np.real(symbols_tx), np.imag(symbols_tx), label='Tx symbols')
-        plt.title(f"{self.qam_order}-QAM Constellation")
+        if symbols_tx is not None:
+            plt.scatter(np.real(symbols_tx), np.imag(symbols_tx), label='Tx symbols')
+        plt.title(title if title is not None else f"{self.qam_order}-QAM Constellation")
         plt.xlabel("In-phase (I)")
         plt.ylabel("Quadrature (Q)")
         plt.axis("equal")
         plt.legend()
         plt.show()
+
+    def plot_iq_time(self, iq, title=None):
+        ywf = self.ofdm_time_to_freq(iq)
+        ywf = ywf.reshape(self.n_ofdm_symbols, -1)
+        qam = self.ofdm_to_qam(ywf)
+        self.plot_constellation(qam, title=title)
 
     def plot_psd(self, ofdm_time):
         if ofdm_time is None:

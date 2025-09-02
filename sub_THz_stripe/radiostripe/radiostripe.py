@@ -1,6 +1,7 @@
 import numpy as np
 
 from sub_THz_stripe.central_unit.central_unit import CentralUnit
+from wireless_channel.waveforms import Waveform
 
 from ..radio_unit.radio_unit import RadioUnit
 from ..fiber.fiber import Fiber
@@ -32,6 +33,7 @@ class RadioStripe(Component):
         fibers: int | list[Fiber] = 3,
         active_unit: int = 0,
         central_unit: CentralUnit = None,
+        waveform: Waveform = None,
         *args,
         **kwargs,
     ):
@@ -40,6 +42,7 @@ class RadioStripe(Component):
         """
         self._active_unit = 0
         self.central_unit = central_unit
+        self.wf = waveform
 
         self.radio_units = []
         if type(radio_units) is int:
@@ -88,11 +91,15 @@ class RadioStripe(Component):
         for i, (ru, fib) in enumerate(zip(
             self.radio_units[: self.active_unit+1], self.fibers[: self.active_unit+1]
         )):
+            self.wf.plot_iq_time(y, title=f"Before fiber {i}")
             y = fib.run(y)
+            self.wf.plot_iq_time(y, title=f"After fiber {i}")
             if i == self.active_unit:
                 y = ru.transmit(y, shifts)
+                self.wf.plot_iq_time(y[0], title=f"After Transmit {i}")
             else:
                 y = ru.boost(y)
+                self.wf.plot_iq_time(y, title=f"After Boost {i}")
             yield y
 
     def receive(self, x: np.ndarray, shifts: list[int]):
@@ -201,7 +208,7 @@ class RadioStripe(Component):
         rs.transmitter.oscillator.cfo = osc_cfg["cfo"]
 
     @classmethod
-    def from_config_locations(cls, stripe_config):
+    def from_config_locations(cls, stripe_config, wf):
         """
         Initialize a RadioStripe from a stripe configuration containing radio unit locations.
         Only location is considered; all other parameters are default.
@@ -235,7 +242,7 @@ class RadioStripe(Component):
             length = np.linalg.norm(p2 - p1)
             fibers.append(Fiber(length=length))
         print(f"Constructed {len(radio_units)} radio units and {len(fibers)} fibers.")
-        return cls(radio_units=radio_units, fibers=fibers, central_unit=central_unit)
+        return cls(radio_units=radio_units, fibers=fibers, central_unit=central_unit, waveform=wf)
 
     def __str__(self):
         ru_strs = []

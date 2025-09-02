@@ -2,7 +2,7 @@ waveform_config:
   waveform_type: "cp-ofdm"
   n_ofdm_symbols: 2
   qam_order: 4
-  oversampling_factor: 4
+  oversampling_factor: 1
   cp_length: 128
 stripe_config:
   N_RUs: 42
