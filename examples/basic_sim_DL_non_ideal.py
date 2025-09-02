@@ -1,33 +1,4 @@
 import os
-"""
-This script simulates a basic downlink transmission in a sub-THz radio stripe system using OFDM waveforms,
-assuming only IDEAL hardware (no hardware impairments are modeled).
-
-It loads configuration parameters from a YAML file, generates OFDM signals, models radio stripes and their transmission,
-applies a wireless channel, and evaluates the received signal at a user equipment (UE) location.
-
-Main steps:
-1. Loads simulation and waveform configuration from a YAML file.
-2. Plots the room layout and radio stripes.
-3. Generates OFDM waveform and visualizes its power spectral density.
-4. Constructs radio stripes and selects active radio units for transmission.
-5. Processes the OFDM signal through a central unit and radio stripes.
-6. Simulates transmission over a wireless channel to the UE.
-7. Receives and processes the signal at the UE, including reshaping and combining.
-8. Converts the received signal back to frequency domain, demodulates QAM symbols, and computes bit error rate (BER).
-9. Visualizes various stages of the signal (time domain, after channel, at UE).
-
-Dependencies:
-- numpy
-- matplotlib
-- yaml
-- Custom modules: sub_THz_stripe, wireless_channel, utils, plotter
-
-Note:
-- The script is intended to be run as a standalone module.
-- Only IDEAL hardware is simulated (no hardware impairments).
-- Some configuration loading and equalization steps are marked as TODO.
-"""
 import sys
 # Add project root to sys.path for local imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

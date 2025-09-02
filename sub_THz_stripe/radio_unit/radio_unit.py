@@ -7,11 +7,9 @@ from ..phase_shifter.phase_shifter import PhaseShifter
 
 
 class RadioUnit(Component):
-    def __init__(self, x,y,z, amp: Amplifier | None = None, coup_in: Coupler | None = None,
+    def __init__(self, x, y, z, amp: Amplifier | None = None, coup_in: Coupler | None = None,
                  coup_out: Coupler | None = None, splitter: Splitter | None = None, combiner: Combiner | None = None, pshift: PhaseShifter | None = None, *args, **kwargs):
         """Instantiate a Radio Unit.
-
-        TODO: Add Phase shifters and antennas to the RadioUnit.
 
         Radio unit:
         Description here.
@@ -53,28 +51,29 @@ class RadioUnit(Component):
         sdata = self.splitter.run(c1data)
         psdata = self.phase_shifter.run(sdata, shifts)
         adata = self.amp.run(psdata)
-        # TODO: Add Antenna
+        imdata = [c1data, sdata, psdata, adata]
         odata = adata
 
-        return odata
+        return odata, imdata
 
     def receive(self, idata, shifts: list[int]):
         # From the antennas to the input coupler.
-        # TODO: Add Antenna
         adata = self.amp.run(idata)
         psdata = self.phase_shifter.run(adata, shifts)
         cdata = self.combiner.run(psdata)
         odata = self.coupler_in.run(cdata)
+        imdata = [adata, psdata, cdata, odata]
 
-        return odata
+        return odata, imdata
 
     def boost(self, idata):
         # From the input coupler to the output coupler.
         c1data = self.coupler_in.run(idata)
         adata = self.amp.run(c1data)
         odata = self.coupler_out.run(adata)
+        imdata = [c1data, adata, odata]
 
-        return odata
+        return odata, imdata
 
     def __str__(self):
         """Human-readable summary of the Radio Unit."""

@@ -88,19 +88,18 @@ class RadioStripe(Component):
         """
         # Data comes from the central unit and first passes through the chain of RUs.
         y = x
-        for i, (ru, fib) in enumerate(zip(
-            self.radio_units[: self.active_unit+1], self.fibers[: self.active_unit+1]
-        )):
-            self.wf.plot_iq_time(y, title=f"Before fiber {i}")
+        imdata = [x]
+        for i, (ru, fib) in enumerate(zip(self.radio_units[: self.active_unit+1], self.fibers[: self.active_unit+1])):
             y = fib.run(y)
-            self.wf.plot_iq_time(y, title=f"After fiber {i}")
+            imdata.append(y)
             if i == self.active_unit:
-                y = ru.transmit(y, shifts)
-                self.wf.plot_iq_time(y[0], title=f"After Transmit {i}")
+                y, imd = ru.transmit(y, shifts)
+                imdata.extend(imd)
             else:
-                y = ru.boost(y)
-                self.wf.plot_iq_time(y, title=f"After Boost {i}")
-            yield y
+                y, imd = ru.boost(y)
+                imdata.extend(imd)
+
+        return y, imdata
 
     def receive(self, x: np.ndarray, shifts: list[int]):
         """Takes incoming IQ-data on the antennas and runs it along the stripe towards the central unit.
@@ -108,7 +107,7 @@ class RadioStripe(Component):
         :param x: IQ-data in the form of an (n x m) array with n the amount of rows being equal to the amount of splits.
         :param shifts: See `PhaseShifter`.
 
-        :returns: A single 1-dimensional IQ-data array.
+        :returns: A 1xm IQ-data array.
         """
         # Data is received by the active radio unit.
         y = self.radio_units[self.active_unit].receive(x, shifts)
