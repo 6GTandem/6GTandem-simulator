@@ -26,7 +26,7 @@ class Fiber(Component):
 
     @property
     def delay(self):
-        return self.length * 1.5 / 3e8 * self.fs
+        return self.length * 1.5 / 3e8 * self.fs #todo where do these nrs come from?
 
     @property
     def damping(self):

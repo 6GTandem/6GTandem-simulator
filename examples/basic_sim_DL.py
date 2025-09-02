@@ -38,7 +38,8 @@ if __name__ == "__main__":
         stripes.append(RadioStripe.from_config_locations(stripe_cfg))
 
     # continue with 3 stripes, separated by 1m
-    stripes = stripes[5:11:2]
+    stripes  #stripes[5:11:2]
+    stripes = [stripes[0]] # todo debug with just one stripe
     plotter.plot_stripes(config, stripes)
     for stripe_idx, stripe in enumerate(stripes):
         print(f'stripe: {stripe_idx}: {stripe}')
@@ -67,13 +68,14 @@ if __name__ == "__main__":
 
     # todo build CU
     cu = CentralUnit() # todo are these configs loadable?
+    print(f'CU: {cu}')
     ofdm_time_after_cu = cu.run(ofdm_time) # shape: nr_ofdm_symbols x (fft_size + cp length)
     print(f' shape of ofdm timee: {ofdm_time_after_cu.shape}')
     print(f'np alike: {np.allclose(ofdm_time, ofdm_time_after_cu)}')
     # todo check with impairments if something changes
 
     # send over stripes
-    active_ru_idxes = [2, 4, 6]
+    active_ru_idxes = [2]#[2, 4, 6]# todo debug with just one stripe
     print(f'transmitting over the stripe...')
     iq_at_last_rus = []
     for stripe_idx, stripe in enumerate(stripes):
@@ -112,6 +114,7 @@ if __name__ == "__main__":
 
     # convert back to f domain
     y_combined_freq = wf.ofdm_time_to_freq(y_combined_time)
+    # todo do we need equalization?
 
     # ofdm to qam
     y_qam = wf.ofdm_to_qam(y_combined_freq)
