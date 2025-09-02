@@ -12,7 +12,7 @@ def getdbm(x):
 
 def setdbm(x, dnew):
     if getdbm(x) > -100:
-        out = x * np.tile(10 ** ((dnew - getdbm(x)) / 20), len(x))
+        out = x * np.tile(10 ** ((dnew - getdbm(x)) / 20), x.shape[1])
     else:
         out = x
 
