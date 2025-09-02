@@ -52,7 +52,7 @@ if __name__ == "__main__":
         stripes.append(RadioStripe.from_config_locations(stripe_cfg, wf))
 
     # continue with 3 stripes, separated by 1m
-    stripes = [stripes[5]]  # stripes[5:11:2]
+    stripes = [stripes[5], stripes[6]]  # stripes[5:11:2]
     plotter.plot_stripes(config, stripes)
     for stripe_idx, stripe in enumerate(stripes):
         logger.debug("stripe: %d: %s", stripe_idx, stripe)
@@ -68,7 +68,7 @@ if __name__ == "__main__":
     logger.debug('shape of ofdm timee: %s', ofdm_time_after_cu.shape)
     logger.debug('np alike: %s', np.allclose(ofdm_time, ofdm_time_after_cu))
 
-    active_ru_idxes = [0]  # , 4, 6
+    active_ru_idxes = [2, 2]  # , 4, 6
     logger.debug('transmitting over the stripe...')
     iq_at_last_rus = []
     for stripe_idx, stripe in enumerate(stripes):
