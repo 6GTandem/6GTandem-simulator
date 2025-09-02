@@ -59,7 +59,12 @@ _To be populated_
 
 ### Fiber couplers (2.3.3)
 *Hardware measurements:*  
-_Requested_
+See folder: `/models/coupler/`
+Two S-parameter files are available. One measured with balun and one measured without.
+
+**External references:** [Add reference here]  
+**Measured by:** [Add name or institution here]  
+**Manufactured by:** [Add manufacturer here]
 
 ---
 
@@ -167,7 +172,13 @@ _To be populated_
 
 ### Antennas (5.3)
 *Hardware measurements:*  
-_To be populated_
+See folder: `/antenna/`
+The antenna consists of multiple antenna elements. Every element was measured separately and its pattern can be found
+in element1-4.csv. The combined pattern is available in combined.csv
+
+**External references:** [Add reference here]  
+**Measured by:** [Add name or institution here]  
+**Manufactured by:** [Add manufacturer here]
 
 ---
 
