@@ -15,7 +15,7 @@ class Splitter(Component):
 
         A fixed attenuation is applied based on the number of branches: 1 / num_splits
         """
-        attenuation = 1 / self.splits
+        attenuation = 1 / np.sqrt(self.splits)
 
         x = np.broadcast_to(x, (self.splits,) + x.shape).copy()
         return x * attenuation
