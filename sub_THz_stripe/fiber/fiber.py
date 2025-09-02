@@ -12,6 +12,10 @@ class Fiber(Component):
         :param length: Length of the fiber in meter.
         :param damping_per_meter: Damping in dB per meter.
         :param filter: The impulse response of the fiber.
+
+
+        If filter is used, the damping is included in the filter. In this case
+        set the damping_per_meter to zero.
         """
         self.length = length
         self.damping_per_meter = damping_per_meter
