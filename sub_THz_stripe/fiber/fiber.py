@@ -5,7 +5,7 @@ import numpy as np
 
 
 class Fiber(Component):
-    def __init__(self, length: float = 5, damping_per_meter: float = 5, fs: float = 15e9,
+    def __init__(self, length: float = 1, damping_per_meter: float = 0, fs: float = 15e9,
                  filter: np.ndarray = np.array([1]), *args, **kwargs):
         """Initialize a fiber component.
 
@@ -27,11 +27,13 @@ class Fiber(Component):
     def run(self, x):
         xout = delay(lfilter(self.filter, [1.0], x), [self.delay])
 
+        xout = lfilter(self.filter, [1.0], x)
+
         return xout * db_to_magnitude(self.damping)
 
     @property
     def delay(self):
-        return self.length * 1.5 / 3e8 * self.fs
+        return self.length * 1.5 / 3e8 * self.fs  # 1.5 / 3e8 speed of EM waves in fiber
 
     @property
     def damping(self):

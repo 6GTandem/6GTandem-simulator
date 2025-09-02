@@ -61,14 +61,18 @@ class Channel:
         match = ((self.csi["stripe_idx"] == stripe_idx) & (self.csi["RU_idx"] == ru_idx))
         if match.any():
             tx_index = match.argmax().item()  # first match
-            channel = self.csi["channel"].isel(tx_pair=tx_index).values
+            channel = (
+                self.csi["channel"].isel(tx_pair=tx_index).values
+            )
+            if channel.dtype.fields is not None and 'r' in channel.dtype.fields and 'i' in channel.dtype.fields:
+                channel = channel['r'] + 1j * channel['i']  # Convert to complex array
             return channel
         else:
             print("No matching stripe/RU combination found.")
             return None
 
     @classmethod
-    def from_sionna(cls, ue_coordinates):
+    def from_sionna(cls, ue_coordinates, debug=False):
         """
         Construct a Waveform from a configuration dictionary.
 
@@ -105,7 +109,12 @@ class Channel:
         Nr_stripes = ds_sub_thz["stripe_idx"].max().item() + 1
 
         channel = Channel(channelmodel, Nr_subcarriers, Nr_ue_antennas, Nr_ru_antennas, Nr_rus, Nr_stripes)
+
+
         channel.csi = ds_sub_thz
+
+        if debug:
+            channel.csi["channel"] = xr.ones_like(channel.csi["channel"])
 
         return channel
 
@@ -147,16 +156,14 @@ class Channel:
                 for k in range(self.Nr_subcarriers): # loop over carriers
                     Y_ul[s, r, :, k] = H_r[s, :, :, k].T @ X_f[s, :, k]
 
-
         # move back to time domain
         Y_time = np.fft.ifft(Y_ul, n=self.Nr_subcarriers, axis=-1)
 
         return Y_time
 
-
     def transmit_dl(self, X_list, active_ru_idxes, waveform):
 
-        #todo debug and see if makes sens!!!
+        # todo debug and see if makes sense!!!
         """"
         transmit per stripe from a RU to UE
 
@@ -182,13 +189,14 @@ class Channel:
             # FFT to frequency domain
             X_f = np.zeros((self.Nr_ru_antennas, waveform.n_ofdm_symbols, waveform.n_carriers) ,dtype=complex)
             for m in range(self.Nr_ru_antennas):
-                #n_ofdm_symbols x (n_carriers)
+                # n_ofdm_symbols x (n_carriers)
                 X_f[m, :, :] = waveform.extract_subcarriers(waveform.ofdm_time_to_freq(X_time[m, :, :]))
 
             # select channel
             H = self.get_csi(stripe_idx, active_ru_idx)  # [Nr_ue_antennas x Nr_ru_antennas x Nr_subcarriers]
-            #H = np.ones((4, 4, 1024)) # debug with all ones channel
+            # H = np.ones((4, 4, 1024))  # debug with all ones channel
             print(f'channel shape: {H.shape}')
+            print(f'USING ALL ONES CHANNEL TO DEBUG, SHOULD BE CHANGED BACK TO SIONNA CHANNEL')
 
             # apply the channel
             for sym in range(waveform.n_ofdm_symbols):
@@ -206,7 +214,6 @@ class Channel:
             Y_time = np.zeros((self.Nr_ue_antennas, waveform.n_ofdm_symbols, waveform.fft_size+waveform.cp_length), dtype=complex)
             for m in range(self.Nr_ue_antennas):
                 Y_time[m, :, :] = waveform.ofdm_freq_to_time(Y_f_padded[:, m, :])
-
 
         # # move back to time domain
         # Y_time = waveform.ofdm_freq_to_time(Y_f) # todo fix
@@ -229,11 +236,3 @@ class Channel:
         if hasattr(self, "csi"):
             info += f"CSI shape              : {self.csi.coords}\n"
         return info
-
-
-
-
-
-
-
-

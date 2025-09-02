@@ -88,3 +88,18 @@ class CentralUnit(Component):
 
 
         return xout
+
+    def __str__(self):
+        """Human-readable summary of the Central Unit."""
+        info = (
+            f"CentralUnit @ ({self.x}, {self.y}, {self.z})\n"
+            f"  Oscillator: {self.oscillator.__class__.__name__ if self.oscillator else 'None'}\n"
+            f"  IQ Modem:   {self.iqmodem.__class__.__name__ if self.iqmodem else 'None'}\n"
+            f"  Amplifier:  {self.amplifier.__class__.__name__ if self.amplifier else 'None'}\n"
+            f"    └─ mode:  {getattr(self, '_mode', 'not set')}\n"
+            f"  DAC:        {self.dac.__class__.__name__ if self.dac else 'None'}\n"
+            f"  Delay:      {self.delay}\n"
+            f"  Samples:    {self.nosamples}\n"
+            f"  Phasor:     {'set' if self.phasor is not None else 'None'}\n"
+        )
+        return info
