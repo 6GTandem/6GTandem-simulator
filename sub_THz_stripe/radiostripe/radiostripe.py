@@ -238,11 +238,17 @@ class RadioStripe(Component):
         return cls(radio_units=radio_units, fibers=fibers, central_unit=central_unit)
 
     def __str__(self):
+        ru_strs = []
+        for idx, ru in enumerate(self.radio_units):
+            ru_strs.append(f"RU{idx}: ({ru.x:.2f}, {ru.y:.2f}, {ru.z:.2f})")
+        fiber_strs = []
+        for idx, fiber in enumerate(self.fibers):
+            fiber_strs.append(f"Fiber{idx}: length={getattr(fiber, 'length', 'N/A'):.2f}m")
         return (
             f"RadioStripe(\n"
             f"  Central Unit: {self.central_unit if self.central_unit else 'None'},\n"
             f"  Active Unit Index: {self.active_unit},\n"
-            f"  Radio Units: {len(self.radio_units)},\n"
-            f"  Fibers: {len(self.fibers)}\n"
+            f"  Radio Units:\n    " + "\n    ".join(ru_strs) + "\n"
+            f"  Fibers:\n    " + "\n    ".join(fiber_strs) + "\n"
             f")"
         )

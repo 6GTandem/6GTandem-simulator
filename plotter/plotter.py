@@ -4,6 +4,7 @@ import numpy as np
 from itertools import product, combinations
 
 from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
+from utils import logger  # Import the project-wide logger
 
 
 def plot_stripes(config:dict, stripes:list):
@@ -28,7 +29,6 @@ def plot_stripes(config:dict, stripes:list):
         if diff.count(0) == 2:
             ax.plot3D(*zip(s, e), color="k")
 
-    # keep references for legend
     ru_handle = None
     cu_handle = None
 
@@ -38,15 +38,15 @@ def plot_stripes(config:dict, stripes:list):
         for ru in stripe.radio_units:
             units.append([ru.x, ru.y, ru.z])
         units = np.array(units)
-        ru_handle = ax.scatter3D(units[:, 0], units[:, 1], units[:, 2], c="red", label="Radio Unit") # radio units
+        ru_handle = ax.scatter3D(units[:, 0], units[:, 1], units[:, 2], c="red", label="Radio Unit")
         ax.plot3D(units[:, 0], units[:, 1], units[:, 2], color="red")
 
         cu_handle = ax.scatter3D(stripe.central_unit.x, stripe.central_unit.y, stripe.central_unit.z,
-                                 c="yellow", label="Central Unit") # central unit
+                                 c="yellow", label="Central Unit")
 
     # Add XYZ coordinate system at the origin
     origin = np.array([[0, 0, 0]])
-    axes =  np.eye(3)  # unit vectors in x, y, z
+    axes =  np.eye(3)
     ax.quiver(origin[:,0], origin[:,1], origin[:,2],
               axes[:,0], axes[:,1], axes[:,2],
               color=["k", "k", "k"], length=0.5, normalize=True)
@@ -54,9 +54,8 @@ def plot_stripes(config:dict, stripes:list):
     ax.text(0,  1, 0, "Y", color="k")
     ax.text(0, 0, 1, "Z", color="k")
 
-    # Legend (only add once per type)
     handles, labels = ax.get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))  # remove duplicates
+    by_label = dict(zip(labels, handles))
     ax.legend(by_label.values(), by_label.keys())
 
     plt.show()
@@ -66,8 +65,6 @@ def plot_room(config:dict):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
     ax.set_aspect("auto")
-
-    # PLOT THE ROOM
 
     points = []
 
@@ -84,20 +81,16 @@ def plot_room(config:dict):
             for z in [0, z_size]:
                 points.append([x,y,z])
 
-    # Convert to array
     points = np.array(points)
-
-    # Plot
     ax.scatter3D(points[:, 0], points[:, 1], points[:, 2],c="black")
     for s, e in combinations(points, 2):
-        # 2 coordinates should be the same for straight lines
         diff = list(s - e)
         if diff.count(0) == 2:
             ax.plot3D(*zip(s, e), color="k")
 
-    # PLOT THE STRIPES
+    # Plot the stripes
     for stripe in config["radio_stripes"]:
-        print(f"{len(config['radio_stripes'])} Stripes found")
+        logger.debug("%d Stripes found", len(config['radio_stripes']))
         units = []
         for unit in stripe:
             if "radio_unit" in unit:
@@ -105,18 +98,16 @@ def plot_room(config:dict):
                 if "x" in unit:
                     units.append([unit["x"], unit["y"], unit["z"]])
         units = np.array(units)
-        print(units)
+        logger.debug("Stripe units: %s", units)
         ax.scatter3D(units[:, 0], units[:, 1], units[:, 2], c="red")
         ax.plot3D(units[:, 0], units[:, 1], units[:, 2], color="red")
 
-    # PLOT THE UEs
+    # Plot the UEs
     ues = []
     for ue_pos in config["ue_positions"]:
-        print(f"{len(config['ue_positions'])} UEs found")
+        logger.debug("%d UEs found", len(config['ue_positions']))
         if "x" in ue_pos:
             ues.append([ue_pos["x"], ue_pos["y"], ue_pos["z"]])
     ues = np.array(ues)
-    print(ues)
+    logger.debug("UE positions: %s", ues)
     ax.scatter3D(ues[:, 0], ues[:, 1], ues[:, 2], c="blue", alpha=0.2)
-
-    plt.show()

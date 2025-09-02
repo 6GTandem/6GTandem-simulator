@@ -36,11 +36,11 @@ class RadioUnit(Component):
         if coup_out is None:
             self.coupler_out = Coupler()
         if splitter is None:
-            self.splitter = Splitter(4)
+            self.splitter = Splitter(num_splits=4)
         if combiner is None:
             self.combiner = Combiner()
         if pshift is None:
-            self.phase_shifter = PhaseShifter(4, 2)
+            self.phase_shifter = PhaseShifter(num_shifters=4, resolution=2)
         self.x = x
         self.y = y
         self.z = z
