@@ -4,6 +4,7 @@ import pandas as pd
 
 from sub_THz_stripe.coupler.coupler import Coupler
 from sub_THz_stripe.fiber.fiber import Fiber
+from sub_THz_stripe.amplifier.amplifier import Amplifier
 from scipy.signal import unit_impulse
 import matplotlib.pyplot as pyplt
 
@@ -127,3 +128,7 @@ if __name__ == "__main__":
 
     fig = plot_am_pm(8, fib.run, len(fib_freqs))
     fig.savefig("fiber_am_pm.pdf")
+
+    amp = Amplifier(gain=2, max_out_amp=1, noise_var=0, mode='poly3')
+    fig = plot_am_am(8, amp.run, 10000)
+    fig.savefig("amplifier_am_am.pdf")
