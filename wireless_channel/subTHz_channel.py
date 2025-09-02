@@ -196,6 +196,7 @@ class Channel:
             H = self.get_csi(stripe_idx, active_ru_idx)  # [Nr_ue_antennas x Nr_ru_antennas x Nr_subcarriers]
             # H = np.ones((4, 4, 1024))  # debug with all ones channel
             print(f'channel shape: {H.shape}')
+            print(f'USING ALL ONES CHANNEL TO DEBUG, SHOULD BE CHANGED BACK TO SIONNA CHANNEL')
 
             # apply the channel
             for sym in range(waveform.n_ofdm_symbols):

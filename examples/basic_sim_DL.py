@@ -62,6 +62,7 @@ if __name__ == "__main__":
     logger.debug("%s", channel)
 
     cu = CentralUnit() # todo are these configs loadable?
+    print(f'CU: {cu}')
     ofdm_time_after_cu = cu.run(ofdm_time) # shape: nr_ofdm_symbols x (fft_size + cp length)
     logger.debug('shape of ofdm timee: %s', ofdm_time_after_cu.shape)
     logger.debug('np alike: %s', np.allclose(ofdm_time, ofdm_time_after_cu))
@@ -94,6 +95,7 @@ if __name__ == "__main__":
     y_combined_time = np.squeeze(y_combined_time, axis=0)
 
     y_combined_freq = wf.ofdm_time_to_freq(y_combined_time)
+    # todo do we need equalization?
 
     y_qam = wf.ofdm_to_qam(y_combined_freq)
     wf.plot_constellation(qam, y_qam)
