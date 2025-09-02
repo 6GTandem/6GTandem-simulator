@@ -1,20 +1,23 @@
 import os
 import sys
+# Add project root to sys.path for local imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+###########################################
+# DO NOT MOVE ANY IMPORTS ABOVE THIS LINE #
+###########################################
+
+
 import numpy as np
 import yaml
-from wireless_channel.waveforms import Waveform
-
-# Add project root to sys.path for utils import
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
 from sub_THz_stripe.central_unit.central_unit import CentralUnit
 from sub_THz_stripe.radio_unit.radio_unit import RadioUnit
 from wireless_channel.subTHz_channel import Channel
+from wireless_channel.waveforms import Waveform
 from utils import spec
 from plotter import plotter
-
 
 
 if __name__ == "__main__":
@@ -123,4 +126,3 @@ if __name__ == "__main__":
     # compute ber
     ber = wf.compute_ber(bits, y_bits)
     print(f'BER: {ber}')
-
