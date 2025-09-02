@@ -36,5 +36,5 @@ def spec(inputsignal, fs=1, N=1024, plot=False):
         plt.ylabel("Power Spectral Density (dB/Hz)")
         plt.legend()
         plt.grid()
-        plt.show()
+        plt.show(block=True)
     return s

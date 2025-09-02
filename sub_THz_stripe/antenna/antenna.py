@@ -203,4 +203,4 @@ ax2.plot(angle90, gain90, label='ϕ=90°')
 ax2.grid(True)
 ax2.legend(loc='lower right')
 
-plt.show()
+plt.show(block=True)

@@ -80,4 +80,4 @@ class Environment:
             ax.scatter3D(user["x"], user["y"], user["z"], c="blue")
 
         # TODO add labels
-        plt.show()
+        plt.show(block=True)

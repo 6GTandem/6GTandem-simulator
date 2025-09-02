@@ -6,6 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # DO NOT MOVE ANY IMPORTS ABOVE THIS LINE #
 ###########################################
 
+from matplotlib import pyplot as plt
 import numpy as np
 import yaml
 
@@ -114,3 +115,4 @@ if __name__ == "__main__":
 
     ber = wf.compute_ber(bits, y_bits)
     # logger.debug('BER: %f', ber)
+    plt.show()

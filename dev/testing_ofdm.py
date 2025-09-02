@@ -47,7 +47,7 @@ def plot_constellation(qam_symbols, qam_order):
     plt.xlabel("In-phase (I)")
     plt.ylabel("Quadrature (Q)")
     plt.axis("equal")
-    plt.show()
+    plt.show(block=True)
 
 def get_ofdm_symbols(qam_symbols, n_carriers=1024, cp_length=16, oversampling=4):
     """Generate OFDM symbols with cyclic prefix and oversampling."""
@@ -205,7 +205,7 @@ if __name__ == '__main__':
     plt.ylabel("PSD (dB)")
     plt.title("OFDM PSD at RF")
     plt.grid(True)
-    plt.show()
+    plt.show(block=True)
     # note dip at DC is because there is no QAM symbol mapped to the DC carrier
 
     # send over awgn channel as test
@@ -233,4 +233,4 @@ if __name__ == '__main__':
     plt.ylabel("Quadrature (Q)")
     plt.axis("equal")
     plt.legend()
-    plt.show()
+    plt.show(block=True)

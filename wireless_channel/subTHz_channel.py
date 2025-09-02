@@ -108,16 +108,23 @@ class Channel:
 
         channel = Channel(channelmodel, Nr_subcarriers, Nr_ue_antennas, Nr_ru_antennas, Nr_rus, Nr_stripes)
 
-        csi_channel = ds_sub_thz["channel"] 
+        csi_channel = ds_sub_thz["channel"]
         if csi_channel.dtype.fields is not None and 'r' in csi_channel.dtype.fields and 'i' in csi_channel.dtype.fields:
-            csi_channel_y = csi_channel['r'] + 1j * csi_channel['i']  # Convert to complex array
-
-        ds_sub_thz["channel"] = csi_channel_y
+            # Convert structured array to complex
+            csi_complex = csi_channel.values['r'] + 1j * csi_channel.values['i']
+            # Put back as a DataArray, preserving dims and coords
+            ds_sub_thz["channel"] = xr.DataArray(
+                csi_complex,
+                dims=csi_channel.dims,
+                coords=csi_channel.coords,
+                name=csi_channel.name,
+                attrs=csi_channel.attrs
+            )
 
         channel.csi = ds_sub_thz
 
         if debug:
-            channel.csi["channel"] = xr.ones_like(channel.csi["channel"])*np.sqrt(1/2)
+            channel.csi["channel"] = xr.ones_like(channel.csi["channel"])
 
         return channel
 
@@ -201,14 +208,13 @@ class Channel:
             H = self.get_csi(stripe_idx, active_ru_idx)  # [Nr_ue_antennas x Nr_ru_antennas x Nr_subcarriers]
             # H = np.ones((4, 4, 1024))  # debug with all ones channel
             print(f'channel shape: {H.shape}')
-            print(f'USING ALL ONES CHANNEL TO DEBUG, SHOULD BE CHANGED BACK TO SIONNA CHANNEL')
 
             # apply the channel
             for sym in range(waveform.n_ofdm_symbols):
                 for k in range(self.Nr_subcarriers):
                     # X_f[:, sym, k] shape: [Nr_ru_antennas]
                     # H[:, :, k] shape: [Nr_ue_antennas x Nr_ru_antennas]
-                    Y_f[sym, :, k] += H[:, :, k] @ X_f[:, sym, k].reshape(-1,1) # sum because signals come from multiple stripes
+                    Y_f[sym, :, k] += H[:, :, k] @ X_f[:, sym, k] # sum because signals come from multiple stripes
 
             # pad zeros
             Y_f_padded = np.zeros((waveform.n_ofdm_symbols, self.Nr_ue_antennas, waveform.fft_size), dtype=complex)

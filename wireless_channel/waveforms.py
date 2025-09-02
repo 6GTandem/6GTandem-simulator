@@ -106,7 +106,7 @@ class Waveform():
     #     plt.xlabel("I")
     #     plt.ylabel("Q")
     #     plt.axis("equal")
-    #     plt.show()
+    #     plt.show(block=True)
 
     def ofdm_modulate(self):
         qam_symbols = self.qam_symbols
@@ -269,7 +269,7 @@ class Waveform():
         plt.ylabel("Quadrature (Q)")
         plt.axis("equal")
         plt.legend()
-        plt.show()
+        plt.show(block=True)
 
     def plot_iq_time(self, iq, title=None):
         ywf = self.ofdm_time_to_freq(iq)
@@ -294,4 +294,4 @@ class Waveform():
         plt.ylabel("PSD (dB)")
         plt.title("OFDM PSD at RF")
         plt.grid(True)
-        plt.show()
+        plt.show(block=True)

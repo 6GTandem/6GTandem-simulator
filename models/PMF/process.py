@@ -117,7 +117,7 @@ axes[2].axhline(y=0.5, color="r", linestyle="--", alpha=0.5)
 axes[2].axhline(y=0.9, color="r", linestyle="--", alpha=0.5)
 plt.legend()
 plt.tight_layout()
-plt.show()
+plt.show(block=True)
 
 
 # only look at the positive frequencies
@@ -140,7 +140,7 @@ plt.figure()
 # plt.plot(xf / 1e9, corrs1, "-o", label=f, markersize=0.1)
 plt.plot(corrs1, coh_diff / 1e9)
 plt.tight_layout()
-plt.show()
+plt.show(block=True)
 
 # pd.DataFrame({"x": corrs1, "y": coh_diff / 1e9}).to_csv(
 #     os.path.join(file_dir, "TXT/corr_diff.txt"), index=False

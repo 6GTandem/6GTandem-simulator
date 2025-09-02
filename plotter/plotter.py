@@ -58,7 +58,7 @@ def plot_stripes(config:dict, stripes:list):
     by_label = dict(zip(labels, handles))
     ax.legend(by_label.values(), by_label.keys())
 
-    plt.show()
+    plt.show(block=True)
 
 
 def plot_room(config:dict):
