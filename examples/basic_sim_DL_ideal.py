@@ -113,12 +113,11 @@ if __name__ == "__main__":
 
         logger.debug('shape of iq data: %s', iq_data.shape) # 1 d array
         phase_shifts = [0, 0, 0, 0]
-        for ru_idx, iq_out, imdata in enumerate(stripe.transmit(iq_data, phase_shifts)):
-            logger.debug('ru %d: iq out shape: %s', ru_idx, iq_out.shape)
-            if ru_idx == active_ru_idxes[stripe_idx]:
-                iq_out_reshaped = iq_out.reshape(nr_antennas, wf.n_ofdm_symbols, -1)
-                logger.debug('reshaped after stripe: %s', iq_out_reshaped.shape)
-                iq_at_last_rus.append(iq_out_reshaped)
+        iq_out, imdata = stripe.transmit(iq_data, phase_shifts)
+        logger.debug('iq out shape: %s', iq_out.shape)
+        iq_out_reshaped = iq_out.reshape(nr_antennas, wf.n_ofdm_symbols, -1)
+        logger.debug('reshaped after stripe: %s', iq_out_reshaped.shape)
+        iq_at_last_rus.append(iq_out_reshaped)
 
     y_ue = channel.transmit_dl(iq_at_last_rus, active_ru_idxes, wf)
     logger.debug('received signal at ue: %s', y_ue.shape)
