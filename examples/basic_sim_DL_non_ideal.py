@@ -86,19 +86,44 @@ if __name__ == "__main__":
         phase_shifts = [0, 0, 0, 0]
         iq_out, imdata = stripe.transmit(iq_data, phase_shifts)
 
-        fig, ax = plt.subplots()
-        ax.set_xlabel("Input amplitude |x|")
-        ax.set_ylabel("Output amplitude |y|")
+        # Make AM/AM plots for every stage in the stripe.
+        stages = ((len(imdata) - 6) // 4) + 1
+        plot_panes = stages
+        if stages % 2 != 0:
+            plot_panes += 1
+        fig, ax = plt.subplots(plot_panes // 2, 2)
+        ax[-1, 0].set_xlabel("Input amplitude |x|")
+        ax[-1, -1].set_xlabel("Input amplitude |x|")
+        ax[0, 0].set_ylabel("Output amplitude |y|")
+
         for i in range(len(imdata)-1):
-            # Make AM/AM plots
+            stage = (i // 4) + 1
+            if stage > stages:
+                stage = stages
+            # Extract the data going into the stage and coming out of it.
             x = imdata[i][0]
             y = imdata[i+1][0]
+            # If the matrix is three dimensional we need to extract one level deeper.
             if len(imdata[i].shape) >= 3:
                 x = imdata[i][0][0]
             if len(imdata[i+1].shape) >= 3:
                 y = imdata[i+1][0][0]
-            ax.plot(np.abs(x), np.abs(y), 'o', label=f"stage{i}")
-        ax.legend()
+            # Set the label correctly based on where we are on the stripe.
+            # We know if we are at the transmitting radio unit by looking how many stages
+            # there are still left to plot.
+            if stage >= stages:
+                label = tx_stages[i%5]
+                label += str(i // 5)
+            else:
+                label = booster_stages[i%4]
+                label += str(i // 4)
+            column = 0
+            if stage > (plot_panes // 2):
+                column = 1
+            row = (stage-1) % (plot_panes // 2)
+            ax[row, column].plot(np.abs(x), np.abs(y), 'o', label=label)
+            ax[row, column].legend()
+
         fig.savefig(f"am_am_plot_stripe{stripe_idx}.pdf")
 
         iq_out_reshaped = iq_out.reshape(nr_antennas, wf.n_ofdm_symbols, -1)
@@ -113,7 +138,7 @@ if __name__ == "__main__":
     ue = RadioUnit(ue_pos['x'], ue_pos['y'], ue_pos['z'])
     logger.debug('ue RU: %s', ue)
     shifts = [0, 0, 0, 0]
-    y_combined_time = ue.receive(y_ue, shifts)
+    y_combined_time, imdata = ue.receive(y_ue, shifts)
     logger.debug('y combined shape: %s', y_combined_time.shape)
     y_combined_time = np.squeeze(y_combined_time, axis=0)
 
