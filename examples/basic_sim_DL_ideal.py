@@ -47,9 +47,6 @@ from wireless_channel.waveforms import Waveform
 from utils import spec, logger
 from plotter import plotter
 
-booster_stages = ["fiber", "coupler", "amplifier", "coupler"]
-tx_stages = ["fiber", "coupler", "splitter", "shifter", "amplifier"]
-
 
 if __name__ == "__main__":
     # read config file
@@ -107,32 +104,21 @@ if __name__ == "__main__":
         logger.debug('stripe: %d - active ru %d', stripe_idx, active_ru_idxes[stripe_idx])
         stripe.active_unit = active_ru_idxes[stripe_idx]
 
+        wf.plot_iq_time(ofdm_time_after_cu, title="Before reshape")
+
         iq_data = ofdm_time_after_cu.reshape(1, -1) # flatten to (1 x nr_iq_symbols)
 
         iq_data = iq_data.reshape(wf.n_ofdm_symbols, -1)  # flatten to (1 x nr_iq_symbols)
+        wf.plot_iq_time(iq_data, title="After reshape")
 
         logger.debug('shape of iq data: %s', iq_data.shape) # 1 d array
         phase_shifts = [0, 0, 0, 0]
-        iq_out, imdata = stripe.transmit(iq_data, phase_shifts)
-
-        fig, ax = plt.subplots()
-        ax.set_xlabel("Input amplitude |x|")
-        ax.set_ylabel("Output amplitude |y|")
-        for i in range(len(imdata)-1):
-            # Make AM/AM plots
-            x = imdata[i][0]
-            y = imdata[i+1][0]
-            if len(imdata[i].shape) >= 3:
-                x = imdata[i][0][0]
-            if len(imdata[i+1].shape) >= 3:
-                y = imdata[i+1][0][0]
-            ax.plot(np.abs(x), np.abs(y), 'o', label=f"stage{i}")
-        ax.legend()
-        fig.savefig(f"am_am_plot_stripe{stripe_idx}.pdf")
-
-        iq_out_reshaped = iq_out.reshape(nr_antennas, wf.n_ofdm_symbols, -1)
-        logger.debug('reshaped after stripe: %s', iq_out_reshaped.shape)
-        iq_at_last_rus.append(iq_out_reshaped)
+        for ru_idx, iq_out, imdata in enumerate(stripe.transmit(iq_data, phase_shifts)):
+            logger.debug('ru %d: iq out shape: %s', ru_idx, iq_out.shape)
+            if ru_idx == active_ru_idxes[stripe_idx]:
+                iq_out_reshaped = iq_out.reshape(nr_antennas, wf.n_ofdm_symbols, -1)
+                logger.debug('reshaped after stripe: %s', iq_out_reshaped.shape)
+                iq_at_last_rus.append(iq_out_reshaped)
 
     y_ue = channel.transmit_dl(iq_at_last_rus, active_ru_idxes, wf)
     logger.debug('received signal at ue: %s', y_ue.shape)
