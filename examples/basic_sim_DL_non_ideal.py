@@ -7,12 +7,15 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ###########################################
 
 from matplotlib import pyplot as plt
+from scipy.signal import welch, get_window, unit_impulse
 import numpy as np
+import skrf as rf
 import yaml
 
 from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
 from sub_THz_stripe.central_unit.central_unit import CentralUnit
 from sub_THz_stripe.radio_unit.radio_unit import RadioUnit
+from sub_THz_stripe.coupler.coupler import Coupler
 from wireless_channel.subTHz_channel import Channel
 from wireless_channel.waveforms import Waveform
 from utils import spec, logger
@@ -49,10 +52,54 @@ if __name__ == "__main__":
     ofdm_time = wf.ofdm_modulate()  # shape: nr_ofdm_symb x (fftsize + cp length)
     wf.plot_psd(ofdm_time)
 
+    # Load the couplers S-parameter file
+    coupler_spars = rf.Network('models/coupler/with_balun.s2p')
+
+    # OFDM parameters
+    fc = 157.75e9  # center frequency
+    bw = 12.5e9   # bandwidth
+    num_subcarriers = 1024
+
+    # Subcarrier frequencies
+    ofdm_freqs = np.linspace(fc - bw/2, fc + bw/2, num_subcarriers)
+
+    # Extract frequency and S21 (transmission)
+    coup_freqs = coupler_spars.f
+    coup_s21 = coupler_spars.s[:, 1, 0]  # S21
+
+    # Interpolate magnitude and phase separately for better accuracy
+    coup_s21_mag = np.abs(coup_s21)
+    coup_s21_phase = np.angle(coup_s21)
+
+    interp_mag = np.interp(ofdm_freqs, coup_freqs, coup_s21_mag)
+    interp_phase = np.interp(ofdm_freqs, coup_freqs, coup_s21_phase)
+    coup_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
+
+    # Compute impulse response
+    impulse_response = np.fft.ifft(coup_s21_ofdm)
+
+    damping = 0  # in dB
+    cp = Coupler(damping, impulse_response)
+
+    # Confirm that the impulse response is correct by applying it to a unit impulse
+    x = unit_impulse(len(ofdm_freqs))
+    y = cp.run(np.array([x]))
+
+    fft = np.fft.fft(y[0])
+
+    fig, ax = plt.subplots()
+
+    ax.plot(ofdm_freqs / 1e9, 20*np.log10(np.abs(fft)))
+    ax.set_xlabel("Frequency [GHz]")
+    ax.set_ylabel("S-parameter [dB]")
+    fig.savefig("coupler_interpolated.pdf")
+
     # build all radio stripes
     stripes = []
     for stripe_cfg in config["radio_stripes"]:
         stripes.append(RadioStripe.from_config_locations(stripe_cfg, wf))
+    
+    stripes[5].radio_units[0].coupler_in = cp
 
     # continue with 3 stripes, separated by 1m
     stripes = [stripes[5], stripes[6]]  # stripes[5:11:2]
@@ -71,7 +118,7 @@ if __name__ == "__main__":
     logger.debug('shape of ofdm timee: %s', ofdm_time_after_cu.shape)
     logger.debug('np alike: %s', np.allclose(ofdm_time, ofdm_time_after_cu))
 
-    active_ru_idxes = [2, 2]  # , 4, 6
+    active_ru_idxes = [0, 0]  # , 4, 6
     logger.debug('transmitting over the stripe...')
     iq_at_last_rus = []
     for stripe_idx, stripe in enumerate(stripes):
@@ -92,6 +139,8 @@ if __name__ == "__main__":
         if stages % 2 != 0:
             plot_panes += 1
         fig, ax = plt.subplots(plot_panes // 2, 2)
+        if len(ax.shape) == 1:
+            ax = np.array([ax])
         ax[-1, 0].set_xlabel("Input amplitude |x|")
         ax[-1, -1].set_xlabel("Input amplitude |x|")
         ax[0, 0].set_ylabel("Output amplitude |y|")
@@ -126,6 +175,54 @@ if __name__ == "__main__":
 
         fig.savefig(f"am_am_plot_stripe{stripe_idx}.pdf")
 
+        # Make spec plots for every stage in the stripe.
+        fig, ax = plt.subplots(plot_panes // 2, 2)
+        if len(ax.shape) == 1:
+            ax = np.array([ax])
+        ax[-1, 0].set_xlabel("Normalized Frequency")
+        ax[-1, -1].set_xlabel("Normalized Frequency")
+        ax[0, 0].set_ylabel("Power Spectral Density (dB/Hz)")
+
+        for i in range(len(imdata)-1):
+            stage = (i // 4) + 1
+            if stage > stages:
+                stage = stages
+            N = 1024
+            fs = 1
+            # Extract the data going into the stage and coming out of it.
+            x = imdata[i+1][0]
+            # If the matrix is three dimensional we need to extract one level deeper.
+            if len(imdata[i+1].shape) >= 3:
+                x = imdata[i+1][0][0]
+
+            N = min(N, len(x) - 1)
+            window = get_window("hann", N)
+            f, Pxx = welch(
+                x,
+                fs=fs,
+                window=window,
+                nperseg=N,
+                return_onesided=False,
+                scaling="density",
+            )
+            s = 10 * np.log10(Pxx)
+            if stage >= stages:
+                label = tx_stages[i%5]
+                label += str(i // 5)
+            else:
+                label = booster_stages[i%4]
+                label += str(i // 4)
+            column = 0
+            if stage > (plot_panes // 2):
+                column = 1
+            row = (stage-1) % (plot_panes // 2)
+            ax[row, column].plot(
+                np.fft.fftshift(f), np.fft.fftshift(s), linewidth=2, label=label
+            )
+            ax[row, column].legend()
+
+        fig.savefig(f"spec_plot_stripe{stripe_idx}.pdf")
+
         iq_out_reshaped = iq_out.reshape(nr_antennas, wf.n_ofdm_symbols, -1)
         logger.debug('reshaped after stripe: %s', iq_out_reshaped.shape)
         iq_at_last_rus.append(iq_out_reshaped)
@@ -153,5 +250,5 @@ if __name__ == "__main__":
     y_bits = wf.qam_to_bits(y_qam)
 
     ber = wf.compute_ber(bits, y_bits)
-    # logger.debug('BER: %f', ber)
+    logger.debug('BER: %f', ber)
     plt.show()
