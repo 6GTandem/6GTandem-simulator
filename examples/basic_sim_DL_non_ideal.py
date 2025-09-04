@@ -105,6 +105,8 @@ if __name__ == "__main__":
         logger.debug('reshaped after stripe: %s', iq_out_reshaped.shape)
         iq_at_last_rus.append(iq_out_reshaped)
 
+    wf.plot_psd(iq_at_last_rus.flatten())
+
     y_ue = channel.transmit_dl(iq_at_last_rus, active_ru_idxes, wf)
     logger.debug('received signal at ue: %s', y_ue.shape)
 
