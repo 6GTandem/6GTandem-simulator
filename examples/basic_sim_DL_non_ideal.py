@@ -7,8 +7,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ###########################################
 
 from matplotlib import pyplot as plt
+import matplotlib as mpl
 from scipy.signal import welch, get_window, unit_impulse
 import numpy as np
+import pandas as pd
 import skrf as rf
 import yaml
 
@@ -16,6 +18,8 @@ from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
 from sub_THz_stripe.central_unit.central_unit import CentralUnit
 from sub_THz_stripe.radio_unit.radio_unit import RadioUnit
 from sub_THz_stripe.coupler.coupler import Coupler
+from sub_THz_stripe.fiber.fiber import Fiber
+from sub_THz_stripe.amplifier.amplifier import Amplifier
 from wireless_channel.subTHz_channel import Channel
 from wireless_channel.waveforms import Waveform
 from utils import spec, logger
@@ -24,6 +28,67 @@ from plotter import plotter
 booster_stages = ["fiber", "coupler", "amplifier", "coupler"]
 tx_stages = ["fiber", "coupler", "splitter", "shifter", "amplifier"]
 
+def plot_constellation(isymbols):
+    viridis = mpl.colormaps['viridis']        # or mpl.cm.get_cmap('viridis')
+    #c = viridis(np.linspace(0.0, 1.0, len(symbols)))
+
+    fig, ax = plt.subplots()
+    for symbols in isymbols:
+        ax.scatter(np.real(symbols), np.imag(symbols))
+    ax.set_xlabel("In-phase (I)")
+    ax.set_ylabel("Quadrature (Q)")
+    ax.axis("equal")
+    ax.legend()
+    
+    return fig
+
+def plot_iq_time(iq):
+    ywf = ofdm_time_to_freq(iq)
+    ywf = ywf.reshape(2, -1)
+    qam = ofdm_to_qam(ywf)
+    return plot_constellation(qam)
+
+def ofdm_to_qam(ofdm_freq_received):
+    qam_received = []
+    for sym in ofdm_freq_received:
+        half = (1024 * 4) // 2
+        row_symbols = np.concatenate([sym[:half], sym[-half:]])
+        qam_received.append(row_symbols)
+    return np.array(qam_received)
+
+def ofdm_time_to_freq(received_time):
+    n_fft = received_time.shape[1] - 128
+    ofdm_freq = []
+    for symbol in received_time:
+        time_no_cp = symbol[128:]
+        freq_domain = np.fft.fft(time_no_cp, n_fft)
+        ofdm_freq.append(freq_domain)
+    ofdm_freq = np.array(ofdm_freq)
+    return ofdm_freq # shape: n_ofdm_symbols x (n_carriers * oversampling)
+
+def ofdm_freq_to_time(ofdm_freq):
+    ofdm_time = []
+    n_fft = ofdm_freq.shape[1]
+    for symbol in ofdm_freq:
+        time_domain = np.fft.ifft(symbol, n_fft)
+        cp = time_domain[-128:]
+        ofdm_symbol = np.concatenate([cp, time_domain])
+        ofdm_time.append(ofdm_symbol)
+    return np.array(ofdm_time) # shape: n_ofdm_symbols x ( n_carriers * oversampling + cp_length)
+
+def plot_psd_over_time(time_samples, freqs):
+    nfft_spec = 4 * 1024
+    S_tx = np.fft.fftshift(np.fft.fft(time_samples[128:], n=nfft_spec))
+    PSD = 20 * np.log10(np.abs(S_tx) / np.max(np.abs(S_tx)) + 1e-12)
+
+    fig, ax = plt.subplots()
+    ax.plot(freqs, PSD)
+    ax.set_xlabel("Frequency (normalized to Fs)")
+    ax.set_ylabel("Magnitude (dB, normalized)")
+    ax.set_title("Time-domain spectrum of TX symbols (spike = CW interferer)")
+    ax.grid(True)
+
+    return fig
 
 if __name__ == "__main__":
     # read config file
@@ -58,7 +123,7 @@ if __name__ == "__main__":
     # OFDM parameters
     fc = 157.75e9  # center frequency
     bw = 12.5e9   # bandwidth
-    num_subcarriers = 1024
+    num_subcarriers = 1024 * 4
 
     # Subcarrier frequencies
     ofdm_freqs = np.linspace(fc - bw/2, fc + bw/2, num_subcarriers)
@@ -83,9 +148,11 @@ if __name__ == "__main__":
 
     # Confirm that the impulse response is correct by applying it to a unit impulse
     x = unit_impulse(len(ofdm_freqs))
+    prefx = np.zeros(128)
+    x = np.concatenate([prefx, x])
     y = cp.run(np.array([x]))
 
-    fft = np.fft.fft(y[0])
+    fft = np.fft.fft(y[0][128:])
 
     fig, ax = plt.subplots()
 
@@ -94,12 +161,38 @@ if __name__ == "__main__":
     ax.set_ylabel("S-parameter [dB]")
     fig.savefig("coupler_interpolated.pdf")
 
+    fiber_spars = pd.read_csv('models/PMF/with_tape/1m_not_taped.csv')
+
+    fib_freqs = fiber_spars["freq[Hz]"]
+    fib_ang_rad = np.deg2rad(fiber_spars["ang:Trc2_S21"])
+    fib_mag = 10 ** (fiber_spars["db:Trc2_S21"] / 20.0)
+    fib_s21 = fib_mag * np.cos(fib_ang_rad) + 1j * \
+        fib_mag * np.sin(fib_ang_rad)
+
+    # Interpolate magnitude and phase separately for better accuracy
+    fib_s21_mag = np.abs(fib_s21)
+    fib_s21_phase = np.angle(fib_s21)
+    
+    interp_mag = np.interp(ofdm_freqs, fib_freqs, fib_s21_mag)
+    interp_phase = np.interp(ofdm_freqs, fib_freqs, fib_s21_phase)
+    fib_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
+
+    # Compute impulse response
+    impulse_response = np.fft.ifft(fib_s21_ofdm)
+
+    fib = Fiber(1, 0, filter=impulse_response)
+
     # build all radio stripes
     stripes = []
     for stripe_cfg in config["radio_stripes"]:
         stripes.append(RadioStripe.from_config_locations(stripe_cfg, wf))
     
-    stripes[5].radio_units[0].coupler_in = cp
+    amp = Amplifier(2, max_out_amp=0.02, mode='poly3')
+    amp.set_noise_var(273.5 + 30, 160e9, 0)
+    
+    stripes[5].fibers[0] = fib
+    #stripes[5].radio_units[0].amp = amp
+    #stripes[5].radio_units[0].coupler_in = cp
 
     # continue with 3 stripes, separated by 1m
     stripes = [stripes[5], stripes[6]]  # stripes[5:11:2]
@@ -237,9 +330,13 @@ if __name__ == "__main__":
     shifts = [0, 0, 0, 0]
     y_combined_time, imdata = ue.receive(y_ue, shifts)
     logger.debug('y combined shape: %s', y_combined_time.shape)
-    y_combined_time = np.squeeze(y_combined_time, axis=0)
+    #y_combined_time = np.squeeze(y_combined_time, axis=0)
 
-    wf.plot_iq_time(y_combined_time, title="At UE")
+    fout = plot_iq_time(y_combined_time[0])
+    fout.savefig("iq_time_per_symbol.pdf")
+
+    fout = plot_psd_over_time(y_combined_time[0][0], ofdm_freqs)
+    fout.savefig("psd_over_time.pdf")
 
     y_combined_freq = wf.ofdm_time_to_freq(y_combined_time)
     # # todo do we need equalization?
