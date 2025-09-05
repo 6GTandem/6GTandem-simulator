@@ -7,7 +7,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ###########################################
 
 from matplotlib import pyplot as plt
-import matplotlib as mpl
 from scipy.signal import welch, get_window, unit_impulse
 import numpy as np
 import pandas as pd
@@ -22,73 +21,11 @@ from sub_THz_stripe.fiber.fiber import Fiber
 from sub_THz_stripe.amplifier.amplifier import Amplifier
 from wireless_channel.subTHz_channel import Channel
 from wireless_channel.waveforms import Waveform
-from utils import spec, logger
+from utils import logger
 from plotter import plotter
 
 booster_stages = ["fiber", "coupler", "amplifier", "coupler"]
 tx_stages = ["fiber", "coupler", "splitter", "shifter", "amplifier"]
-
-def plot_constellation(isymbols):
-    viridis = mpl.colormaps['viridis']        # or mpl.cm.get_cmap('viridis')
-    #c = viridis(np.linspace(0.0, 1.0, len(symbols)))
-
-    fig, ax = plt.subplots()
-    for symbols in isymbols:
-        ax.scatter(np.real(symbols), np.imag(symbols))
-    ax.set_xlabel("In-phase (I)")
-    ax.set_ylabel("Quadrature (Q)")
-    ax.axis("equal")
-    ax.legend()
-    
-    return fig
-
-def plot_iq_time(iq):
-    ywf = ofdm_time_to_freq(iq)
-    ywf = ywf.reshape(2, -1)
-    qam = ofdm_to_qam(ywf)
-    return plot_constellation(qam)
-
-def ofdm_to_qam(ofdm_freq_received):
-    qam_received = []
-    for sym in ofdm_freq_received:
-        half = (1024 * 4) // 2
-        row_symbols = np.concatenate([sym[:half], sym[-half:]])
-        qam_received.append(row_symbols)
-    return np.array(qam_received)
-
-def ofdm_time_to_freq(received_time):
-    n_fft = received_time.shape[1] - 128
-    ofdm_freq = []
-    for symbol in received_time:
-        time_no_cp = symbol[128:]
-        freq_domain = np.fft.fft(time_no_cp, n_fft)
-        ofdm_freq.append(freq_domain)
-    ofdm_freq = np.array(ofdm_freq)
-    return ofdm_freq # shape: n_ofdm_symbols x (n_carriers * oversampling)
-
-def ofdm_freq_to_time(ofdm_freq):
-    ofdm_time = []
-    n_fft = ofdm_freq.shape[1]
-    for symbol in ofdm_freq:
-        time_domain = np.fft.ifft(symbol, n_fft)
-        cp = time_domain[-128:]
-        ofdm_symbol = np.concatenate([cp, time_domain])
-        ofdm_time.append(ofdm_symbol)
-    return np.array(ofdm_time) # shape: n_ofdm_symbols x ( n_carriers * oversampling + cp_length)
-
-def plot_psd_over_time(time_samples, freqs):
-    nfft_spec = 4 * 1024
-    S_tx = np.fft.fftshift(np.fft.fft(time_samples[128:], n=nfft_spec))
-    PSD = 20 * np.log10(np.abs(S_tx) / np.max(np.abs(S_tx)) + 1e-12)
-
-    fig, ax = plt.subplots()
-    ax.plot(freqs, PSD)
-    ax.set_xlabel("Frequency (normalized to Fs)")
-    ax.set_ylabel("Magnitude (dB, normalized)")
-    ax.set_title("Time-domain spectrum of TX symbols (spike = CW interferer)")
-    ax.grid(True)
-
-    return fig
 
 if __name__ == "__main__":
     # read config file
@@ -331,7 +268,8 @@ if __name__ == "__main__":
         logger.debug('reshaped after stripe: %s', iq_out_reshaped.shape)
         iq_at_last_rus.append(iq_out_reshaped)
 
-    wf.plot_psd(iq_at_last_rus.flatten())
+    iq_at_last_rus = np.array(iq_at_last_rus)
+    wf.plot_psd(iq_at_last_rus)
 
     y_ue = channel.transmit_dl(iq_at_last_rus, active_ru_idxes, wf)
     logger.debug('received signal at ue: %s', y_ue.shape)
@@ -343,16 +281,19 @@ if __name__ == "__main__":
     shifts = [0, 0, 0, 0]
     y_combined_time, imdata = ue.receive(y_ue, shifts)
     logger.debug('y combined shape: %s', y_combined_time.shape)
-    #y_combined_time = np.squeeze(y_combined_time, axis=0)
 
-    fout = plot_iq_time(y_combined_time[0])
-    fout.savefig("iq_time_per_symbol.pdf")
+    labels = [f"Symbol{n}" for n in range(y_combined_time.shape[0])]
+    fout = plotter.plot_iq_per_symbol(y_combined_time, wf.cp_length, wf.n_carriers, labels)
+    fout.savefig("iq_per_symbol.pdf")
 
-    fout = plot_psd_over_time(y_combined_time[0][0], ofdm_freqs)
-    fout.savefig("psd_over_time.pdf")
+    fout = plotter.plot_iq_per_carrier(np.delete(y_combined_time, np.s_[1:], axis=0), wf.cp_length, wf.n_carriers)
+    fout.savefig("iq_per_carrier.pdf")
+
+    fout = plotter.plot_psd_per_symbol(y_combined_time, wf.fs)
+    fout.savefig("psd_per_symbol.pdf")
 
     y_combined_freq = wf.ofdm_time_to_freq(y_combined_time)
-    # # todo do we need equalization?
+    # TODO: Add equalization.
 
     y_qam = wf.ofdm_to_qam(y_combined_freq)
     # wf.plot_constellation(y_qam, symbols_tx=qam, title="RX'ed symbols")

@@ -1,10 +1,10 @@
-from mpl_toolkits.mplot3d import Axes3D
+from scipy.signal import welch, get_window
 import matplotlib.pyplot as plt
 import numpy as np
-from itertools import product, combinations
+from itertools import combinations
 
-from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
 from utils import logger  # Import the project-wide logger
+from utils import remove_oversampling, cp_ofdm_to_freq, ofdm_to_time
 
 
 def plot_stripes(config:dict, stripes:list):
@@ -111,3 +111,140 @@ def plot_room(config:dict):
     ues = np.array(ues)
     logger.debug("UE positions: %s", ues)
     ax.scatter3D(ues[:, 0], ues[:, 1], ues[:, 2], c="blue", alpha=0.2)
+
+
+def plot_constellation(iq_symbols: np.ndarray, labels: list[str] | None=None):
+    """Plot a constellation of IQ symbols.
+
+    Parameters
+    ----------
+    iq_symbols: np.ndarray
+        Array containing the IQ symbols.
+        Format nxm where n are different constellations plotted in different colors.
+    labels: list[str] | None
+        Labels for the different IQ constellations.
+        No legend is plotted if labels is None.
+
+    Returns
+    -------
+    matplotlib.Figure
+        A matplotlib Figure object containing the created plot.
+    """
+    fig, ax = plt.subplots()
+
+    const_labels = [""] * iq_symbols.shape[0]
+    if labels is not None:
+        const_labels = labels
+
+    # Loop over all the provided constellations.
+    for const, label in zip(iq_symbols, const_labels):
+        ax.scatter(np.real(const), np.imag(const), label=label)
+    
+    # Provide axis labels and a legend.
+    ax.set_xlabel("In-phase (I)")
+    ax.set_ylabel("Quadrature (Q)")
+    ax.axis("equal")
+    if labels is not None:
+        ax.legend()
+    
+    return fig
+
+def plot_iq_per_symbol(cp_ofdm_time_data: np.ndarray, prefix_length: int, n_carriers: int, labels: list[str] | None = None):
+    """Plot the IQ constellation for a set of CP-OFDM symbols.
+
+    Parameters
+    ----------
+    cpofdm_time_data: np.ndarray
+        The CP-OFDM signal in the time domain.
+    prefix_length: int
+        See `utils.cp_ofdm_to_freq`.
+    n_carriers: int
+        See `remove_oversampling`.
+    labels: list[str] | None
+        See `plot_constellation`.
+
+    Returns
+    -------
+        See `plot_constellation`.
+    """
+    # First transform the CP-OFDM signal from the time to the frequency domain using FFT.
+    ofdm_freqs = cp_ofdm_to_freq(cp_ofdm_time_data, prefix_length)
+    # Convert the frequency signal into QAM symbols which can be plotted in an IQ-plane.
+    ofdm_us = remove_oversampling(ofdm_freqs, n_carriers)
+
+    return plot_constellation(ofdm_us)
+
+def plot_iq_per_carrier(cp_ofdm_time_data: np.ndarray, prefix_length:int, n_carriers: int, labels: list[str] | None = None):
+    """Plot the IQ constellation of all CP-OFDM signal for one symbol.
+
+    Parameters
+    ----------
+    cpofdm_time_data: np.ndarray
+        The CP-OFDM signal in the time domain containing a single symbol.
+        Shape: 1xm
+    prefix_length: int
+        See `utils.cp_ofdm_to_freq`.
+    n_carriers: int
+        See `remove_oversampling`.
+    labels: list[str] | None
+        See `plot_constellation`.
+
+    Returns
+    -------
+        See `plot_constellation`.
+    """
+    # First transform the CP-OFDM signal from the time to the frequency domain using FFT.
+    ofdm_freqs = cp_ofdm_to_freq(cp_ofdm_time_data, prefix_length)
+    # Convert the frequency signal into QAM symbols which can be plotted in an IQ-plane.
+    ofdm_us = remove_oversampling(ofdm_freqs, n_carriers)
+
+    # Put every subcarrier in a single row so that it is plotted in a different color.
+    ofdm_carriers = ofdm_us.reshape(ofdm_us.shape[1], 1)
+
+    return plot_constellation(ofdm_carriers)
+
+def plot_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 1024):
+    """Create a Power Spectral Density Plot (PSD) for every symbol.
+
+    The PSD is calculated using Welch`s method with a 'hann' window.
+    
+    Parameters
+    ----------
+    time_signal: np.ndarray
+        Time domain signal for which to plot the PSD.
+    fs: float
+        Sampling frequency of time_signal.
+    N: int
+        Length of the segments used for the Welch method.
+    
+    Returns
+    -------
+    matplotlib.Figure
+        Matplotlib Figure object containing the plot.
+    """
+    fig, ax = plt.subplots()
+
+    # Loop over all the symbols and plot them.
+    for n, symbol in enumerate(time_signal):
+        N = min(N, len(symbol) - 1)
+        window = get_window("hann", N)
+        f, Pxx = welch(
+            symbol,
+            fs=fs,
+            window=window,
+            nperseg=N,
+            return_onesided=False,
+            scaling="density",
+        )
+        s = 10 * np.log10(Pxx)
+        freqs = np.fft.fftshift(f)
+        psd = np.fft.fftshift(s)
+
+        ax.plot(freqs, psd, label=f"Symbol{n+1}")
+
+    ax.set_xlabel("Normalized Frequency")
+    ax.set_ylabel("Power Spectral Density (dB/Hz)")
+    ax.legend()
+    ax.grid()
+
+    return fig
