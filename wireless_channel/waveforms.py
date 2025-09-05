@@ -277,7 +277,7 @@ class Waveform():
         qam = self.ofdm_to_qam(ywf)
         self.plot_constellation(qam, title=title)
 
-    def plot_psd(self, ofdm_time):
+    def plot_psd(self, ofdm_time=None):
         if ofdm_time is None:
             ofdm_time = self.ofdm_time
 
