@@ -164,23 +164,34 @@ if __name__ == "__main__":
     fiber_spars = pd.read_csv('models/PMF/with_tape/1m_not_taped.csv')
 
     fib_freqs = fiber_spars["freq[Hz]"]
-    fib_ang_rad = np.deg2rad(fiber_spars["ang:Trc2_S21"])
+    fib_phase = np.deg2rad(fiber_spars["ang:Trc2_S21"])
     fib_mag = 10 ** (fiber_spars["db:Trc2_S21"] / 20.0)
-    fib_s21 = fib_mag * np.cos(fib_ang_rad) + 1j * \
-        fib_mag * np.sin(fib_ang_rad)
-
-    # Interpolate magnitude and phase separately for better accuracy
-    fib_s21_mag = np.abs(fib_s21)
-    fib_s21_phase = np.angle(fib_s21)
+    fib_s21 = fib_mag * np.exp(1j * fib_phase)
     
-    interp_mag = np.interp(ofdm_freqs, fib_freqs, fib_s21_mag)
-    interp_phase = np.interp(ofdm_freqs, fib_freqs, fib_s21_phase)
+    interp_mag = np.interp(ofdm_freqs, fib_freqs, fib_mag)
+    interp_phase = np.interp(ofdm_freqs, fib_freqs, fib_phase)
     fib_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
 
     # Compute impulse response
     impulse_response = np.fft.ifft(fib_s21_ofdm)
 
-    fib = Fiber(1, 0, filter=impulse_response)
+    fib = Fiber(0, 0, filter=impulse_response)
+
+    # Confirm that the impulse response is correct by applying it to a unit impulse
+    x = unit_impulse(len(ofdm_freqs))
+    prefx = np.zeros(128)
+    x = np.concatenate([prefx, x])
+    y = fib.run(np.array([x]))
+
+    fft = np.fft.fft(y[0][128:])
+
+    fig, ax = plt.subplots()
+
+    #ax.plot(ofdm_freqs / 1e9, 20*np.log10(np.abs(fft)))
+    ax.plot(ofdm_freqs / 1e9, np.unwrap(np.angle(fib_s21_ofdm, deg=True)))
+    ax.set_xlabel("Frequency [GHz]")
+    ax.set_ylabel("S-parameter [dB]")
+    fig.savefig("fiber_interpolated.pdf")
 
     # build all radio stripes
     stripes = []
