@@ -21,7 +21,7 @@ from sub_THz_stripe.fiber.fiber import Fiber
 from sub_THz_stripe.amplifier.amplifier import Amplifier
 from wireless_channel.subTHz_channel import Channel
 from wireless_channel.waveforms import Waveform
-from utils import logger
+from utils import logger, calculate_psd_per_symbol
 from plotter import plotter
 
 booster_stages = ["fiber", "coupler", "amplifier", "coupler"]
@@ -179,28 +179,47 @@ if __name__ == "__main__":
         plot_panes = stages
         if stages % 2 != 0:
             plot_panes += 1
+
+        # Make spec plots for every stage in the stripe.
         fig, ax = plt.subplots(plot_panes // 2, 2)
+        fig2, ax2 = plt.subplots(plot_panes // 2, 2)
+
+        # Keep the array 1xm for simplicity.
         if len(ax.shape) == 1:
             ax = np.array([ax])
+        if len(ax2.shape) == 1:
+            ax2 = np.array([ax2])
+
+        # Set the proper axis labels.
         ax[-1, 0].set_xlabel("Input amplitude |x|")
         ax[-1, -1].set_xlabel("Input amplitude |x|")
         ax[0, 0].set_ylabel("Output amplitude |y|")
 
+        ax2[-1, 0].set_xlabel("Normalized Frequency")
+        ax2[-1, -1].set_xlabel("Normalized Frequency")
+        ax2[0, 0].set_ylabel("Power Spectral Density (dB/Hz)")
+
+        # Loop over the data from all the stages. (Stages are RUs and BUs.)
         for i in range(len(imdata)-1):
+            # Calculate at which stage we are.
             stage = (i // 4) + 1
+            # The last stage is a RU containing 5 components instead of 4. We need to
+            # compensate for this or we advance to an non-existing stage.
             if stage > stages:
                 stage = stages
+
             # Extract the data going into the stage and coming out of it.
             x = imdata[i][0]
-            y = imdata[i+1][0]
+            y = imdata[i+1]
             # If the matrix is three dimensional we need to extract one level deeper.
             if len(imdata[i].shape) >= 3:
                 x = imdata[i][0][0]
             if len(imdata[i+1].shape) >= 3:
-                y = imdata[i+1][0][0]
-            # Set the label correctly based on where we are on the stripe.
-            # We know if we are at the transmitting radio unit by looking how many stages
-            # there are still left to plot.
+                y = imdata[i+1][0]
+
+            # Calculate the PSD.
+            freq, psd = calculate_psd_per_symbol(y, wf.fs)
+
             if stage >= stages:
                 label = tx_stages[i%5]
                 label += str(i // 5)
@@ -211,58 +230,17 @@ if __name__ == "__main__":
             if stage > (plot_panes // 2):
                 column = 1
             row = (stage-1) % (plot_panes // 2)
-            ax[row, column].plot(np.abs(x), np.abs(y), 'o', label=label)
+
+            ax[row, column].plot(np.abs(x), np.abs(y[0]), 'o', label=label)
             ax[row, column].legend()
+
+            freq = np.fft.fftshift(freq[0])
+            psd = np.fft.fftshift(psd[0])
+            ax2[row, column].plot(freq, psd, label=label)
+            ax2[row, column].legend()
 
         fig.savefig(f"am_am_plot_stripe{stripe_idx}.pdf")
-
-        # Make spec plots for every stage in the stripe.
-        fig, ax = plt.subplots(plot_panes // 2, 2)
-        if len(ax.shape) == 1:
-            ax = np.array([ax])
-        ax[-1, 0].set_xlabel("Normalized Frequency")
-        ax[-1, -1].set_xlabel("Normalized Frequency")
-        ax[0, 0].set_ylabel("Power Spectral Density (dB/Hz)")
-
-        for i in range(len(imdata)-1):
-            stage = (i // 4) + 1
-            if stage > stages:
-                stage = stages
-            N = 1024
-            fs = 1
-            # Extract the data going into the stage and coming out of it.
-            x = imdata[i+1][0]
-            # If the matrix is three dimensional we need to extract one level deeper.
-            if len(imdata[i+1].shape) >= 3:
-                x = imdata[i+1][0][0]
-
-            N = min(N, len(x) - 1)
-            window = get_window("hann", N)
-            f, Pxx = welch(
-                x,
-                fs=fs,
-                window=window,
-                nperseg=N,
-                return_onesided=False,
-                scaling="density",
-            )
-            s = 10 * np.log10(Pxx)
-            if stage >= stages:
-                label = tx_stages[i%5]
-                label += str(i // 5)
-            else:
-                label = booster_stages[i%4]
-                label += str(i // 4)
-            column = 0
-            if stage > (plot_panes // 2):
-                column = 1
-            row = (stage-1) % (plot_panes // 2)
-            ax[row, column].plot(
-                np.fft.fftshift(f), np.fft.fftshift(s), linewidth=2, label=label
-            )
-            ax[row, column].legend()
-
-        fig.savefig(f"spec_plot_stripe{stripe_idx}.pdf")
+        fig2.savefig(f"spec_plot_stripe{stripe_idx}.pdf")
 
         iq_out_reshaped = iq_out.reshape(nr_antennas, wf.n_ofdm_symbols, -1)
         logger.debug('reshaped after stripe: %s', iq_out_reshaped.shape)

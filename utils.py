@@ -1,6 +1,8 @@
 import logging
 import numpy as np
 
+from scipy.signal import welch, get_window
+
 # Project-wide logger instance
 logger = logging.getLogger("6GTandem")
 logger.setLevel(logging.DEBUG)
@@ -95,3 +97,43 @@ def ofdm_to_time(ofdm_freqs: np.ndarray, prefix_length: int):
         cp_ofdm_time.append(ofdm_symbol)
 
     return np.array(cp_ofdm_time)
+
+def calculate_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 1024):
+    """Calculate the Power Spectral Density Plot (PSD) for every symbol.
+
+    The PSD is calculated using Welch`s method with a 'hann' window.
+    
+    Parameters
+    ----------
+    time_signal: np.ndarray
+        Time domain signal for which to plot the PSD.
+    fs: float
+        Sampling frequency of time_signal.
+    N: int
+        Length of the segments used for the Welch method.
+    
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Array containing the calculated PSD.
+    """
+    # Loop over all the symbols and calculate their PSD.
+    psds = []
+    freqs = []
+    for symbol in time_signal:
+        N = min(N, len(symbol) - 1)
+        window = get_window("hann", N)
+        f, Pxx = welch(
+            symbol,
+            fs=fs,
+            window=window,
+            nperseg=N,
+            return_onesided=False,
+            scaling="density",
+        )
+        psd = 10 * np.log10(Pxx)
+
+        freqs.append(f)
+        psds.append(psd)
+    
+    return np.array(freqs), np.array(psds)

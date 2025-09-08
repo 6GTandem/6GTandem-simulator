@@ -1,10 +1,9 @@
-from scipy.signal import welch, get_window
 import matplotlib.pyplot as plt
 import numpy as np
 from itertools import combinations
 
 from utils import logger  # Import the project-wide logger
-from utils import remove_oversampling, cp_ofdm_to_freq, ofdm_to_time
+from utils import remove_oversampling, cp_ofdm_to_freq, ofdm_to_time, calculate_psd_per_symbol
 
 
 def plot_stripes(config:dict, stripes:list):
@@ -213,9 +212,9 @@ def plot_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 1024):
     time_signal: np.ndarray
         Time domain signal for which to plot the PSD.
     fs: float
-        Sampling frequency of time_signal.
+        See `utils.calculate_psd_per_symbol`.
     N: int
-        Length of the segments used for the Welch method.
+        See `utils.calculate_psd_per_symbol`.
     
     Returns
     -------
@@ -225,22 +224,12 @@ def plot_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 1024):
     fig, ax = plt.subplots()
 
     # Loop over all the symbols and plot them.
-    for n, symbol in enumerate(time_signal):
-        N = min(N, len(symbol) - 1)
-        window = get_window("hann", N)
-        f, Pxx = welch(
-            symbol,
-            fs=fs,
-            window=window,
-            nperseg=N,
-            return_onesided=False,
-            scaling="density",
-        )
-        s = 10 * np.log10(Pxx)
-        freqs = np.fft.fftshift(f)
-        psd = np.fft.fftshift(s)
+    f, s = calculate_psd_per_symbol(time_signal, fs, N)
+    for n, (freq, psd) in enumerate(zip(f, s)):
+        freq_shifted = np.fft.fftshift(freq)
+        psd_shifted = np.fft.fftshift(psd)
 
-        ax.plot(freqs, psd, label=f"Symbol{n+1}")
+        ax.plot(freq_shifted, psd_shifted, label=f"Symbol{n+1}")
 
     ax.set_xlabel("Normalized Frequency")
     ax.set_ylabel("Power Spectral Density (dB/Hz)")
