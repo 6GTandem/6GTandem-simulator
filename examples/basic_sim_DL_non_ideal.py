@@ -55,7 +55,9 @@ if __name__ == "__main__":
     wf.plot_psd(ofdm_time)
 
     # Load the couplers S-parameter file
-    coupler_spars = rf.Network('models/coupler/with_balun.s2p')
+    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # todo check if still works in vscode
+    coupler_spars = rf.Network(os.path.join(base_path, 'models/coupler/with_balun.s2p')) #rf.Network('models/coupler/with_balun.s2p')
+
 
     # OFDM parameters
     fc = 157.75e9  # center frequency
@@ -86,7 +88,7 @@ if __name__ == "__main__":
     fig = plotter.verify_impulse_response(cp.run, ofdm_freqs)
     fig.savefig("coupler_interpolated.pdf")
 
-    fiber_spars = pd.read_csv('models/PMF/with_tape/1m_not_taped.csv')
+    fiber_spars = pd.read_csv(os.path.join(base_path, 'models/PMF/with_tape/1m_not_taped.csv'))
 
     fib_freqs = fiber_spars["freq[Hz]"]
     fib_phase = np.deg2rad(fiber_spars["ang:Trc2_S21"])

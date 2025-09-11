@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import welch
+from scipy.interpolate import interp1d
 
 class Waveform():
     """Definition of a waveform
@@ -32,6 +33,25 @@ class Waveform():
             self.fs = self.BW * self.oversampling_factor
             self.fft_size = self.n_carriers * self.oversampling_factor
 
+            # Pilot configuration
+            self.pilot_spacing = kwargs.get("pilot_spacing", 16)  # every 16th carrier is a pilot by default
+            #self.pilot_symbol = kwargs.get("pilot_symbol", (1 + 1j))
+            self.pilot_symbol = kwargs.get("pilot_symbol", (1 + 1j) / np.sqrt((2 / 3) * (self.qam_order - 1)))
+            self.pilot_mode = kwargs.get("pilot_mode", "interleaved") # "interleaved" = pilots interleaved every pilot_spacing
+            # 'block' = first OFDM symbol is full pilot (all carriers), subsequent symbols are pure data
+
+            # note that interleaved pilots might not work if the channel is very uncorrelated accross the carries
+            # this is due to the ineffectiveness of the interpolation between the data and pilot carriers
+            # as a solution block pilots can be used, where the first OFDM symbol is all pilots, and the remaining symbols are pure data
+
+            if self.pilot_mode not in ("interleaved", "block"):
+                raise ValueError("pilot_mode must be 'interleaved or 'block'")
+
+            # derived
+            self.pilot_indices = np.arange(0, self.n_carriers, self.pilot_spacing)
+            self.n_pilots = len(self.pilot_indices)
+            self.data_carriers = np.setdiff1d(np.arange(self.n_carriers), self.pilot_indices)
+
         else:
             raise ValueError(f"Unsupported waveform type: {self.waveform_type}")
 
@@ -51,7 +71,10 @@ class Waveform():
                  oversampling_factor=waveform_config['oversampling_factor'],
                  cp_length=waveform_config['cp_length'],
                  BW=freq_band_config['bw'],
-                 fc=freq_band_config['fc']
+                 fc=freq_band_config['fc'],
+                 pilot_spacing= waveform_config['pilot_spacing'],
+                 pilot_symbol= waveform_config['pilot_symbol_re'] + 1j * waveform_config['pilot_symbol_imag'],
+                 pilot_mode = waveform_config['pilot_mode']
                  )
         return wf
 
@@ -68,6 +91,9 @@ class Waveform():
                 f"  Bandwidth: {self.BW/1e9:.2f} GHz\n"
                 f"  Carrier frequency: {self.fc/1e9:.2f} GHz\n"
                 f"  Sampling frequency: {self.fs/1e9:.2f} GHz\n"
+                f" Pilot mode: {self.pilot_mode}"
+                f" Pilot spacing: {self.pilot_spacing}\n"
+                f" Number of pilots: {self.n_pilots}\n"
             )
         return info
 
@@ -75,7 +101,17 @@ class Waveform():
     # OFDM methods
     # ------------------------
     def generate_bits(self):
-        num_bits = self.n_ofdm_symbols * self.n_carriers * int(np.log2(self.qam_order))
+        # number of data carriers per OFDM symbol depends on pilot_mode
+        if self.pilot_mode == "interleaved":
+            data_per_symbol = self.n_carriers - self.n_pilots
+            n_data_symbols = self.n_ofdm_symbols
+        else:  # block pilots: first symbol all pilots, remaining symbols are data
+            if self.n_ofdm_symbols < 2:
+                raise ValueError("For block pilot mode you need at least 2 OFDM symbols (one pilot + data).")
+            data_per_symbol = self.n_carriers
+            n_data_symbols = self.n_ofdm_symbols - 1
+
+        num_bits = n_data_symbols * data_per_symbol * int(np.log2(self.qam_order))
         self.bits = np.random.randint(0, 2, num_bits)
         return self.bits
 
@@ -98,41 +134,108 @@ class Waveform():
         self.qam_symbols = (I + 1j * Q) / np.sqrt((2 / 3) * (self.qam_order - 1))
         return self.qam_symbols
 
-    # def plot_constellation(self):
-    #     if self.qam_symbols is None:
-    #         raise ValueError("QAM symbols not generated yet.")
-    #     plt.scatter(np.real(self.qam_symbols), np.imag(self.qam_symbols))
-    #     plt.title(f"{self.qam_order}-QAM Constellation")
-    #     plt.xlabel("I")
-    #     plt.ylabel("Q")
-    #     plt.axis("equal")
-    #     plt.show(block=True)
+    def _map_data_and_pilots(self, data_symbols):
+        """Given a 1D array of data QAM symbols of length data_per_symbol, return a full-length
+        array of length n_carriers with pilots inserted at pilot_indices and data filled in the
+        remaining carriers in order.
+        """
+
+        grid = np.zeros(self.n_carriers, dtype=complex)
+        grid[self.pilot_indices] = self.pilot_symbol
+        grid[self.data_carriers] = data_symbols
+        return grid
 
     def ofdm_modulate(self):
-        qam_symbols = self.qam_symbols
-        n_symbols = len(qam_symbols) // self.n_carriers
-        qam_symbols = qam_symbols[:n_symbols * self.n_carriers]
-        qam_matrix = qam_symbols.reshape((n_symbols, self.n_carriers))
+        if not hasattr(self, 'qam_symbols') or self.qam_symbols is None:
+            raise ValueError("QAM symbols not generated yet.")
+
+        # compute how many data symbols we expect depending on pilot mode
+        if self.pilot_mode == "interleaved":
+            data_per_symbol = self.n_carriers - self.n_pilots
+            n_symbols = len(self.qam_symbols) // data_per_symbol
+            if n_symbols == 0:
+                raise ValueError("Not enough QAM symbols for a single OFDM symbol with the current pilot spacing.")
+            self.n_ofdm_symbols = n_symbols
+            qam_symbols = self.qam_symbols[:n_symbols * data_per_symbol]
+            qam_matrix = qam_symbols.reshape((n_symbols, data_per_symbol))
+        else:  # block mode: first OFDM symbol is pilots, remaining are full-data symbols
+            data_per_symbol = self.n_carriers
+            n_data_symbols = len(self.qam_symbols) // data_per_symbol
+            if n_data_symbols == 0:
+                raise ValueError("Not enough QAM symbols for data symbols in block-pilot mode.")
+            # total OFDM symbols = 1 pilot + n_data_symbols
+            self.n_ofdm_symbols = 1 + n_data_symbols
+            qam_symbols = self.qam_symbols[:n_data_symbols * data_per_symbol]
+            qam_matrix = qam_symbols.reshape((n_data_symbols, data_per_symbol))
+
         ofdm_time = []
-        for row in qam_matrix:
-            freq_domain = np.zeros(self.fft_size, dtype=complex)
 
-            # Map QAM symbols to center of spectrum (baseband symmetric)
-            half = self.n_carriers // 2
-            freq_domain[:half] = row[:half]
-            freq_domain[-half:] = row[half:]
-
-            # IFFT to get time-domain signal
-            time_domain = np.fft.ifft(freq_domain, self.fft_size)
-
-            # Add cyclic prefix
+        if self.pilot_mode == "interleaved":
+            # comb mode: each OFDM symbol contains pilots interleaved in frequency
+            for row in qam_matrix:
+                grid = self._map_data_and_pilots(row)  # length = n_carriers
+                freq_oversampled = self.pad_subcarriers(grid[np.newaxis, :])[0]
+                time_domain = np.fft.ifft(freq_oversampled, self.fft_size)
+                cp = time_domain[-self.cp_length:]
+                ofdm_symbol = np.concatenate([cp, time_domain])
+                ofdm_time.append(ofdm_symbol)
+        else:
+            # block mode:
+            # 1) first symbol: pilots on every carrier
+            pilot_grid = np.ones(self.n_carriers, dtype=complex) * self.pilot_symbol
+            freq_oversampled = self.pad_subcarriers(pilot_grid[np.newaxis, :])[0]
+            time_domain = np.fft.ifft(freq_oversampled, self.fft_size)
             cp = time_domain[-self.cp_length:]
-            ofdm_symbol = np.concatenate([cp, time_domain])
-            ofdm_time.append(ofdm_symbol)
+            ofdm_time.append(np.concatenate([cp, time_domain]))
+
+            # 2) subsequent symbols: pure data on all carriers (no pilots)
+            for row in qam_matrix:
+                # here row length == n_carriers (full-data symbol)
+                # build grid directly (data on every carrier)
+                grid = np.array(row, dtype=complex)
+                freq_oversampled = self.pad_subcarriers(grid[np.newaxis, :])[0]
+                time_domain = np.fft.ifft(freq_oversampled, self.fft_size)
+                cp = time_domain[-self.cp_length:]
+                ofdm_time.append(np.concatenate([cp, time_domain]))
 
         self.ofdm_time = np.array(ofdm_time)
-        return self.ofdm_time  # shape: n_ofdm_symbols x ( n_carriers * oversampling + cp_length)
+        return self.ofdm_time
 
+
+    # def ofdm_modulate(self):
+    #     if self.qam_symbols is None:
+    #         raise ValueError("QAM symbols not generated yet.")
+    #
+    #     data_per_symbol = self.n_carriers - self.n_pilots
+    #     n_symbols = len(self.qam_symbols) // data_per_symbol
+    #     if n_symbols == 0:
+    #         raise ValueError("Not enough QAM symbols for a single OFDM symbol with the current pilot spacing.")
+    #     self.n_ofdm_symbols = n_symbols  # update in case it was different
+    #     qam_symbols = self.qam_symbols[:n_symbols * data_per_symbol]
+    #     qam_matrix = qam_symbols.reshape((n_symbols, data_per_symbol))
+    #     ofdm_time = []
+    #     for row in qam_matrix:
+    #         freq_domain = np.zeros(self.fft_size, dtype=complex)
+    #
+    #         # Map QAM symbols to center of spectrum (baseband symmetric)
+    #         half = self.n_carriers // 2
+    #         freq_domain[:half] = row[:half]
+    #         freq_domain[-half:] = row[half:]
+    #
+    #         # IFFT to get time-domain signal
+    #         time_domain = np.fft.ifft(freq_domain, self.fft_size)
+    #
+    #         # Add cyclic prefix
+    #         cp = time_domain[-self.cp_length:]
+    #         ofdm_symbol = np.concatenate([cp, time_domain])
+    #         ofdm_time.append(ofdm_symbol)
+    #
+    #     self.ofdm_time = np.array(ofdm_time)
+    #     return self.ofdm_time  # shape: n_ofdm_symbols x ( n_carriers * oversampling + cp_length)
+
+    # ------------------------
+    # Channel / RX side helpers
+    # ------------------------
     def ofdm_time_to_freq(self, received_time=None):
         if received_time is None:
             received_time = self.ofdm_time
@@ -156,6 +259,59 @@ class Waveform():
             ofdm_symbol = np.concatenate([cp, time_domain])
             ofdm_time.append(ofdm_symbol)
         return np.array(ofdm_time) # shape: n_ofdm_symbols x ( n_carriers * oversampling + cp_length)
+
+    def channel_estimate_ls(self, rx_subcarriers):
+        n_sym = rx_subcarriers.shape[0]
+        H_est = np.zeros_like(rx_subcarriers, dtype=complex)
+
+        if self.pilot_mode == "interleaved":
+            pilot_idx = self.pilot_indices
+            for si in range(n_sym):
+                y = rx_subcarriers[si]
+                y_p = y[pilot_idx]
+                h_p = y_p / self.pilot_symbol
+                if len(pilot_idx) == 1:
+                    H_est[si, :] = h_p[0]
+                    continue
+                x = pilot_idx
+                xp = np.arange(self.n_carriers)
+                f_re = interp1d(x, np.real(h_p), kind='linear', bounds_error=False, fill_value='extrapolate')
+                f_im = interp1d(x, np.imag(h_p), kind='linear', bounds_error=False, fill_value='extrapolate')
+                H_est[si, :] = f_re(xp) + 1j * f_im(xp)
+        else:  # block pilot mode
+            # Expect first symbol (index 0) to be full pilots
+            # estimate H from first symbol and reuse for all OFDM symbols
+            y0 = rx_subcarriers[0, :]
+            H0 = y0 / self.pilot_symbol
+            for si in range(n_sym):
+                H_est[si, :] = H0
+
+        return H_est
+
+
+    def equalize_one_tap(self, rx_subcarriers, H_est, eps=1e-12):
+        """One-tap equalizer (frequency domain). Avoids dividing by near-zero by thresholding.
+
+
+        rx_subcarriers: (n_sym, n_carriers) received frequency samples
+        H_est: (n_sym, n_carriers) estimated channel
+        Returns: equalized symbols on every carrier (pilots too)."""
+
+        # avoid division by zero
+        H_safe = np.where(np.abs(H_est) < eps, eps, H_est)
+        return rx_subcarriers / H_safe
+
+    def demap_data_from_grid(self, symbol_grid):
+        """Return data carriers only. In block mode (preamble), first symbol is pilots,
+        so data are taken from symbols 1..end (all carriers)."""
+        arr = np.atleast_2d(symbol_grid)
+        if self.pilot_mode == "interleaved":
+            data = arr[:, self.data_carriers]
+        else:  # block mode: first row is pilot -> take subsequent rows and all carriers
+            if arr.shape[0] < 2:
+                return np.zeros((0, self.n_carriers), dtype=complex)
+            data = arr[1:, :]  # shape (n_data_symbols, n_carriers)
+        return data
 
     def pad_subcarriers(self, subcarriers):
         """

@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import xarray as xr
-
+import matplotlib.pyplot as plt
 
 class Channel:
     """
@@ -124,19 +124,119 @@ class Channel:
         channel.csi = ds_sub_thz
 
         if debug:
-            channel.csi["channel"] = xr.ones_like(channel.csi["channel"])
+            # all ones channel
+            #channel.csi["channel"] = xr.ones_like(channel.csi["channel"])
+
+            # rayleigh channel (frequency uncorrelated)
+            #channel.csi["channel"] = xr.ones_like(channel.csi["channel"]) * channel.subTHz_Rayleigh()
+
+            # rayleigh channel (frequency correlated)
+            channel.csi["channel"] = xr.ones_like(channel.csi["channel"]) * channel.correlated_freq_channel()
 
         return channel
 
+    def correlated_freq_channel(self,
+                                n_taps=8,
+                                max_delay_samples=None,
+                                power_profile='exponential',
+                                normalize=True,
+                                seed=None):
+        """
+        Create correlated frequency-selective Rayleigh channels.
+
+        Returns H with shape (n_links, n_rx, n_tx, n_subcarriers), complex.
+
+        Parameters
+        ----------
+        n_links : int
+            Number of (stripe x RU) links (your previous self.Nr_stripes*self.Nr_rus).
+        n_rx : int
+            Number of UE antennas.
+        n_tx : int
+            Number of RU antennas.
+        n_subcarriers : int
+            Number of OFDM subcarriers (your self.n_carriers).
+        n_taps : int
+            Number of time-domain multipath taps (L). Typical small values: 4..16.
+        max_delay_samples : int or None
+            Maximum delay (in samples) for taps. If None, use n_taps (dense).
+            Larger max_delay_samples -> larger delay spread -> more frequency selectivity.
+        power_profile : {'exponential', 'uniform'}
+            Power delay profile shape.
+        normalize : bool
+            If True, normalize the per-link average power to 1.
+        seed : int or None
+            RNG seed for reproducibility.
+        """
+        rng = np.random.RandomState(seed)
+
+        if max_delay_samples is None:
+            max_delay_samples = n_taps
+
+        # build PDP (power for each tap index 0..n_taps-1)
+        if power_profile == 'exponential':
+            # exponential decay across taps; shape parameter controls spread
+            delays = np.arange(n_taps)
+            # choose a decay constant so later taps still contribute; tweak as needed
+            decay = 1.0  # larger -> faster decay (less delay spread)
+            pdp = np.exp(-decay * delays)
+        elif power_profile == 'uniform':
+            pdp = np.ones(n_taps)
+        else:
+            raise ValueError("unknown power_profile")
+
+        pdp = pdp / np.sum(pdp)  # normalize so total power = 1
+
+        # allocate output
+        n_links = self.Nr_stripes * self.Nr_rus
+        n_rx = self.Nr_ue_antennas
+        n_tx = self.Nr_ru_antennas
+        n_subcarriers = self.Nr_subcarriers
+        H_freq = np.zeros((n_links, n_rx, n_tx, n_subcarriers), dtype=complex)
+
+        # for each link / rx / tx generate time-domain taps and FFT to get freq response
+        for link in range(n_links):
+            for rx in range(n_rx):
+                for tx in range(n_tx):
+                    # place the taps at random small delays within max_delay_samples
+                    # simple model: taps at integer delays 0..(n_taps-1) (you can randomize if desired)
+                    # Create an impulse response of length `n_subcarriers` (zero-padded)
+                    h_time = np.zeros(n_subcarriers, dtype=complex)
+
+                    # generate complex Gaussian taps scaled by PDP sqrt
+                    # (independent Rayleigh fading per tap)
+                    tap_amps = (rng.normal(size=n_taps) + 1j * rng.normal(size=n_taps)) / np.sqrt(2.0)
+                    tap_amps *= np.sqrt(pdp)  # scale by sqrt(power per tap)
+
+                    # optionally randomize tap positions within the first max_delay_samples
+                    # Here we place taps at 0,1,2,... by default, but you may choose random delays:
+                    # delays_idx = rng.randint(0, max_delay_samples, size=n_taps)
+                    delays_idx = np.arange(n_taps)  # simple, contiguous delays
+
+                    # build time-domain CIR
+                    for amp, d in zip(tap_amps, delays_idx):
+                        if d < n_subcarriers:
+                            h_time[d] += amp
+
+                    # compute frequency response (n_subcarriers)
+                    Hf = np.fft.fft(h_time, n_subcarriers)
+
+                    if normalize:
+                        # normalize so average power across subcarriers = 1
+                        Hf = Hf / np.sqrt(np.mean(np.abs(Hf) ** 2) + 1e-16)
+
+                    H_freq[link, rx, tx, :] = Hf
+
+        return H_freq
     def subTHz_Rayleigh(self, p: int = 1):
         """
         CSI dimension: Nr_stripes x Nr_rus x Nr_ue_antennas x Nr_ru_antennas x Nr_subcarriers
         """
         variance = p / 2
         stdev = np.sqrt(variance)
-        H = (np.random.normal(0, stdev, (self.Nr_stripes, self.Nr_rus, self.Nr_ue_antennas,
+        H = (np.random.normal(0, stdev, (self.Nr_stripes*self.Nr_rus, self.Nr_ue_antennas,
                                          self.Nr_ru_antennas, self.Nr_subcarriers)) +
-             1j * np.random.normal(0, stdev, (self.Nr_stripes, self.Nr_rus, self.Nr_ue_antennas,
+             1j * np.random.normal(0, stdev, (self.Nr_stripes*self.Nr_rus, self.Nr_ue_antennas,
                                               self.Nr_ru_antennas, self.Nr_subcarriers)))
         return H
 
@@ -208,6 +308,12 @@ class Channel:
             H = self.get_csi(stripe_idx, active_ru_idx)  # [Nr_ue_antennas x Nr_ru_antennas x Nr_subcarriers]
             # H = np.ones((4, 4, 1024))  # debug with all ones channel
             print(f'channel shape: {H.shape}')
+
+            # plot channel
+            plt.stem(np.abs(H[0, 0, :])**2)
+            plt.xlabel('SUBCARRIER INDEX')
+            plt.ylabel('CHANNEL GAIN |H|^2')
+            plt.show()
 
             # apply the channel
             for sym in range(waveform.n_ofdm_symbols):
