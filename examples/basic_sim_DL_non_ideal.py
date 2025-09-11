@@ -7,7 +7,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ###########################################
 
 from matplotlib import pyplot as plt
-from scipy.signal import welch, get_window, unit_impulse
 import numpy as np
 import pandas as pd
 import skrf as rf
@@ -26,6 +25,7 @@ from plotter import plotter
 
 booster_stages = ["fiber", "coupler", "amplifier", "coupler"]
 tx_stages = ["fiber", "coupler", "splitter", "shifter", "amplifier"]
+
 
 if __name__ == "__main__":
     # read config file
@@ -83,19 +83,7 @@ if __name__ == "__main__":
     damping = 0  # in dB
     cp = Coupler(damping, impulse_response)
 
-    # Confirm that the impulse response is correct by applying it to a unit impulse
-    x = unit_impulse(len(ofdm_freqs))
-    prefx = np.zeros(128)
-    x = np.concatenate([prefx, x])
-    y = cp.run(np.array([x]))
-
-    fft = np.fft.fft(y[0][128:])
-
-    fig, ax = plt.subplots()
-
-    ax.plot(ofdm_freqs / 1e9, 20*np.log10(np.abs(fft)))
-    ax.set_xlabel("Frequency [GHz]")
-    ax.set_ylabel("S-parameter [dB]")
+    fig = plotter.verify_impulse_response(cp.run, ofdm_freqs)
     fig.savefig("coupler_interpolated.pdf")
 
     fiber_spars = pd.read_csv('models/PMF/with_tape/1m_not_taped.csv')
@@ -114,20 +102,7 @@ if __name__ == "__main__":
 
     fib = Fiber(0, 0, filter=impulse_response)
 
-    # Confirm that the impulse response is correct by applying it to a unit impulse
-    x = unit_impulse(len(ofdm_freqs))
-    prefx = np.zeros(128)
-    x = np.concatenate([prefx, x])
-    y = fib.run(np.array([x]))
-
-    fft = np.fft.fft(y[0][128:])
-
-    fig, ax = plt.subplots()
-
-    #ax.plot(ofdm_freqs / 1e9, 20*np.log10(np.abs(fft)))
-    ax.plot(ofdm_freqs / 1e9, np.unwrap(np.angle(fib_s21_ofdm, deg=True)))
-    ax.set_xlabel("Frequency [GHz]")
-    ax.set_ylabel("S-parameter [dB]")
+    fig = plotter.verify_impulse_response(fib.run, ofdm_freqs)
     fig.savefig("fiber_interpolated.pdf")
 
     # build all radio stripes
@@ -138,9 +113,9 @@ if __name__ == "__main__":
     amp = Amplifier(2, max_out_amp=0.02, mode='poly3')
     amp.set_noise_var(273.5 + 30, 160e9, 0)
     
-    stripes[5].fibers[0] = fib
+    #stripes[5].fibers[0] = fib
     #stripes[5].radio_units[0].amp = amp
-    #stripes[5].radio_units[0].coupler_in = cp
+    stripes[5].radio_units[0].coupler_in = cp
 
     # continue with 3 stripes, separated by 1m
     stripes = [stripes[5], stripes[6]]  # stripes[5:11:2]

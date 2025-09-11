@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from itertools import combinations
+from scipy.signal import unit_impulse
 
 from utils import logger  # Import the project-wide logger
 from utils import remove_oversampling, cp_ofdm_to_freq, ofdm_to_time, calculate_psd_per_symbol
@@ -235,5 +236,38 @@ def plot_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 1024):
     ax.set_ylabel("Power Spectral Density (dB/Hz)")
     ax.legend()
     ax.grid()
+
+    return fig
+
+def verify_impulse_response(func, freqs: np.ndarray):
+    """Confirm that the impulse response for a certain component is correct.
+    
+    Verification is performed by applying the impulse response to a unit impulse.
+    After performing an FFT on the output the result must be the original filter
+    response.
+
+    Parameters
+    ----------
+    func: Any
+        Method for which to confirm that the filter works.
+    freqs: np.ndarray
+        Array containing the frequency points of the impulse response.
+    
+    Returns
+    -------
+    Figure
+        Matplotlib Figure object containing the FFT plot of the filter output.
+    """
+    # Confirm that the impulse response is correct by applying it to a unit impulse.
+    x = unit_impulse(len(freqs))
+    y = func(x)
+
+    fft = np.fft.fft(y)
+
+    fig, ax = plt.subplots()
+
+    ax.plot(freqs, 20*np.log10(np.abs(fft)))
+    ax.set_xlabel("Normalized frequency [GHz]")
+    ax.set_ylabel("S-parameter [dB]")
 
     return fig
