@@ -258,9 +258,10 @@ def verify_impulse_response(func, freqs: np.ndarray):
     """
     # Confirm that the impulse response is correct by applying it to a unit impulse.
     x = unit_impulse(len(freqs))
+    x = np.concatenate([np.zeros(128), x])
     y = func(np.array([x]))
 
-    fft = np.fft.fft(y[0])
+    fft = np.fft.fft(y[0][128:])
 
     fig, ax = plt.subplots()
 
