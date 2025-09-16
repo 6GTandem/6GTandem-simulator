@@ -225,12 +225,10 @@ def plot_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 1024):
     fig, ax = plt.subplots()
 
     # Loop over all the symbols and plot them.
-    f, s = calculate_psd_per_symbol(time_signal, fs, N)
-    for n, (freq, psd) in enumerate(zip(f, s)):
-        freq_shifted = np.fft.fftshift(freq)
-        psd_shifted = np.fft.fftshift(psd)
+    for n, symbol in enumerate(time_signal):
+        f, s = calculate_psd_per_symbol(symbol, fs, N)
 
-        ax.plot(freq_shifted, psd_shifted, label=f"Symbol{n+1}")
+        ax.plot(f, s, label=f"Symbol{n+1}")
 
     ax.set_xlabel("Normalized Frequency")
     ax.set_ylabel("Power Spectral Density (dB/Hz)")
@@ -260,9 +258,9 @@ def verify_impulse_response(func, freqs: np.ndarray):
     """
     # Confirm that the impulse response is correct by applying it to a unit impulse.
     x = unit_impulse(len(freqs))
-    y = func(x)
+    y = func(np.array([x]))
 
-    fft = np.fft.fft(y)
+    fft = np.fft.fft(y[0])
 
     fig, ax = plt.subplots()
 

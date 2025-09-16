@@ -120,20 +120,11 @@ def calculate_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 10
     # Loop over all the symbols and calculate their PSD.
     psds = []
     freqs = []
-    for symbol in time_signal:
-        N = min(N, len(symbol) - 1)
-        window = get_window("hann", N)
-        f, Pxx = welch(
-            symbol,
-            fs=fs,
-            window=window,
-            nperseg=N,
-            return_onesided=False,
-            scaling="density",
-        )
-        psd = 10 * np.log10(Pxx)
 
-        freqs.append(f)
-        psds.append(psd)
+    ofdm_signal = time_signal.flatten()
+    f, Pxx = welch(ofdm_signal, fs=fs, nperseg=N, return_onesided=False)
+    # Center around zero and shift
+    psd = 10 * np.log10(np.fft.fftshift(Pxx))
+    f_shifted = np.fft.fftshift(f)  # + fc  # shift to RF
     
-    return np.array(freqs), np.array(psds)
+    return f_shifted, psd

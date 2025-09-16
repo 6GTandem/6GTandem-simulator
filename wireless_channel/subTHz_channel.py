@@ -125,13 +125,13 @@ class Channel:
 
         if debug:
             # all ones channel
-            #channel.csi["channel"] = xr.ones_like(channel.csi["channel"])
+            channel.csi["channel"] = xr.ones_like(channel.csi["channel"])
 
             # rayleigh channel (frequency uncorrelated)
             #channel.csi["channel"] = xr.ones_like(channel.csi["channel"]) * channel.subTHz_Rayleigh()
 
             # rayleigh channel (frequency correlated)
-            channel.csi["channel"] = xr.ones_like(channel.csi["channel"]) * channel.correlated_freq_channel()
+            #channel.csi["channel"] = xr.ones_like(channel.csi["channel"]) * channel.correlated_freq_channel()
 
         return channel
 

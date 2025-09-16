@@ -211,8 +211,6 @@ if __name__ == "__main__":
             ax[row, column].plot(np.abs(x), np.abs(y[0]), 'o', label=label)
             ax[row, column].legend()
 
-            freq = np.fft.fftshift(freq[0])
-            psd = np.fft.fftshift(psd[0])
             ax2[row, column].plot(freq, psd, label=label)
             ax2[row, column].legend()
 
@@ -237,6 +235,51 @@ if __name__ == "__main__":
     y_combined_time, imdata = ue.receive(y_ue, shifts)
     logger.debug('y combined shape: %s', y_combined_time.shape)
 
+    y_combined_freq = wf.ofdm_time_to_freq(y_combined_time)
+
+    # sanity check
+    rx_freq_oversampled = wf.ofdm_time_to_freq(y_combined_time)  # your received time -> freq
+    rx_subc = wf.extract_subcarriers(rx_freq_oversampled)
+    # look at a few carriers around pilots and data
+    print("RX pilot bins first symbol:", rx_subc[0, wf.pilot_indices])
+    print("RX some data bins first symbol (first 10):", rx_subc[0, wf.data_carriers[:10]])
+    wf.plot_constellation(rx_subc[0, wf.pilot_indices], title="received pilots")
+
+    # channel estimation
+    subc = wf.extract_subcarriers(y_combined_freq)
+    H_est = wf.channel_estimate_ls(subc)
+
+    # sanity check
+    print("H_est shape:", H_est.shape)
+    # show a summary for first symbol
+    print("H_est at pilot bins:", H_est[0, wf.pilot_indices])
+    print("H_est magnitude stats:", np.min(np.abs(H_est)), np.median(np.abs(H_est)), np.max(np.abs(H_est)))
+
+    # equalization
+    eq_subc = wf.equalize_one_tap(subc, H_est)
+
+    # sanity check
+    i = wf.data_carriers[0]
+    print("raw rx on that carrier (first sym):", rx_subc[0, i])
+    print("H_est there:", H_est[0, i])
+    print("after equalize:", eq_subc[0, i])
+
+    # Demap data carriers and rebuild stream
+    data_symbols = wf.demap_data_from_grid(eq_subc).flatten()  # these are the received QAM symbols
+
+    y_qam = data_symbols
+
+    # quick sanity
+    assert y_qam.shape[0] == qam.shape[0], f"Lengths differ: rx {y_qam.shape[0]} tx {qam.shape[0]}"
+
+    wf.plot_constellation(y_qam, symbols_tx=qam, title="equalized symbols")
+
+    y_bits = wf.qam_to_bits(y_qam)
+
+    ber = wf.compute_ber(bits, y_bits)
+    logger.debug('BER: %f', ber)
+    plt.show()
+
     labels = [f"Symbol{n}" for n in range(y_combined_time.shape[0])]
     fout = plotter.plot_iq_per_symbol(y_combined_time, wf.cp_length, wf.n_carriers, labels)
     fout.savefig("iq_per_symbol.pdf")
@@ -246,15 +289,3 @@ if __name__ == "__main__":
 
     fout = plotter.plot_psd_per_symbol(y_combined_time, wf.fs)
     fout.savefig("psd_per_symbol.pdf")
-
-    y_combined_freq = wf.ofdm_time_to_freq(y_combined_time)
-    # TODO: Add equalization.
-
-    y_qam = wf.ofdm_to_qam(y_combined_freq)
-    # wf.plot_constellation(y_qam, symbols_tx=qam, title="RX'ed symbols")
-
-    y_bits = wf.qam_to_bits(y_qam)
-
-    ber = wf.compute_ber(bits, y_bits)
-    logger.debug('BER: %f', ber)
-    plt.show()
