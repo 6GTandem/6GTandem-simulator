@@ -4,10 +4,11 @@ from ..combiner.combiner import Combiner
 from ..component.component import Component
 from ..amplifier.amplifier import Amplifier
 from ..phase_shifter.phase_shifter import PhaseShifter
+from wireless_channel.waveforms import Waveform
 
 
 class RadioUnit(Component):
-    def __init__(self, x, y, z, amp: Amplifier | None = None, coup_in: Coupler | None = None,
+    def __init__(self, x, y, z, wf: Waveform, amp: Amplifier | None = None, coup_in: Coupler | None = None,
                  coup_out: Coupler | None = None, splitter: Splitter | None = None, combiner: Combiner | None = None, pshift: PhaseShifter | None = None, *args, **kwargs):
         """Instantiate a Radio Unit.
 
@@ -30,9 +31,9 @@ class RadioUnit(Component):
         if amp is None:
             self.amp = Amplifier()
         if coup_in is None:
-            self.coupler_in = Coupler()
+            self.coupler_in = Coupler(wf)
         if coup_out is None:
-            self.coupler_out = Coupler()
+            self.coupler_out = Coupler(wf)
         if splitter is None:
             self.splitter = Splitter(num_splits=4)
         if combiner is None:

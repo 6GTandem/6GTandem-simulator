@@ -222,7 +222,7 @@ class RadioStripe(Component):
         for unit_cfg in stripe_config:
             if "radio_unit" in unit_cfg:
                 loc = unit_cfg.get("radio_unit", None)
-                ru = RadioUnit(x=loc.get("x", 0), y=loc.get("y", 0), z=loc.get("z", 0))
+                ru = RadioUnit(x=loc.get("x", 0), y=loc.get("y", 0), z=loc.get("z", 0), wf=wf)
                 radio_units.append(ru)
                 u = ru
             if "central_unit" in unit_cfg:
@@ -239,7 +239,7 @@ class RadioStripe(Component):
             p1 = np.array([units[i].x, units[i].y, units[i].z])
             p2 = np.array([units[i + 1].x, units[i + 1].y, units[i + 1].z])
             length = np.linalg.norm(p2 - p1)
-            fibers.append(Fiber(length=length))
+            fibers.append(Fiber(length=length, wf=wf))
         print(f"Constructed {len(radio_units)} radio units and {len(fibers)} fibers.")
         return cls(radio_units=radio_units, fibers=fibers, central_unit=central_unit, waveform=wf)
 

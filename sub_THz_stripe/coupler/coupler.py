@@ -7,7 +7,7 @@ from ..utils import db_to_magnitude
 
 
 class Coupler(Component):
-    def __init__(self, damping: float = 0, filter: np.ndarray = np.array([1]), filter_mode='time_domain', wf: Waveform | None = None, *args, **kwargs):
+    def __init__(self, wf: Waveform, damping: float = 0, filter: np.ndarray = np.array([1]), filter_mode='time_domain', *args, **kwargs):
         """Initialize a coupler instance.
 
         :param damping: The couplers damping in dB.
@@ -15,10 +15,6 @@ class Coupler(Component):
         self.damping = damping
         self.filter = filter
         self.filter_mode = filter_mode
-
-        if self.filter_mode == 'freq_domain' and wf is None:
-            raise ValueError("wf should not be None when using frequency domain filtering.")
-
         self.wf = wf
 
         super().__init__(*args, **kwargs)

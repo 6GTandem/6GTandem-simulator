@@ -6,7 +6,7 @@ import numpy as np
 
 
 class Fiber(Component):
-    def __init__(self, length: float = 1, damping_per_meter: float = 0, fs: float = 15e9, filter_mode='time_domain', wf:Waveform | None = None,
+    def __init__(self, wf: Waveform, length: float = 1, damping_per_meter: float = 0, fs: float = 15e9, filter_mode='time_domain',
                  filter: np.ndarray = np.array([1]), *args, **kwargs):
         """Initialize a fiber component.
 
@@ -23,10 +23,6 @@ class Fiber(Component):
         self.fs = fs
         self.filter = filter # passed in frequency domain
         self.filter_mode = filter_mode
-
-        if self.filter_mode == 'freq_domain' and wf is None:
-            raise ValueError("wf should not be None when using frequency domain filtering.")
-
         self.wf = wf
 
         super().__init__(*args, **kwargs)
