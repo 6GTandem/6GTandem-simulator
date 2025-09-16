@@ -17,6 +17,11 @@ class Coupler(Component):
         self.filter_mode = filter_mode
         self.wf = wf
 
+        if self.filter == 'freq_domain' and wf is None:
+            raise ValueError("wf should not be None when using frequency domain filtering.")
+
+        self.wf = wf
+
         super().__init__(*args, **kwargs)
 
     def run(self, x):

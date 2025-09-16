@@ -23,6 +23,10 @@ class Fiber(Component):
         self.fs = fs
         self.filter = filter # passed in frequency domain
         self.filter_mode = filter_mode
+
+        if self.filter == 'freq_domain' and wf is None:
+            raise ValueError("wf should not be None when using frequency domain filtering.")
+
         self.wf = wf
 
         super().__init__(*args, **kwargs)

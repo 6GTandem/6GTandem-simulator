@@ -83,7 +83,7 @@ if __name__ == "__main__":
     impulse_response = np.fft.ifft(coup_s21_ofdm)
 
     damping = 0  # in dB
-    cp = Coupler(damping, impulse_response)
+    cp = Coupler(damping=damping, filter=impulse_response, wf=wf)
 
     #fig = plotter.verify_impulse_response(cp.run, ofdm_freqs)
     #fig.savefig("coupler_interpolated.pdf")
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     impulse_response = np.fft.ifft(fib_s21_ofdm)
 
     filter_mode = 'freq_domain'#'freq_domain'#'time_domain'
-    fib = Fiber(0, 0, filter=fib_s21_ofdm, filter_mode=filter_mode, wf=wf)
+    fib = Fiber(damping_per_meter=0, length=0, filter=fib_s21_ofdm, filter_mode=filter_mode, wf=wf)
 
     #fig = plotter.verify_impulse_response(fib.run, ofdm_freqs)
     #fig.savefig("fiber_interpolated.pdf")
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     amp = Amplifier(2, max_out_amp=0.02, mode='poly3')
     amp.set_noise_var(273.5 + 30, 160e9, 0)
     
-    stripes[5].fibers[0] = fib
+    #stripes[5].fibers[0] = fib
     #stripes[5].radio_units[0].amp = amp
     #stripes[5].radio_units[0].coupler_in = cp
 
@@ -241,7 +241,7 @@ if __name__ == "__main__":
     wf.plot_iq_time(y_ue[0], title="After wireless channel")
     wf.plot_psd(y_ue[0])
 
-    ue = RadioUnit(ue_pos['x'], ue_pos['y'], ue_pos['z'])
+    ue = RadioUnit(ue_pos['x'], ue_pos['y'], ue_pos['z'], wf)
     logger.debug('ue RU: %s', ue)
     shifts = [0, 0, 0, 0]
     y_combined_time, imdata = ue.receive(y_ue, shifts)
