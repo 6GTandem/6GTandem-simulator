@@ -7,7 +7,7 @@ waveform_config:
   pilot_spacing: 16
   pilot_symbol_re: 1
   pilot_symbol_imag: 0
-  pilot_mode: "block"#"interleaved"
+  pilot_mode: "interleaved" #"block"
 stripe_config:
   N_RUs: 42
   N_stripes: 13

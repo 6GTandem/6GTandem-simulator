@@ -44,7 +44,7 @@ from sub_THz_stripe.central_unit.central_unit import CentralUnit
 from sub_THz_stripe.radio_unit.radio_unit import RadioUnit
 from wireless_channel.subTHz_channel import Channel
 from wireless_channel.waveforms import Waveform
-from utils import logger
+from utils import logger, calculate_psd_per_symbol
 from plotter import plotter
 
 
@@ -73,7 +73,9 @@ if __name__ == "__main__":
     bits = wf.generate_bits()
     qam = wf.qam_modulate()
     ofdm_time = wf.ofdm_modulate()  # shape: nr_ofdm_symb x (fftsize + cp length)
-    wf.plot_psd(ofdm_time)
+    wf.plot_psd(ofdm_time, nperseg=wf.fft_size)
+    #psd, freqs = calculate_psd_per_symbol(ofdm_time, fs=wf.fs, N=1024)
+
 
     # sanity check
     tx_freq_oversampled = wf.ofdm_time_to_freq(ofdm_time)  # uses your method
@@ -99,7 +101,7 @@ if __name__ == "__main__":
 
     # load channels
     ue_pos = config["ue_positions"][0]
-    channel = Channel.from_sionna(ue_pos, debug=False) # debug=True enables a dummy channel of all ones
+    channel = Channel.from_sionna(ue_pos, debug=True) # debug=True enables a dummy channel of all ones
     logger.debug("%s", channel)
 
     cu = CentralUnit() # todo are these configs loadable?

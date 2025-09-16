@@ -433,12 +433,12 @@ class Waveform():
         qam = self.ofdm_to_qam(ywf)
         self.plot_constellation(qam, title=title)
 
-    def plot_psd(self, ofdm_time=None):
+    def plot_psd(self, ofdm_time=None, nperseg=1024):
         if ofdm_time is None:
             ofdm_time = self.ofdm_time
 
         ofdm_signal = ofdm_time.flatten()
-        f, Pxx = welch(ofdm_signal, fs=self.fs, nperseg=1024, return_onesided=False)
+        f, Pxx = welch(ofdm_signal, fs=self.fs, nperseg=nperseg, return_onesided=False)
         # Center around zero and shift
         Pxx_db = 10 * np.log10(np.fft.fftshift(Pxx))
         f_shifted = np.fft.fftshift(f)  # + fc  # shift to RF
