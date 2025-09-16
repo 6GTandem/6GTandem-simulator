@@ -85,13 +85,13 @@ if __name__ == "__main__":
     damping = 0  # in dB
     cp = Coupler(damping, impulse_response)
 
-    fig = plotter.verify_impulse_response(cp.run, ofdm_freqs)
-    fig.savefig("coupler_interpolated.pdf")
+    #fig = plotter.verify_impulse_response(cp.run, ofdm_freqs)
+    #fig.savefig("coupler_interpolated.pdf")
 
-    fiber_spars = pd.read_csv(os.path.join(base_path, 'models/PMF/with_tape/1m_not_taped.csv'))
+    fiber_spars = pd.read_csv(os.path.join(base_path, 'models/PMF/with_tape/1m_taped.csv'))
 
     fib_freqs = fiber_spars["freq[Hz]"]
-    fib_phase = np.deg2rad(fiber_spars["ang:Trc2_S21"])
+    fib_phase = np.unwrap(np.deg2rad(fiber_spars["ang:Trc2_S21"]))
     fib_mag = 10 ** (fiber_spars["db:Trc2_S21"] / 20.0)
     fib_s21 = fib_mag * np.exp(1j * fib_phase)
     
@@ -99,13 +99,21 @@ if __name__ == "__main__":
     interp_phase = np.interp(ofdm_freqs, fib_freqs, fib_phase)
     fib_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
 
+    fib_group_delay = -np.gradient(interp_phase, ofdm_freqs)
+
     # Compute impulse response
     impulse_response = np.fft.ifft(fib_s21_ofdm)
 
-    fib = Fiber(0, 0, filter=impulse_response)
+    fib = Fiber(0, 0, filter=fib_s21_ofdm)
 
     fig = plotter.verify_impulse_response(fib.run, ofdm_freqs)
     fig.savefig("fiber_interpolated.pdf")
+
+    fig, ax = plt.subplots()
+    ax.plot(ofdm_freqs, fib_group_delay)
+    ax.set_xlabel("Frequency")
+    ax.set_ylabel("Group Delay")
+    fig.savefig("fiber_group_delay.pdf")
 
     # build all radio stripes
     stripes = []
@@ -115,9 +123,9 @@ if __name__ == "__main__":
     amp = Amplifier(2, max_out_amp=0.02, mode='poly3')
     amp.set_noise_var(273.5 + 30, 160e9, 0)
     
-    #stripes[5].fibers[0] = fib
+    stripes[5].fibers[0] = fib
     #stripes[5].radio_units[0].amp = amp
-    stripes[5].radio_units[0].coupler_in = cp
+    #stripes[5].radio_units[0].coupler_in = cp
 
     # continue with 3 stripes, separated by 1m
     stripes = [stripes[5]]
@@ -229,6 +237,7 @@ if __name__ == "__main__":
     logger.debug('received signal at ue: %s', y_ue.shape)
 
     wf.plot_iq_time(y_ue[0], title="After wireless channel")
+    wf.plot_psd(y_ue[0])
 
     ue = RadioUnit(ue_pos['x'], ue_pos['y'], ue_pos['z'])
     logger.debug('ue RU: %s', ue)
