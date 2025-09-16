@@ -98,16 +98,18 @@ if __name__ == "__main__":
     interp_mag = np.interp(ofdm_freqs, fib_freqs, fib_mag)
     interp_phase = np.interp(ofdm_freqs, fib_freqs, fib_phase)
     fib_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
+    print(f' fiber filter taps: {fib_s21_ofdm.shape} - {fib_s21_ofdm}')
 
     fib_group_delay = -np.gradient(interp_phase, ofdm_freqs)
 
     # Compute impulse response
     impulse_response = np.fft.ifft(fib_s21_ofdm)
 
-    fib = Fiber(0, 0, filter=fib_s21_ofdm)
+    filter_mode = 'freq_domain'#'freq_domain'#'time_domain'
+    fib = Fiber(0, 0, filter=fib_s21_ofdm, filter_mode=filter_mode, wf=wf)
 
-    fig = plotter.verify_impulse_response(fib.run, ofdm_freqs)
-    fig.savefig("fiber_interpolated.pdf")
+    #fig = plotter.verify_impulse_response(fib.run, ofdm_freqs)
+    #fig.savefig("fiber_interpolated.pdf")
 
     fig, ax = plt.subplots()
     ax.plot(ofdm_freqs, fib_group_delay)

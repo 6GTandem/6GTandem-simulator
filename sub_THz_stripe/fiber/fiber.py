@@ -5,7 +5,7 @@ import numpy as np
 
 
 class Fiber(Component):
-    def __init__(self, length: float = 1, damping_per_meter: float = 0, fs: float = 15e9,
+    def __init__(self, length: float = 1, damping_per_meter: float = 0, fs: float = 15e9, filter_mode='time_domain', wf=None,
                  filter: np.ndarray = np.array([1]), *args, **kwargs):
         """Initialize a fiber component.
 
@@ -20,34 +20,50 @@ class Fiber(Component):
         self.length = length
         self.damping_per_meter = damping_per_meter
         self.fs = fs
-        self.filter = filter
+        self.filter = filter # passed in frequency domain
+        self.filter_mode = filter_mode
+        self.wf = wf
 
         super().__init__(*args, **kwargs)
 
     def run(self, x):
-        #xout = delay(lfilter(self.filter, [1.0], x), [self.delay])
+        if self.filter_mode == 'time_domain':
+            taps = np.fft.ifft(np.fft.ifftshift(self.filter))
+            #x_filt = delay(lfilter(taps, [1.0], x.flatten(), [self.delay]) #todo delay needed or not???
+            x_filt = lfilter(taps, [1.0], x.flatten())
+            xout = x_filt.reshape(self.wf.n_ofdm_symbols, -1)
 
-        #xout = lfilter(self.filter, [1.0], x)
+        elif self.filter_mode == 'freq_domain':
+            print(f' i a m in freq domaiiinnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn')
+            print(f'filter : {self.filter.shape}')
+            print(f'filter: {self.filter}')
+            x_freq = self.wf.ofdm_time_to_freq(x)
+            print(f'xfreq : {x_freq.shape}')
 
-        cp_length = 128
-        n_fft = x.shape[1] - cp_length
-        ofdm_freq = []
-        for symbol in x:
-            time_no_cp = symbol[cp_length:]
-            freq_domain = np.fft.fft(time_no_cp, n_fft)
-            ofdm_freq.append(freq_domain)
-        ofdm_freq = np.array(ofdm_freq)
+            x_freq_filtered = x_freq * self.filter
 
-        xout = ofdm_freq * self.filter
+            print(f'xfreq filtered : {x_freq_filtered.shape}')
+            xout = self.wf.ofdm_freq_to_time(x_freq_filtered) #back to time
 
-        ofdm_time = []
-        n_fft = xout.shape[1]
-        for symbol in xout:
-            time_domain = np.fft.ifft(symbol, n_fft)
-            cp = time_domain[-cp_length:]
-            ofdm_symbol = np.concatenate([cp, time_domain])
-            ofdm_time.append(ofdm_symbol)
-        xout = np.array(ofdm_time) # shape: n_ofdm_symbols x ( n_carriers * oversampling + cp_length)
+            # cp_length = 128
+            # n_fft = x.shape[1] - cp_length
+            # ofdm_freq = []
+            # for symbol in x:
+            #     time_no_cp = symbol[cp_length:]
+            #     freq_domain = np.fft.fft(time_no_cp, n_fft)
+            #     ofdm_freq.append(freq_domain)
+            # ofdm_freq = np.array(ofdm_freq)
+            #
+            # xout = ofdm_freq * self.filter
+            #
+            # ofdm_time = []
+            # n_fft = xout.shape[1]
+            # for symbol in xout:
+            #     time_domain = np.fft.ifft(symbol, n_fft)
+            #     cp = time_domain[-cp_length:]
+            #     ofdm_symbol = np.concatenate([cp, time_domain])
+            #     ofdm_time.append(ofdm_symbol)
+            # xout = np.array(ofdm_time) # shape: n_ofdm_symbols x ( n_carriers * oversampling + cp_length)
 
 
         return xout * db_to_magnitude(self.damping)
