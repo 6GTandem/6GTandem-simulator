@@ -74,7 +74,6 @@ if __name__ == "__main__":
     qam = wf.qam_modulate()
     ofdm_time = wf.ofdm_modulate()  # shape: nr_ofdm_symb x (fftsize + cp length)
     wf.plot_psd(ofdm_time, nperseg=wf.fft_size)
-    #psd, freqs = calculate_psd_per_symbol(ofdm_time, fs=wf.fs, N=1024)
 
 
     # sanity check
