@@ -83,7 +83,8 @@ if __name__ == "__main__":
     impulse_response = np.fft.ifft(coup_s21_ofdm)
 
     damping = 0  # in dB
-    cp = Coupler(damping=damping, filter=impulse_response, wf=wf)
+    filter_mode = 'freq_domain'
+    cp = Coupler(damping=damping, filter=coup_s21_ofdm, filter_mode=filter_mode, wf=wf)
 
     #fig = plotter.verify_impulse_response(cp.run, ofdm_freqs)
     #fig.savefig("coupler_interpolated.pdf")
@@ -105,7 +106,6 @@ if __name__ == "__main__":
     # Compute impulse response
     impulse_response = np.fft.ifft(fib_s21_ofdm)
 
-    filter_mode = 'freq_domain'#'freq_domain'#'time_domain'
     fib = Fiber(damping_per_meter=0, length=0, filter=fib_s21_ofdm, filter_mode=filter_mode, wf=wf)
 
     #fig = plotter.verify_impulse_response(fib.run, ofdm_freqs)
@@ -122,16 +122,18 @@ if __name__ == "__main__":
     for stripe_cfg in config["radio_stripes"]:
         stripes.append(RadioStripe.from_config_locations(stripe_cfg, wf))
     
-    amp = Amplifier(2, max_out_amp=0.02, mode='poly3')
+    amp = Amplifier(8, max_out_amp=0.3, mode='poly3')
     amp.set_noise_var(273.5 + 30, 160e9, 0)
     
-    stripes[5].fibers[0] = fib
-    #stripes[5].radio_units[0].amp = amp
-    #stripes[5].radio_units[0].coupler_in = cp
+    for i in range(5):
+        stripes[5].fibers[i] = fib
+        stripes[5].radio_units[i].amp = amp
+        stripes[5].radio_units[i].coupler_in = cp
+        stripes[5].radio_units[i].coupler_out = cp
 
     # continue with 3 stripes, separated by 1m
     stripes = [stripes[5]]
-    active_ru_idxes = [0]  # , 4, 6
+    active_ru_idxes = [4]  # , 4, 6
     #, stripes[6]]  # stripes[5:11:2]
     plotter.plot_stripes(config, stripes)
     for stripe_idx, stripe in enumerate(stripes):
@@ -210,10 +212,10 @@ if __name__ == "__main__":
 
             if stage >= stages:
                 label = tx_stages[i%5]
-                label += str(i // 5)
+                label += str(stages)
             else:
                 label = booster_stages[i%4]
-                label += str(i // 4)
+                label += str((i // 4) + 1)
             column = 0
             if stage > (plot_panes // 2):
                 column = 1

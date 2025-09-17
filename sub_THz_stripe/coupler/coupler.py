@@ -33,7 +33,8 @@ class Coupler(Component):
             x_freq = self.wf.ofdm_time_to_freq(x)
             print(f'xfreq : {x_freq.shape}')
 
-            x_freq_filtered = x_freq * self.filter
+            f_shift = np.fft.fftshift(self.filter)
+            x_freq_filtered = x_freq * f_shift
 
             print(f'xfreq filtered : {x_freq_filtered.shape}')
             xout = self.wf.ofdm_freq_to_time(x_freq_filtered) #back to time
