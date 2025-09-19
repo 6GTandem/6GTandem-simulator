@@ -130,7 +130,7 @@ if __name__ == "__main__":
         stripes[5].radio_units[i].amp = amp
         stripes[5].radio_units[i].coupler_in = cp
         stripes[5].radio_units[i].coupler_out = cp
-
+    
     # continue with 3 stripes, separated by 1m
     stripes = [stripes[5]]
     active_ru_idxes = [4]  # , 4, 6
@@ -159,6 +159,7 @@ if __name__ == "__main__":
         iq_data = ofdm_time_after_cu.reshape(1, -1) # flatten to (1 x nr_iq_symbols)
 
         iq_data = iq_data.reshape(wf.n_ofdm_symbols, -1)  # flatten to (1 x nr_iq_symbols)
+        stripe.calibrate(iq_data, -30)
 
         logger.debug('shape of iq data: %s', iq_data.shape) # 1 d array
         phase_shifts = [0, 0, 0, 0]

@@ -141,70 +141,23 @@ class RadioStripe(Component):
             y_in = y_out # becomes new in
             yield y_out
 
-    def calibrate(self, x, desired_amplifier_dbm):
+    def calibrate(self, x, desired_signal_db):
         """This function sets the small-signal gain of the link amplifiers.
 
         To give an approximate constant power(DesiredAmplifierDBM) at the output of each link.
         The calibration is valid for a given input signal, and recalibration must be performed if
         the signal statistics changes.
         """
-        z = self.radio_units[0].boost(x)
-        for ru in self.radio_units:
+        for ru, fib in zip(self.radio_units, self.fibers):
+            z2 = x
             for j in range(3):
-                z2 = ru.boost(z)
-                scale = db_to_magnitude(desired_amplifier_dbm - getdbm(z2))
+                z, _ = ru.boost(x)
+                z2 = fib.run(z)
+                current_amp_db = getdbm(z2)
+                scale = db_to_magnitude(desired_signal_db - current_amp_db)
                 ru.amp.gain = ru.amp.gain * scale
-
-            z = ru.boost(z)
-
-    @classmethod
-    def from_configuration(cls, config):
-        """Construct a RadioStripe from a configuration dictionary.
-
-        :param config_file: Dictionary containing all the necessary configuration information.
-        """
-        bw = config["sub_THz"]["bw"]
-        rs = cls()
-
-        # Configure the amplifier
-        amp_cfg = config["sub_THz"]["amplifier"]
-        rs.transmitter.amplifier.set_maximum_output_power(amp_cfg["max_power"])
-        rs.transmitter.amplifier.mode = amp_cfg["mode"]
-        rs.transmitter.amplifier.gain = amp_cfg["gain"]
-        rs.transmitter.amplifier.set_noise_var(300, bw, amp_cfg["noise_var"])
-        rs.transmitter.amplifier.smoothness = amp_cfg["smoothness"]
-
-        # Configure the limk amplifiers
-
-        # Configure the fiber
-        fiber_cfg = config["sub_THz"]["fiber"]
-        # Configure the coupler
-        coupler_cfg = config["sub_THz"]["coupler"]
-        for link in rs.links:
-            link.coupler_in.damping = coupler_cfg["damping"]
-            link.coupler_in.mode = coupler_cfg["mode"]
-            link.coupler_out.damping = coupler_cfg["damping"]
-            link.coupler_out.mode = coupler_cfg["mode"]
-
-            link.fiber.damping_per_meter = fiber_cfg["damping_per_meter"]
-            link.fiber.filter = fiber_cfg["filter"]
-
-        # Configure the dac
-        dac_cfg = config["sub_THz"]["dac"]
-        rs.transmitter.dac.trunc_level = dac_cfg["trunc_level"]
-        rs.transmitter.dac.nobits = dac_cfg["num_bits"]
-
-        # Configure the iqmodem
-        iqmodem_cfg = config["sub_THz"]["iqmodem"]
-        rs.transmitter.iqmodem.mode = iqmodem_cfg["mode"]
-        rs.transmitter.iqmodem.iqi_coef = iqmodem_cfg["iqi_coef"]
-        rs.transmitter.iqmodem.iqi_filter = iqmodem_cfg["iqi_num_filter_taps"]
-        rs.transmitter.iqmodem.iqi_delay_imbalance = iqmodem_cfg["iqi_delay_imbalance"]
-        rs.transmitter.iqmodem.dc_offset = iqmodem_cfg["dc_offset"]
-
-        # Configure the oscillator
-        osc_cfg = config["sub_THz"]["oscillator"]
-        rs.transmitter.oscillator.cfo = osc_cfg["cfo"]
+            
+            z = z2
 
     @classmethod
     def from_config_locations(cls, stripe_config, wf):
