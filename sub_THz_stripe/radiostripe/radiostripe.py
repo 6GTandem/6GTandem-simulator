@@ -263,7 +263,6 @@ class RadioStripe(Component):
                     interp_mag = np.interp(ofdm_freqs, fib_freqs, fib_mag)
                     interp_phase = np.interp(ofdm_freqs, fib_freqs, fib_phase)
                     fib_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
-                    print(f' fiber filter taps: {fib_s21_ofdm.shape} - {fib_s21_ofdm}')
 
                     filter_mode = 'freq_domain'
                     fiber = Fiber(damping_per_meter=0, length=0, filter=fib_s21_ofdm, filter_mode=filter_mode, wf=wf)

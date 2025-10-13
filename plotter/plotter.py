@@ -1,13 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import logging
 from itertools import combinations
 from scipy.signal import unit_impulse
 
-from utils import logger  # Import the project-wide logger
-from utils import remove_oversampling, cp_ofdm_to_freq, ofdm_to_time, calculate_psd_per_symbol
+from utils import remove_oversampling, cp_ofdm_to_freq, calculate_psd_per_symbol
+
+logger = logging.getLogger(__name__)
 
 
-def plot_stripes(config:dict, stripes:list):
+def plot_stripes(config: dict, stripes: list):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
     ax.set_aspect("auto")
@@ -41,17 +43,26 @@ def plot_stripes(config:dict, stripes:list):
         ru_handle = ax.scatter3D(units[:, 0], units[:, 1], units[:, 2], c="red", label="Radio Unit")
         ax.plot3D(units[:, 0], units[:, 1], units[:, 2], color="red")
 
-        cu_handle = ax.scatter3D(stripe.central_unit.x, stripe.central_unit.y, stripe.central_unit.z,
-                                 c="yellow", label="Central Unit")
+        cu_handle = ax.scatter3D(
+            stripe.central_unit.x, stripe.central_unit.y, stripe.central_unit.z, c="yellow", label="Central Unit"
+        )
 
     # Add XYZ coordinate system at the origin
     origin = np.array([[0, 0, 0]])
-    axes =  np.eye(3)
-    ax.quiver(origin[:,0], origin[:,1], origin[:,2],
-              axes[:,0], axes[:,1], axes[:,2],
-              color=["k", "k", "k"], length=0.5, normalize=True)
+    axes = np.eye(3)
+    ax.quiver(
+        origin[:, 0],
+        origin[:, 1],
+        origin[:, 2],
+        axes[:, 0],
+        axes[:, 1],
+        axes[:, 2],
+        color=["k", "k", "k"],
+        length=0.5,
+        normalize=True,
+    )
     ax.text(1, 0, 0, "X", color="k")
-    ax.text(0,  1, 0, "Y", color="k")
+    ax.text(0, 1, 0, "Y", color="k")
     ax.text(0, 0, 1, "Z", color="k")
 
     handles, labels = ax.get_legend_handles_labels()
@@ -61,7 +72,7 @@ def plot_stripes(config:dict, stripes:list):
     plt.show(block=True)
 
 
-def plot_room(config:dict):
+def plot_room(config: dict):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
     ax.set_aspect("auto")
@@ -79,18 +90,18 @@ def plot_room(config:dict):
     for x in [0, x_size]:
         for y in [0, y_size]:
             for z in [0, z_size]:
-                points.append([x,y,z])
+                points.append([x, y, z])
 
     points = np.array(points)
-    ax.scatter3D(points[:, 0], points[:, 1], points[:, 2],c="black")
+    ax.scatter3D(points[:, 0], points[:, 1], points[:, 2], c="black")
     for s, e in combinations(points, 2):
         diff = list(s - e)
         if diff.count(0) == 2:
             ax.plot3D(*zip(s, e), color="k")
 
     # Plot the stripes
+    logger.debug("%d Stripes found", len(config["radio_stripes"]))
     for stripe in config["radio_stripes"]:
-        logger.debug("%d Stripes found", len(config['radio_stripes']))
         units = []
         for unit in stripe:
             if "radio_unit" in unit:
@@ -104,8 +115,8 @@ def plot_room(config:dict):
 
     # Plot the UEs
     ues = []
+    logger.debug("%d UEs found", len(config["ue_positions"]))
     for ue_pos in config["ue_positions"]:
-        logger.debug("%d UEs found", len(config['ue_positions']))
         if "x" in ue_pos:
             ues.append([ue_pos["x"], ue_pos["y"], ue_pos["z"]])
     ues = np.array(ues)
@@ -113,7 +124,7 @@ def plot_room(config:dict):
     ax.scatter3D(ues[:, 0], ues[:, 1], ues[:, 2], c="blue", alpha=0.2)
 
 
-def plot_constellation(iq_symbols: np.ndarray, labels: list[str] | None=None):
+def plot_constellation(iq_symbols: np.ndarray, labels: list[str] | None = None):
     """Plot a constellation of IQ symbols.
 
     Parameters
@@ -139,17 +150,20 @@ def plot_constellation(iq_symbols: np.ndarray, labels: list[str] | None=None):
     # Loop over all the provided constellations.
     for const, label in zip(iq_symbols, const_labels):
         ax.scatter(np.real(const), np.imag(const), label=label)
-    
+
     # Provide axis labels and a legend.
     ax.set_xlabel("In-phase (I)")
     ax.set_ylabel("Quadrature (Q)")
     ax.axis("equal")
     if labels is not None:
         ax.legend()
-    
+
     return fig
 
-def plot_iq_per_symbol(cp_ofdm_time_data: np.ndarray, prefix_length: int, n_carriers: int, labels: list[str] | None = None):
+
+def plot_iq_per_symbol(
+    cp_ofdm_time_data: np.ndarray, prefix_length: int, n_carriers: int, labels: list[str] | None = None
+):
     """Plot the IQ constellation for a set of CP-OFDM symbols.
 
     Parameters
@@ -174,7 +188,10 @@ def plot_iq_per_symbol(cp_ofdm_time_data: np.ndarray, prefix_length: int, n_carr
 
     return plot_constellation(ofdm_us)
 
-def plot_iq_per_carrier(cp_ofdm_time_data: np.ndarray, prefix_length:int, n_carriers: int, labels: list[str] | None = None):
+
+def plot_iq_per_carrier(
+    cp_ofdm_time_data: np.ndarray, prefix_length: int, n_carriers: int, labels: list[str] | None = None
+):
     """Plot the IQ constellation of all CP-OFDM signal for one symbol.
 
     Parameters
@@ -203,11 +220,12 @@ def plot_iq_per_carrier(cp_ofdm_time_data: np.ndarray, prefix_length:int, n_carr
 
     return plot_constellation(ofdm_carriers)
 
+
 def plot_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 1024):
     """Create a Power Spectral Density Plot (PSD) for every symbol.
 
     The PSD is calculated using Welch`s method with a 'hann' window.
-    
+
     Parameters
     ----------
     time_signal: np.ndarray
@@ -216,7 +234,7 @@ def plot_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 1024):
         See `utils.calculate_psd_per_symbol`.
     N: int
         See `utils.calculate_psd_per_symbol`.
-    
+
     Returns
     -------
     matplotlib.Figure
@@ -237,9 +255,10 @@ def plot_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 1024):
 
     return fig
 
+
 def verify_impulse_response(func, freqs: np.ndarray):
     """Confirm that the impulse response for a certain component is correct.
-    
+
     Verification is performed by applying the impulse response to a unit impulse.
     After performing an FFT on the output the result must be the original filter
     response.
@@ -250,7 +269,7 @@ def verify_impulse_response(func, freqs: np.ndarray):
         Method for which to confirm that the filter works.
     freqs: np.ndarray
         Array containing the frequency points of the impulse response.
-    
+
     Returns
     -------
     Figure
@@ -265,7 +284,7 @@ def verify_impulse_response(func, freqs: np.ndarray):
 
     fig, ax = plt.subplots()
 
-    ax.plot(freqs, 20*np.log10(np.abs(fft)))
+    ax.plot(freqs, 20 * np.log10(np.abs(fft)))
     ax.set_xlabel("Normalized frequency [GHz]")
     ax.set_ylabel("S-parameter [dB]")
 

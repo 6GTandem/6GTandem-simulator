@@ -1,7 +1,10 @@
 import numpy as np
+import logging
 import os
 import xarray as xr
 import matplotlib.pyplot as plt
+
+logger = logging.getLogger(__name__)
 
 class Channel:
     """
@@ -66,7 +69,7 @@ class Channel:
             )
             return channel
         else:
-            print("No matching stripe/RU combination found.")
+            logger.warning("No matching stripe/RU combination found.")
             return None
 
     @classmethod
@@ -307,7 +310,7 @@ class Channel:
             # select channel
             H = self.get_csi(stripe_idx, active_ru_idx)  # [Nr_ue_antennas x Nr_ru_antennas x Nr_subcarriers]
             # H = np.ones((4, 4, 1024))  # debug with all ones channel
-            print(f'channel shape: {H.shape}')
+            logger.debug(f'channel shape: {H.shape}')
 
             # plot channel
             plt.stem(np.abs(H[0, 0, :])**2)

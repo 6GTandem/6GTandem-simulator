@@ -1,5 +1,7 @@
 import os
 import sys
+import logging
+
 # Add project root to sys.path for local imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ###########################################
@@ -15,14 +17,20 @@ from sub_THz_stripe.central_unit.central_unit import CentralUnit
 from sub_THz_stripe.radio_unit.radio_unit import RadioUnit
 from wireless_channel.subTHz_channel import Channel
 from wireless_channel.waveforms import Waveform
-from utils import logger, calculate_psd_per_symbol
+from utils import calculate_psd_per_symbol, setup_logging
 from plotter import plotter
 
 booster_stages = ["fiber", "coupler", "amplifier", "coupler"]
 tx_stages = ["fiber", "coupler", "splitter", "shifter", "amplifier"]
 
-
 if __name__ == "__main__":
+    # Logfile name the same as the current script name.
+    script_name = __file__.split(".")[0]
+    logfile = f"{script_name}.log"
+
+    setup_logging(logfile)
+    logger = logging.getLogger("6GTandemBasicDL")
+
     # read config file
     config_file = "office_config.yml"
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -35,7 +43,7 @@ if __name__ == "__main__":
 
     # plot full room with all stripes and all possible ue locations
     plotter.plot_room(config)
-    logger.debug("%d stripes in the room", len(config['radio_stripes']))
+    logger.debug("%d stripes in the room", len(config["radio_stripes"]))
 
     # construct waveform class
     waveform_config = config["waveform_config"]
@@ -54,11 +62,11 @@ if __name__ == "__main__":
     component_config = config["component_config"]
     for stripe_cfg in config["radio_stripes"]:
         stripes.append(RadioStripe.from_config_locations(stripe_cfg, component_config, wf))
-    
+
     # continue with 3 stripes, separated by 1m
     stripes = [stripes[5]]
     active_ru_idxes = [4]  # , 4, 6
-    #, stripes[6]]  # stripes[5:11:2]
+    # , stripes[6]]  # stripes[5:11:2]
     plotter.plot_stripes(config, stripes)
     for stripe_idx, stripe in enumerate(stripes):
         logger.debug("stripe: %d: %s", stripe_idx, stripe)
@@ -68,24 +76,24 @@ if __name__ == "__main__":
     channel = Channel.from_sionna(ue_pos, debug=True)
     logger.debug("%s", channel)
 
-    cu = CentralUnit() # todo are these configs loadable?
-    print(f'CU: {cu}')
-    ofdm_time_after_cu = cu.run(ofdm_time) # shape: nr_ofdm_symbols x (fft_size + cp length)
-    logger.debug('shape of ofdm timee: %s', ofdm_time_after_cu.shape)
-    logger.debug('np alike: %s', np.allclose(ofdm_time, ofdm_time_after_cu))
+    cu = CentralUnit()  # todo are these configs loadable?
+    logger.debug(f"CU: {cu}")
+    ofdm_time_after_cu = cu.run(ofdm_time)  # shape: nr_ofdm_symbols x (fft_size + cp length)
+    logger.debug("shape of ofdm timee: %s", ofdm_time_after_cu.shape)
+    logger.debug("np alike: %s", np.allclose(ofdm_time, ofdm_time_after_cu))
 
-    logger.debug('transmitting over the stripe...')
+    logger.debug("transmitting over the stripe...")
     iq_at_last_rus = []
     for stripe_idx, stripe in enumerate(stripes):
-        logger.debug('stripe: %d - active ru %d', stripe_idx, active_ru_idxes[stripe_idx])
+        logger.debug("stripe: %d - active ru %d", stripe_idx, active_ru_idxes[stripe_idx])
         stripe.active_unit = active_ru_idxes[stripe_idx]
 
-        iq_data = ofdm_time_after_cu.reshape(1, -1) # flatten to (1 x nr_iq_symbols)
+        iq_data = ofdm_time_after_cu.reshape(1, -1)  # flatten to (1 x nr_iq_symbols)
 
         iq_data = iq_data.reshape(wf.n_ofdm_symbols, -1)  # flatten to (1 x nr_iq_symbols)
         stripe.calibrate(iq_data, -30)
 
-        logger.debug('shape of iq data: %s', iq_data.shape) # 1 d array
+        logger.debug("shape of iq data: %s", iq_data.shape)  # 1 d array
         phase_shifts = [0, 0, 0, 0]
         iq_out, imdata = stripe.transmit(iq_data, phase_shifts)
 
@@ -115,7 +123,7 @@ if __name__ == "__main__":
         ax2[0, 0].set_ylabel("Power Spectral Density (dB/Hz)")
 
         # Loop over the data from all the stages. (Stages are RUs and BUs.)
-        for i in range(len(imdata)-1):
+        for i in range(len(imdata) - 1):
             # Calculate at which stage we are.
             stage = (i // 4) + 1
             # The last stage is a RU containing 5 components instead of 4. We need to
@@ -125,28 +133,28 @@ if __name__ == "__main__":
 
             # Extract the data going into the stage and coming out of it.
             x = imdata[i][0]
-            y = imdata[i+1]
+            y = imdata[i + 1]
             # If the matrix is three dimensional we need to extract one level deeper.
             if len(imdata[i].shape) >= 3:
                 x = imdata[i][0][0]
-            if len(imdata[i+1].shape) >= 3:
-                y = imdata[i+1][0]
+            if len(imdata[i + 1].shape) >= 3:
+                y = imdata[i + 1][0]
 
             # Calculate the PSD.
             freq, psd = calculate_psd_per_symbol(y, wf.fs)
 
             if stage >= stages:
-                label = tx_stages[i%5]
+                label = tx_stages[i % 5]
                 label += str(stages)
             else:
-                label = booster_stages[i%4]
+                label = booster_stages[i % 4]
                 label += str((i // 4) + 1)
             column = 0
             if stage > (plot_panes // 2):
                 column = 1
-            row = (stage-1) % (plot_panes // 2)
+            row = (stage - 1) % (plot_panes // 2)
 
-            ax[row, column].plot(np.abs(x), np.abs(y[0]), 'o', label=label)
+            ax[row, column].plot(np.abs(x), np.abs(y[0]), "o", label=label)
             ax[row, column].legend()
 
             ax2[row, column].plot(freq, psd, label=label)
@@ -156,23 +164,23 @@ if __name__ == "__main__":
         fig2.savefig(f"spec_plot_stripe{stripe_idx}.pdf")
 
         iq_out_reshaped = iq_out.reshape(nr_antennas, wf.n_ofdm_symbols, -1)
-        logger.debug('reshaped after stripe: %s', iq_out_reshaped.shape)
+        logger.debug("reshaped after stripe: %s", iq_out_reshaped.shape)
         iq_at_last_rus.append(iq_out_reshaped)
 
     iq_at_last_rus = np.array(iq_at_last_rus)
     wf.plot_psd(iq_at_last_rus)
 
     y_ue = channel.transmit_dl(iq_at_last_rus, active_ru_idxes, wf)
-    logger.debug('received signal at ue: %s', y_ue.shape)
+    logger.debug(f"received signal at ue: {y_ue.shape}")
 
     wf.plot_iq_time(y_ue[0], title="After wireless channel")
     wf.plot_psd(y_ue[0])
 
-    ue = RadioUnit(ue_pos['x'], ue_pos['y'], ue_pos['z'], wf)
-    logger.debug('ue RU: %s', ue)
+    ue = RadioUnit(ue_pos["x"], ue_pos["y"], ue_pos["z"], wf)
+    logger.debug(f"ue RU: {ue}")
     shifts = [0, 0, 0, 0]
     y_combined_time, imdata = ue.receive(y_ue, shifts)
-    logger.debug('y combined shape: %s', y_combined_time.shape)
+    logger.debug(f"y combined shape: {y_combined_time.shape}")
 
     y_combined_freq = wf.ofdm_time_to_freq(y_combined_time)
 
@@ -180,8 +188,8 @@ if __name__ == "__main__":
     rx_freq_oversampled = wf.ofdm_time_to_freq(y_combined_time)  # your received time -> freq
     rx_subc = wf.extract_subcarriers(rx_freq_oversampled)
     # look at a few carriers around pilots and data
-    print("RX pilot bins first symbol:", rx_subc[0, wf.pilot_indices])
-    print("RX some data bins first symbol (first 10):", rx_subc[0, wf.data_carriers[:10]])
+    logger.debug(f"RX pilot bins first symbol: {rx_subc[0, wf.pilot_indices]}")
+    logger.debug(f"RX some data bins first symbol (first 10): {rx_subc[0, wf.data_carriers[:10]]}")
     wf.plot_constellation(rx_subc[0, wf.pilot_indices], title="received pilots")
 
     # channel estimation
@@ -189,19 +197,19 @@ if __name__ == "__main__":
     H_est = wf.channel_estimate_ls(subc)
 
     # sanity check
-    print("H_est shape:", H_est.shape)
+    logger.debug(f"H_est shape: {H_est.shape}")
     # show a summary for first symbol
-    print("H_est at pilot bins:", H_est[0, wf.pilot_indices])
-    print("H_est magnitude stats:", np.min(np.abs(H_est)), np.median(np.abs(H_est)), np.max(np.abs(H_est)))
+    logger.debug(f"H_est at pilot bins: {H_est[0, wf.pilot_indices]}")
+    logger.debug(f"H_est magnitude stats: {np.min(np.abs(H_est))}, {np.median(np.abs(H_est))}, {np.max(np.abs(H_est))}")
 
     # equalization
     eq_subc = wf.equalize_one_tap(subc, H_est)
 
     # sanity check
     i = wf.data_carriers[0]
-    print("raw rx on that carrier (first sym):", rx_subc[0, i])
-    print("H_est there:", H_est[0, i])
-    print("after equalize:", eq_subc[0, i])
+    logger.debug(f"raw rx on that carrier (first sym): {rx_subc[0, i]}")
+    logger.debug(f"H_est there: {H_est[0, i]}")
+    logger.debug(f"After equalize: {eq_subc[0, i]}")
 
     # Demap data carriers and rebuild stream
     data_symbols = wf.demap_data_from_grid(eq_subc).flatten()  # these are the received QAM symbols
@@ -216,7 +224,7 @@ if __name__ == "__main__":
     y_bits = wf.qam_to_bits(y_qam)
 
     ber = wf.compute_ber(bits, y_bits)
-    logger.debug('BER: %f', ber)
+    logger.debug(f"BER: {ber}")
     plt.show()
 
     labels = [f"Symbol{n}" for n in range(y_combined_time.shape[0])]

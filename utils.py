@@ -1,23 +1,51 @@
 import logging
 import numpy as np
 
-from scipy.signal import welch, get_window
+from scipy.signal import welch
 
-# Project-wide logger instance
-logger = logging.getLogger("6GTandem")
-logger.setLevel(logging.DEBUG)
-if not logger.hasHandlers():
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+
+def setup_logging(log_filename: str, file_level: int = logging.DEBUG, console_level: int = logging.WARNING):
+    """Set up the logger for your simulation script.
+
+    The logs are written to a file and outputted to the console. For both the level of messages that have to be
+    included can be set through the optional arguments.
+
+    Parameters
+    ----------
+        log_filename: str
+            Name of the logfile that is written to disk.
+        file_level: int, optional
+            Level of log messages to write to the logfile. Defaults to logging.DEBUG.
+        console_level: int, optional
+            Level of log messages to output on the console. Defaults to logging.WARNING.
+    """
+    # Set up the logging for this script.
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+
+    # Output messages from WARNING level to the console.
+    console = logging.StreamHandler()
+    console.setLevel(console_level)
+
+    # Output everything to a file.
+    flog = logging.FileHandler(filename=log_filename, encoding="utf-8")
+    flog.setLevel(file_level)
+
+    # Configure how to format log messages
+    formatter = logging.Formatter("%(asctime)s-%(levelname)s:%(name)s: %(message)s")
+    console.setFormatter(formatter)
+    flog.setFormatter(formatter)
+
+    logger.addHandler(console)
+    logger.addHandler(flog)
+
 
 def remove_oversampling(ofdm_freqs: np.ndarray, n_carriers: int):
     """Remove the oversampling from an OFDM signal in the frequency domain.
 
     Oversampling adds zero symbols to the OFDM signal to increase the resolution.
     These symbols however contain no information and can be removed for plotting.
-    
+
     Parameters
     ----------
     cpofdm_freqs: np.ndarray
@@ -37,6 +65,7 @@ def remove_oversampling(ofdm_freqs: np.ndarray, n_carriers: int):
         row_symbols = np.concatenate([symbol[:half], symbol[-half:]])
         qam_received.append(row_symbols)
     return np.array(qam_received)
+
 
 def cp_ofdm_to_freq(cp_ofdm_signal: np.ndarray, prefix_length: int):
     """Convert a CP-OFDM signal in the time domain to the frequency domain (FFT).
@@ -68,9 +97,10 @@ def cp_ofdm_to_freq(cp_ofdm_signal: np.ndarray, prefix_length: int):
 
     return np.array(ofdm_freq)
 
+
 def ofdm_to_time(ofdm_freqs: np.ndarray, prefix_length: int):
     """Convert a OFDM signal in the frequency domain to the time domain.
-    
+
     A cyclic prefix is added to the time domain signal.
 
     Parameters
@@ -98,11 +128,12 @@ def ofdm_to_time(ofdm_freqs: np.ndarray, prefix_length: int):
 
     return np.array(cp_ofdm_time)
 
+
 def calculate_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 1024):
     """Calculate the Power Spectral Density Plot (PSD) for every symbol.
 
     The PSD is calculated using Welch`s method with a 'hann' window.
-    
+
     Parameters
     ----------
     time_signal: np.ndarray
@@ -111,7 +142,7 @@ def calculate_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 10
         Sampling frequency of time_signal.
     N: int
         Length of the segments used for the Welch method.
-    
+
     Returns
     -------
     tuple[np.ndarray, np.ndarray]
@@ -126,5 +157,5 @@ def calculate_psd_per_symbol(time_signal: np.ndarray, fs: float = 1, N: int = 10
     # Center around zero and shift
     psd = 10 * np.log10(np.fft.fftshift(Pxx))
     f_shifted = np.fft.fftshift(f)  # + fc  # shift to RF
-    
+
     return f_shifted, psd
