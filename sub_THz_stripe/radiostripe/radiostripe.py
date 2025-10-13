@@ -1,13 +1,21 @@
+import os
 import numpy as np
+import pandas as pd
+import logging
 
 from sub_THz_stripe.central_unit.central_unit import CentralUnit
 from wireless_channel.waveforms import Waveform
+from typing import Any
+import skrf as rf
 
 from ..radio_unit.radio_unit import RadioUnit
 from ..fiber.fiber import Fiber
+from ..amplifier.amplifier import Amplifier
+from ..coupler.coupler import Coupler
 from ..component.component import Component
 from ..utils import db_to_magnitude, getdbm
 
+logger = logging.getLogger(__name__)
 
 class RadioStripe(Component):
     """Class representing a radio stripe.
@@ -28,15 +36,14 @@ class RadioStripe(Component):
     """
 
     def __init__(
-        self,
-        radio_units: int | list[RadioUnit] = 3,
-        fibers: int | list[Fiber] = 3,
-        active_unit: int = 0,
-        central_unit: CentralUnit = None,
-        waveform: Waveform = None,
-        *args,
-        **kwargs,
-    ):
+            self,
+            radio_units: int | list[RadioUnit] = 3,
+            fibers: int | list[Fiber] = 3,
+            active_unit: int = 0,
+            central_unit: CentralUnit | None = None,
+            waveform: Waveform | None = None,
+            *args,
+            **kwargs):
         """
         :param : .
         """
@@ -47,14 +54,14 @@ class RadioStripe(Component):
         self.radio_units = []
         if type(radio_units) is int:
             for n in range(radio_units):
-                self.radio_units.append(RadioUnit())
+                self.radio_units.append(RadioUnit(n, 0, 0, self.wf))
         elif type(radio_units) is list:
             self.radio_units = radio_units
 
         self.fibers = []
         if type(fibers) is int:
             for n in range(fibers):
-                self.fibers.append(Fiber())
+                self.fibers.append(Fiber(self.wf))
         elif type(fibers) is list:
             self.fibers = fibers
 
@@ -76,6 +83,8 @@ class RadioStripe(Component):
 
         :param nactive_unit: 0-based index for the new active unit. [0, len(radio_units)[
         """
+        assert nactive_unit >= 0 and nactive_unit < len(self.radio_units), f"Radio unit {nactive_unit} does not exist \
+                                                                             . [0, {len(self.radio_units)}["
         self._active_unit = nactive_unit
 
     def transmit(self, x: np.ndarray, shifts: list[int]):
@@ -160,40 +169,115 @@ class RadioStripe(Component):
             z = z2
 
     @classmethod
-    def from_config_locations(cls, stripe_config, wf):
-        """
-        Initialize a RadioStripe from a stripe configuration containing radio unit locations.
+    def from_config_locations(
+            cls,
+            stripe_config: list[dict[str, dict[str, float]]],
+            component_config: dict[str, dict[str, Any]],
+            wf: Waveform):
+        """Initialize a RadioStripe from a stripe configuration containing radio unit locations.
+
         Only location is considered; all other parameters are default.
+
         :param stripe_config: List of dicts, each with a 'radio_unit' key containing 'x', 'y', 'z'.
+        :param component_config: Configuration of the different components used in the RadioStripe. Components
+                                 which are not specified here are given default values.
+
         :return: RadioStripe instance with radio units at specified locations.
         """
         radio_units = []
         units = []
 
         central_unit = None
+        amplifier_config = component_config.get("amplifier", None)
+        fiber_config = component_config.get("fiber", None)
+        coupler_config = component_config.get("coupler", None)
 
         for unit_cfg in stripe_config:
             if "radio_unit" in unit_cfg:
-                loc = unit_cfg.get("radio_unit", None)
-                ru = RadioUnit(x=loc.get("x", 0), y=loc.get("y", 0), z=loc.get("z", 0), wf=wf)
+                amp = None
+                coup_in = None
+                coup_out = None
+
+                if amplifier_config is not None:
+                    amp = Amplifier(**amplifier_config)
+                if coupler_config is not None:
+                    if 'model' in coupler_config:
+                        # Load the couplers S-parameter file
+                        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                        coupler_spars = rf.Network(os.path.join(base_path, f'../models/{coupler_config['model']}'))
+
+                        # Subcarrier frequencies
+                        ofdm_freqs = np.linspace(wf.fc - wf.bw/2, wf.fc + wf.bw/2, wf.n_carriers * wf.oversampling_factor)
+
+                        # Extract frequency and S21 (transmission)
+                        coup_freqs = coupler_spars.f
+                        coup_s21 = coupler_spars.s[:, 1, 0]  # S21
+
+                        # Interpolate magnitude and phase separately for better accuracy
+                        coup_s21_mag = np.abs(coup_s21)
+                        coup_s21_phase = np.angle(coup_s21)
+
+                        interp_mag = np.interp(ofdm_freqs, coup_freqs, coup_s21_mag)
+                        interp_phase = np.interp(ofdm_freqs, coup_freqs, coup_s21_phase)
+                        coup_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
+
+                        damping = 0  # in dB
+                        filter_mode = 'freq_domain'
+                        coup_in = Coupler(damping=damping, filter=coup_s21_ofdm, filter_mode=filter_mode, wf=wf)
+                        coup_out = Coupler(damping=damping, filter=coup_s21_ofdm, filter_mode=filter_mode, wf=wf)
+                    else:
+                        coup_in = Coupler(**coupler_config)
+                        coup_out = Coupler(**coupler_config)
+
+                loc = unit_cfg["radio_unit"]
+                ru = RadioUnit(
+                    x=loc.get("x", 0),
+                    y=loc.get("y", 0),
+                    z=loc.get("z", 0),
+                    wf=wf,
+                    amp=amp, coup_in=coup_in, coup_out=coup_out)
                 radio_units.append(ru)
-                u = ru
-            if "central_unit" in unit_cfg:
-                loc = unit_cfg.get("central_unit", None)
-                central_unit = CentralUnit(
-                    x=loc.get("x", 0), y=loc.get("y", 0), z=loc.get("z", 0)
-                )
-                u = central_unit
-            if loc:
-                units.append(u)
+                unit = ru
+            else:
+                loc = unit_cfg["central_unit"]
+                central_unit = CentralUnit(x=loc.get("x", 0), y=loc.get("y", 0), z=loc.get("z", 0))
+                unit = central_unit
+
+            units.append(unit)
 
         fibers = []
         for i in range(len(radio_units)):
-            p1 = np.array([units[i].x, units[i].y, units[i].z])
-            p2 = np.array([units[i + 1].x, units[i + 1].y, units[i + 1].z])
-            length = np.linalg.norm(p2 - p1)
-            fibers.append(Fiber(length=length, wf=wf))
-        print(f"Constructed {len(radio_units)} radio units and {len(fibers)} fibers.")
+            if fiber_config is not None:
+                if 'model' in fiber_config:
+                    # Load the fiber model from the given file.
+                    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                    fiber_spars = pd.read_csv(os.path.join(base_path, f'../models/{fiber_config['model']}'))
+
+                    # Subcarrier frequencies
+                    ofdm_freqs = np.linspace(wf.fc - wf.bw/2, wf.fc + wf.bw/2, wf.n_carriers * wf.oversampling_factor)
+
+                    fib_freqs = fiber_spars["freq[Hz]"]
+                    fib_phase = np.unwrap(np.deg2rad(fiber_spars["ang:Trc2_S21"]))
+                    fib_mag = 10 ** (fiber_spars["db:Trc2_S21"] / 20.0)
+                    
+                    interp_mag = np.interp(ofdm_freqs, fib_freqs, fib_mag)
+                    interp_phase = np.interp(ofdm_freqs, fib_freqs, fib_phase)
+                    fib_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
+                    print(f' fiber filter taps: {fib_s21_ofdm.shape} - {fib_s21_ofdm}')
+
+                    filter_mode = 'freq_domain'
+                    fiber = Fiber(damping_per_meter=0, length=0, filter=fib_s21_ofdm, filter_mode=filter_mode, wf=wf)
+                else:
+                    fiber = Fiber(**fiber_config)
+            else:
+                p1 = np.array([units[i].x, units[i].y, units[i].z])
+                p2 = np.array([units[i + 1].x, units[i + 1].y, units[i + 1].z])
+                length = np.linalg.norm(p2 - p1)
+                fiber = Fiber(length=length, wf=wf)
+
+            fibers.append(fiber)
+
+        logger.info(f"Constructed {len(radio_units)} radio units and {len(fibers)} fibers.")
         return cls(radio_units=radio_units, fibers=fibers, central_unit=central_unit, waveform=wf)
 
     def __str__(self):

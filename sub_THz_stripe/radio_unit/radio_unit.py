@@ -30,16 +30,34 @@ class RadioUnit(Component):
         # Instantiate the components if they are not given.
         if amp is None:
             self.amp = Amplifier()
+        else:
+            self.amp = amp
+
         if coup_in is None:
             self.coupler_in = Coupler(wf)
+        else:
+            self.coupler_in = coup_in
+
         if coup_out is None:
             self.coupler_out = Coupler(wf)
+        else:
+            self.coupler_out = coup_out
+
         if splitter is None:
             self.splitter = Splitter(num_splits=4)
+        else:
+            self.splitter = splitter
+
         if combiner is None:
             self.combiner = Combiner()
+        else:
+            self.combiner = combiner
+
         if pshift is None:
             self.phase_shifter = PhaseShifter(num_shifters=4, resolution=2)
+        else:
+            self.phase_shifter = pshift
+
         self.x = x
         self.y = y
         self.z = z

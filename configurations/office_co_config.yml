@@ -1,0 +1,12 @@
+amplifier:
+  gain: 1.0
+  max_out_amp: 1.0
+  noise_var: 0.0
+  smoothness: 0.0
+  mode: 'poly3'
+
+fiber:
+  model: "PMF/with_tape/1m_taped.csv"
+
+coupler:
+  model: "coupler/with_balun.s2p"

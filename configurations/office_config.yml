@@ -1,13 +1,3 @@
-waveform_config:
-  waveform_type: "cp-ofdm"
-  n_ofdm_symbols: 2
-  qam_order: 4
-  oversampling_factor: 4
-  cp_length: 128
-  pilot_spacing: 16
-  pilot_symbol_re: 1
-  pilot_symbol_imag: 0
-  pilot_mode: "block" #"interleaved" #"block"
 stripe_config:
   N_RUs: 42
   N_stripes: 13
@@ -17,6 +7,27 @@ stripe_config:
   - 2.0
   - 2.5
   - 3.5
+component_config:
+  amplifier:
+    gain: 1.0
+    max_out_amp: 0.3
+    noise_var: 1.6760484e-7
+    smoothness: 0.0
+    mode: poly3
+  fiber:
+    model: PMF/with_tape/1m_taped.csv
+  coupler:
+    model: coupler/with_balun.s2p
+waveform_config:
+  waveform_type: cp-ofdm
+  n_ofdm_symbols: 2
+  qam_order: 4
+  oversampling_factor: 4
+  cp_length: 128
+  pilot_spacing: 16
+  pilot_symbol_re: 1
+  pilot_symbol_imag: 0
+  pilot_mode: block
 room:
   x: 10
   y: 25

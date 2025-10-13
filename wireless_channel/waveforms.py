@@ -28,9 +28,9 @@ class Waveform():
             self.qam_order = kwargs.get("qam_order", 4)
             self.oversampling_factor = kwargs.get("oversampling_factor", 4)
             self.cp_length = kwargs.get("cp_length", 128)
-            self.BW = kwargs.get("BW", 12.5e9)
+            self.bw = kwargs.get("BW", 12.5e9)
             self.fc = kwargs.get("fc", 157.75e9)
-            self.fs = self.BW * self.oversampling_factor
+            self.fs = self.bw * self.oversampling_factor
             self.fft_size = self.n_carriers * self.oversampling_factor
 
             # Pilot configuration
@@ -88,7 +88,7 @@ class Waveform():
                 f"  QAM order: {self.qam_order}\n"
                 f"  Oversampling factor: {self.oversampling_factor}\n"
                 f"  Cyclic prefix length: {self.cp_length}\n"
-                f"  Bandwidth: {self.BW/1e9:.2f} GHz\n"
+                f"  Bandwidth: {self.bw/1e9:.2f} GHz\n"
                 f"  Carrier frequency: {self.fc/1e9:.2f} GHz\n"
                 f"  Sampling frequency: {self.fs/1e9:.2f} GHz\n"
                 f" Pilot mode: {self.pilot_mode}"

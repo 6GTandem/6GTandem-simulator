@@ -8,16 +8,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from matplotlib import pyplot as plt
 import numpy as np
-import pandas as pd
-import skrf as rf
 import yaml
 
 from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
 from sub_THz_stripe.central_unit.central_unit import CentralUnit
 from sub_THz_stripe.radio_unit.radio_unit import RadioUnit
-from sub_THz_stripe.coupler.coupler import Coupler
-from sub_THz_stripe.fiber.fiber import Fiber
-from sub_THz_stripe.amplifier.amplifier import Amplifier
 from wireless_channel.subTHz_channel import Channel
 from wireless_channel.waveforms import Waveform
 from utils import logger, calculate_psd_per_symbol
@@ -54,82 +49,11 @@ if __name__ == "__main__":
     ofdm_time = wf.ofdm_modulate()  # shape: nr_ofdm_symb x (fftsize + cp length)
     wf.plot_psd(ofdm_time)
 
-    # Load the couplers S-parameter file
-    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # todo check if still works in vscode
-    coupler_spars = rf.Network(os.path.join(base_path, 'models/coupler/with_balun.s2p')) #rf.Network('models/coupler/with_balun.s2p')
-
-
-    # OFDM parameters
-    fc = 157.75e9  # center frequency
-    bw = 12.5e9   # bandwidth
-    num_subcarriers = wf.fft_size
-
-    # Subcarrier frequencies
-    ofdm_freqs = np.linspace(fc - bw/2, fc + bw/2, num_subcarriers)
-
-    # Extract frequency and S21 (transmission)
-    coup_freqs = coupler_spars.f
-    coup_s21 = coupler_spars.s[:, 1, 0]  # S21
-
-    # Interpolate magnitude and phase separately for better accuracy
-    coup_s21_mag = np.abs(coup_s21)
-    coup_s21_phase = np.angle(coup_s21)
-
-    interp_mag = np.interp(ofdm_freqs, coup_freqs, coup_s21_mag)
-    interp_phase = np.interp(ofdm_freqs, coup_freqs, coup_s21_phase)
-    coup_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
-
-    # Compute impulse response
-    impulse_response = np.fft.ifft(coup_s21_ofdm)
-
-    damping = 0  # in dB
-    filter_mode = 'freq_domain'
-    cp = Coupler(damping=damping, filter=coup_s21_ofdm, filter_mode=filter_mode, wf=wf)
-
-    #fig = plotter.verify_impulse_response(cp.run, ofdm_freqs)
-    #fig.savefig("coupler_interpolated.pdf")
-
-    fiber_spars = pd.read_csv(os.path.join(base_path, 'models/PMF/with_tape/1m_taped.csv'))
-
-    fib_freqs = fiber_spars["freq[Hz]"]
-    fib_phase = np.unwrap(np.deg2rad(fiber_spars["ang:Trc2_S21"]))
-    fib_mag = 10 ** (fiber_spars["db:Trc2_S21"] / 20.0)
-    fib_s21 = fib_mag * np.exp(1j * fib_phase)
-    
-    interp_mag = np.interp(ofdm_freqs, fib_freqs, fib_mag)
-    interp_phase = np.interp(ofdm_freqs, fib_freqs, fib_phase)
-    fib_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
-    print(f' fiber filter taps: {fib_s21_ofdm.shape} - {fib_s21_ofdm}')
-
-    fib_group_delay = -np.gradient(interp_phase, ofdm_freqs)
-
-    # Compute impulse response
-    impulse_response = np.fft.ifft(fib_s21_ofdm)
-
-    fib = Fiber(damping_per_meter=0, length=0, filter=fib_s21_ofdm, filter_mode=filter_mode, wf=wf)
-
-    #fig = plotter.verify_impulse_response(fib.run, ofdm_freqs)
-    #fig.savefig("fiber_interpolated.pdf")
-
-    fig, ax = plt.subplots()
-    ax.plot(ofdm_freqs, fib_group_delay)
-    ax.set_xlabel("Frequency")
-    ax.set_ylabel("Group Delay")
-    fig.savefig("fiber_group_delay.pdf")
-
     # build all radio stripes
     stripes = []
+    component_config = config["component_config"]
     for stripe_cfg in config["radio_stripes"]:
-        stripes.append(RadioStripe.from_config_locations(stripe_cfg, wf))
-    
-    amp = Amplifier(8, max_out_amp=0.3, mode='poly3')
-    amp.set_noise_var(273.5 + 30, 160e9, 0)
-    
-    for i in range(5):
-        stripes[5].fibers[i] = fib
-        stripes[5].radio_units[i].amp = amp
-        stripes[5].radio_units[i].coupler_in = cp
-        stripes[5].radio_units[i].coupler_out = cp
+        stripes.append(RadioStripe.from_config_locations(stripe_cfg, component_config, wf))
     
     # continue with 3 stripes, separated by 1m
     stripes = [stripes[5]]

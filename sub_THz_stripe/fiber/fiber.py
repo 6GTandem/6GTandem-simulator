@@ -1,8 +1,12 @@
+import numpy as np
+import logging
+
 from ..component.component import Component
 from wireless_channel.waveforms import Waveform
 from ..utils import db_to_magnitude, delay
 from scipy.signal import lfilter
-import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class Fiber(Component):
@@ -15,8 +19,8 @@ class Fiber(Component):
         :param filter: The impulse response of the fiber.
 
 
-        If filter is used, the damping is included in the filter. In this case
-        set the damping_per_meter to zero.
+        If filter is used, the damping and delay are included in the filter. In this case set length and
+        damping_per_meter to zero.
         """
         self.length = length
         self.damping_per_meter = damping_per_meter
@@ -29,22 +33,25 @@ class Fiber(Component):
 
     def run(self, x):
         if self.filter_mode == 'time_domain':
+            logger.debug("Fiber model is being applied in the time domain.")
             taps = np.fft.ifft(np.fft.ifftshift(self.filter))
+            logger.debug(f"Filter taps used: {taps}")
             #x_filt = delay(lfilter(taps, [1.0], x.flatten(), [self.delay]) #todo delay needed or not???
             x_filt = lfilter(taps, [1.0], x.flatten())
-            xout = x_filt.reshape(self.wf.n_ofdm_symbols, -1)
+            xout = np.reshape(x_filt, (self.wf.n_ofdm_symbols, -1))
 
         elif self.filter_mode == 'freq_domain':
-            print(f' i a m in freq domaiiinnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn')
-            print(f'filter : {self.filter.shape}')
-            print(f'filter: {self.filter}')
+            logger.debug("Fiber model being applied in the frequency domain.")
+            logger.debug(f'Filter shape: {self.filter.shape}')
+            logger.debug(f'Filter: {self.filter}')
+
             x_freq = self.wf.ofdm_time_to_freq(x)
-            print(f'xfreq : {x_freq.shape}')
+            logger.debug(f'xfreq shape: {x_freq.shape}')
 
             f_shift = np.fft.fftshift(self.filter)
             x_freq_filtered = x_freq * f_shift
 
-            print(f'xfreq filtered : {x_freq_filtered.shape}')
+            logger.debug(f'xfreq filtered shape: {x_freq_filtered.shape}')
             xout = self.wf.ofdm_freq_to_time(x_freq_filtered) #back to time
 
         return xout * db_to_magnitude(self.damping)

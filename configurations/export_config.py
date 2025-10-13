@@ -11,7 +11,6 @@ If no argument is given, defaults to 'generated_config.yaml'.
 
 from __future__ import annotations
 from pathlib import Path
-from typing import List, Dict, Optional
 
 import numpy as np
 import xarray as xr
@@ -19,7 +18,7 @@ import yaml
 
 
 # ---- Load parameters from office_rt_config.yml ----
-rt_config_path = Path("office_rt_config.yml")
+rt_config_path = Path("configurations/office_rt_config.yml")
 with open(rt_config_path, "r") as f:
     rt_params = yaml.safe_load(f)
 
@@ -35,11 +34,11 @@ sub_thz_params = rt_params.get("subTHz_config", {})
 sub10GHz_params = rt_params.get("sub10GHz_config", {})
 antenna_params = rt_params.get("antenna_config", {})
 
-output_file = "office_config.yml"
-UE_NC_PATH = Path("ue_locations_5681.nc")
+output_file = "configurations/office_config.yml"
+UE_NC_PATH = Path("configurations/ue_locations_5681.nc")
 
 
-def _select_1d_numeric_var(ds: xr.Dataset, names: List[str]) -> Optional[xr.DataArray]:
+def _select_1d_numeric_var(ds: xr.Dataset, names: list[str]) -> xr.DataArray | None:
     """Find a numeric 1D variable by candidate names; reduce by selecting first index on extra dims."""
     for name in names:
         if name in ds.variables:
@@ -52,7 +51,7 @@ def _select_1d_numeric_var(ds: xr.Dataset, names: List[str]) -> Optional[xr.Data
     return None
 
 
-def load_ue_positions(nc_path: Path) -> List[Dict[str, float]]:
+def load_ue_positions(nc_path: Path) -> list[dict[str, float]]:
     if not nc_path.exists():
         raise FileNotFoundError(f"UE NetCDF file not found: {nc_path}")
 
@@ -102,12 +101,12 @@ def load_ue_positions(nc_path: Path) -> List[Dict[str, float]]:
     ]
 
 
-def build_radio_stripes() -> List[List[Dict[str, float]]]:
+def build_radio_stripes() -> list[list[dict[str, dict[str, float]]]]:
     """Build radio_stripes with entries like {'radio_unit': {'x':..., 'y':..., 'z':...}}."""
-    stripes: List[List[Dict[str, float]]] = []
+    stripes: list[list[dict[str, dict[str, float]]]] = []
     x0, y0, z0 = stripe_start_pos
     for stripe_idx in range(N_stripes):
-        stripe_list: List[Dict[str, float]] = []
+        stripe_list: list[dict[str, dict[str, float]]] = []
         stripe_list.append(
             {
                 "central_unit": {
@@ -126,8 +125,14 @@ def build_radio_stripes() -> List[List[Dict[str, float]]]:
     return stripes
 
 
-def main() -> None:
-    import sys
+def main():
+    # ---- Load parameters from office_co_config.yml ----
+    co_config_path = Path("configurations/office_co_config.yml")
+    with open(co_config_path, "r") as f:
+        co_params = yaml.safe_load(f)
+    wf_config_path = Path("configurations/office_wf_config.yml")
+    with open(wf_config_path, "r") as f:
+        wf_params = yaml.safe_load(f)
 
     output_yaml = Path(output_file)
 
@@ -142,6 +147,8 @@ def main() -> None:
             "space_between_stripes": space_between_stripes,
             "stripe_start_pos": list(stripe_start_pos),
         },
+        "component_config":co_params,
+        "waveform_config": wf_params,
         "room": ROOM,
         "radio_stripes": radio_stripes,
         "ue_positions": ue_positions,
