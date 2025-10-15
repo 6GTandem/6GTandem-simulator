@@ -111,12 +111,12 @@ class RadioStripe(Component):
         return y, imdata
 
     def receive(self, x: np.ndarray, shifts: list[int]):
-        """Takes incoming IQ-data on the antennas and runs it along the stripe towards the central unit.
+        """Receives incoming IQ-data on the antennas of the acitve unit and runs it along the stripe.
 
         :param x: IQ-data in the form of an (n x m) array with n the amount of rows being equal to the amount of splits.
         :param shifts: See `PhaseShifter`.
 
-        :returns: A 1xm IQ-data array.
+        :returns: A 1xm IQ-data array arriving at the central unit.
         """
         # Data is received by the active radio unit.
         y = self.radio_units[self.active_unit].receive(x, shifts)
@@ -132,7 +132,7 @@ class RadioStripe(Component):
             y = fib.run(y)
             yield y
 
-    def receive_all(self, x: np.ndarray, shifts: list[int]):
+    def receive_all(self, x: list[np.ndarray], shifts: list[int]):
         """Takes incoming IQ-data on the antennas and runs it along the stripe towards the central unit.
 
         :param x: List containing all the IQ data being received on all the radio units. The data at x[0] is the unit
