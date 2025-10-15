@@ -112,7 +112,7 @@ class Channel:
         Nr_rus = ds_sub_thz["RU_idx"].max().item() + 1
         Nr_stripes = ds_sub_thz["stripe_idx"].max().item() + 1
 
-        channel = Channel(channelmodel, Nr_subcarriers, Nr_ue_antennas, Nr_ru_antennas, Nr_rus, Nr_stripes)
+        channel = cls(channelmodel, Nr_subcarriers, Nr_ue_antennas, Nr_ru_antennas, Nr_rus, Nr_stripes)
 
         csi_channel = ds_sub_thz["channel"]
         if csi_channel.dtype.fields is not None and "r" in csi_channel.dtype.fields and "i" in csi_channel.dtype.fields:

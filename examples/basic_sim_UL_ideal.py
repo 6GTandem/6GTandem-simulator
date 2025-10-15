@@ -1,5 +1,6 @@
 import os
 import sys
+
 # Add project root to sys.path for local imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ###########################################
@@ -53,7 +54,7 @@ if __name__ == "__main__":
 
     # plot full room with all stripes and all possible ue locations
     plotter.plot_room(config)
-    logger.debug("%d stripes in the room", len(config['radio_stripes']))
+    logger.debug("%d stripes in the room", len(config["radio_stripes"]))
 
     # construct waveform class
     waveform_config = config["waveform_config"]
@@ -73,9 +74,8 @@ if __name__ == "__main__":
     for stripe_cfg in config["radio_stripes"]:
         stripes.append(RadioStripe.from_config_locations(stripe_cfg, component_config, wf))
 
-    # continue with 3 stripes, separated by 1m
-    stripes = [stripes[5]]  # stripes[5:11:2]
-    active_ru_idxes = [4]  # , 4, 6
+    # As a simplified example only simulate the first two stripes.
+    stripes = stripes[0:2]
     plotter.plot_stripes(config, stripes)
     for stripe_idx, stripe in enumerate(stripes):
         logger.debug("stripe: %d: %s", stripe_idx, stripe)
@@ -83,11 +83,12 @@ if __name__ == "__main__":
     # load channels
     ue_pos = config["ue_positions"][0]
     channel = Channel.from_sionna(ue_pos, debug=True)
+    channel.Nr_stripes = 2
     logger.debug("%s", channel)
 
     # We use a single radio unit to represent the UE.
-    ue = RadioUnit(ue_pos['x'], ue_pos['y'], ue_pos['z'], wf)
-    logger.debug('ue RU: %s', ue)
+    ue = RadioUnit(ue_pos["x"], ue_pos["y"], ue_pos["z"], wf)
+    logger.debug("ue RU: %s", ue)
     shifts = [0, 0, 0, 0]
     iq_data_tx, imdata = ue.transmit(ofdm_time, shifts)
 
@@ -96,35 +97,56 @@ if __name__ == "__main__":
     iq_data_rus = channel.transmit_ul(iq_data_tx, wf)
     wf.plot_iq_time(iq_data_rus[0][0][0], title="After wireless channel")
 
-    active_ru_idxes = [2]  # , 4, 6
-    logger.debug('Receiving data on all stripes.')
-    iq_at_last_rus = []
+    logger.debug("Receiving data on all stripes.")
+    iq_stripes = []
     for stripe_idx, stripe in enumerate(stripes):
-        logger.debug('stripe: %d - active ru %d', stripe_idx, active_ru_idxes[stripe_idx])
-        stripe.active_unit = active_ru_idxes[stripe_idx]
-
-        logger.debug('shape of iq data: %s', iq_data_rus.shape)
+        logger.debug(f"stripe: {stripe_idx}")
+        logger.debug("shape of iq data: %s", iq_data_rus.shape)
         phase_shifts = [0, 0, 0, 0]
-        iq_out, imdata = stripe.receive_all(iq_data_rus, phase_shifts)
+        iq_out, imdata = stripe.receive_all(iq_data_rus[stripe_idx], phase_shifts)
+        iq_stripes.append(iq_out)
 
-        iq_out_reshaped = iq_out.reshape(nr_antennas, wf.n_ofdm_symbols, -1)
-        logger.debug('reshaped after stripe: %s', iq_out_reshaped.shape)
-        iq_at_last_rus.append(iq_out_reshaped)
+    y_combined_freq = wf.ofdm_time_to_freq(iq_stripes[0])
 
-    cu = CentralUnit()  # todo are these configs loadable?
-    logger.debug(f"CU: {cu}")
-    ofdm_time_after_cu = cu.run(iq_at_last_rus)  # shape: nr_ofdm_symbols x (fft_size + cp length)
-    logger.debug("shape of ofdm timee: %s", ofdm_time_after_cu.shape)
-    logger.debug("np alike: %s", np.allclose(ofdm_time, ofdm_time_after_cu))
+    # sanity check
+    rx_freq_oversampled = wf.ofdm_time_to_freq(iq_stripes[0])  # your received time -> freq
+    rx_subc = wf.extract_subcarriers(rx_freq_oversampled)
+    # look at a few carriers around pilots and data
+    logger.debug(f"RX pilot bins first symbol: {rx_subc[0, wf.pilot_indices]}")
+    logger.debug(f"RX some data bins first symbol (first 10): {rx_subc[0, wf.data_carriers[:10]]}")
+    wf.plot_constellation(rx_subc[0, wf.pilot_indices], title="received pilots")
 
-    y_combined_freq = wf.ofdm_time_to_freq(ofdm_time_after_cu)
-    # # todo do we need equalization?
+    # channel estimation
+    subc = wf.extract_subcarriers(y_combined_freq)
+    H_est = wf.channel_estimate_ls(subc)
 
-    y_qam = wf.ofdm_to_qam(y_combined_freq)
-    # wf.plot_constellation(y_qam, symbols_tx=qam, title="RX'ed symbols")
+    # sanity check
+    logger.debug(f"H_est shape: {H_est.shape}")
+    # show a summary for first symbol
+    logger.debug(f"H_est at pilot bins: {H_est[0, wf.pilot_indices]}")
+    logger.debug(f"H_est magnitude stats: {np.min(np.abs(H_est))}, {np.median(np.abs(H_est))}, {np.max(np.abs(H_est))}")
+
+    # equalization
+    eq_subc = wf.equalize_one_tap(subc, H_est)
+
+    # sanity check
+    i = wf.data_carriers[0]
+    logger.debug(f"raw rx on that carrier (first sym): {rx_subc[0, i]}")
+    logger.debug(f"H_est there: {H_est[0, i]}")
+    logger.debug(f"After equalize: {eq_subc[0, i]}")
+
+    # Demap data carriers and rebuild stream
+    data_symbols = wf.demap_data_from_grid(eq_subc).flatten()  # these are the received QAM symbols
+
+    y_qam = data_symbols
+
+    # quick sanity
+    assert y_qam.shape[0] == qam.shape[0], f"Lengths differ: rx {y_qam.shape[0]} tx {qam.shape[0]}"
+
+    wf.plot_constellation(y_qam, symbols_tx=qam, title="equalized symbols")
 
     y_bits = wf.qam_to_bits(y_qam)
 
     ber = wf.compute_ber(bits, y_bits)
-    # logger.debug('BER: %f', ber)
+    logger.debug(f"BER: {ber}")
     plt.show()
