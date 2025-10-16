@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
     # load channels
     ue_pos = config["ue_positions"][0]
-    channel = Channel.from_sionna(ue_pos, debug=True)
+    channel = Channel.from_sionna(ue_pos)  # , debug=True)
     logger.debug("%s", channel)
 
     cu = CentralUnit()  # todo are these configs loadable?
@@ -97,68 +97,7 @@ if __name__ == "__main__":
         phase_shifts = [0, 0, 0, 0]
         iq_out, imdata = stripe.transmit(iq_data, phase_shifts)
 
-        # Make AM/AM plots for every stage in the stripe.
-        stages = ((len(imdata) - 6) // 4) + 1
-        plot_panes = stages
-        if stages % 2 != 0:
-            plot_panes += 1
-
-        # Make spec plots for every stage in the stripe.
-        fig, ax = plt.subplots(plot_panes // 2, 2)
-        fig2, ax2 = plt.subplots(plot_panes // 2, 2)
-
-        # Keep the array 1xm for simplicity.
-        if len(ax.shape) == 1:
-            ax = np.array([ax])
-        if len(ax2.shape) == 1:
-            ax2 = np.array([ax2])
-
-        # Set the proper axis labels.
-        ax[-1, 0].set_xlabel("Input amplitude |x|")
-        ax[-1, -1].set_xlabel("Input amplitude |x|")
-        ax[0, 0].set_ylabel("Output amplitude |y|")
-
-        ax2[-1, 0].set_xlabel("Normalized Frequency")
-        ax2[-1, -1].set_xlabel("Normalized Frequency")
-        ax2[0, 0].set_ylabel("Power Spectral Density (dB/Hz)")
-
-        # Loop over the data from all the stages. (Stages are RUs and BUs.)
-        for i in range(len(imdata) - 1):
-            # Calculate at which stage we are.
-            stage = (i // 4) + 1
-            # The last stage is a RU containing 5 components instead of 4. We need to
-            # compensate for this or we advance to an non-existing stage.
-            if stage > stages:
-                stage = stages
-
-            # Extract the data going into the stage and coming out of it.
-            x = imdata[i][0]
-            y = imdata[i + 1]
-            # If the matrix is three dimensional we need to extract one level deeper.
-            if len(imdata[i].shape) >= 3:
-                x = imdata[i][0][0]
-            if len(imdata[i + 1].shape) >= 3:
-                y = imdata[i + 1][0]
-
-            # Calculate the PSD.
-            freq, psd = calculate_psd_per_symbol(y, wf.fs)
-
-            if stage >= stages:
-                label = tx_stages[i % 5]
-                label += str(stages)
-            else:
-                label = booster_stages[i % 4]
-                label += str((i // 4) + 1)
-            column = 0
-            if stage > (plot_panes // 2):
-                column = 1
-            row = (stage - 1) % (plot_panes // 2)
-
-            ax[row, column].plot(np.abs(x), np.abs(y[0]), "o", label=label)
-            ax[row, column].legend()
-
-            ax2[row, column].plot(freq, psd, label=label)
-            ax2[row, column].legend()
+        fig, fig2 = plotter.plot_im_data(imdata, wf)
 
         fig.savefig(f"am_am_plot_stripe{stripe_idx}.pdf")
         fig2.savefig(f"spec_plot_stripe{stripe_idx}.pdf")

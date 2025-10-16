@@ -4,10 +4,97 @@ import logging
 from itertools import combinations
 from scipy.signal import unit_impulse
 
+from wireless_channel.waveforms import Waveform
 from utils import remove_oversampling, cp_ofdm_to_freq, calculate_psd_per_symbol
 
 logger = logging.getLogger(__name__)
 
+booster_stages = ["fiber", "coupler", "amplifier", "coupler"]
+tx_stages = ["fiber", "coupler", "splitter", "shifter", "amplifier"]
+rx_stages = ["amplifier", "shifter", "combiner", "coupler", "fiber"]
+
+def plot_im_data(imdata: list[np.ndarray], wf: Waveform):
+    """Plot the intermediate data coming out of the stripe.
+
+    Parameters
+    ----------
+        imdata (list[np.ndarray])
+            aaa
+
+    Returns
+    -------
+    matplotlib.Figure
+        A matplotlib Figure object containing the created plot.
+    """
+    # Calculate how many booster stages are included in the intermediate data.
+    stages = ((len(imdata) - 6) // 4) + 1
+    # Make plot panes for all the stages
+    plot_panes = stages
+    if plot_panes % 2 != 0:
+        plot_panes += 1
+
+    # Make a figure for AM/AM plots and spec plots.
+    fig, ax = plt.subplots(plot_panes // 2, 2)
+    fig2, ax2 = plt.subplots(plot_panes // 2, 2)
+
+    # Keep the array 1xm for simplicity.
+    if len(ax.shape) == 1:
+        ax = np.array([ax])
+    if len(ax2.shape) == 1:
+        ax2 = np.array([ax2])
+
+    # Set the proper axis labels.
+    ax[-1, 0].set_xlabel("Input amplitude |x|")
+    ax[-1, -1].set_xlabel("Input amplitude |x|")
+    ax[0, 0].set_ylabel("Output amplitude |y|")
+
+    ax2[-1, 0].set_xlabel("Normalized Frequency")
+    ax2[-1, -1].set_xlabel("Normalized Frequency")
+    ax2[0, 0].set_ylabel("Power Spectral Density (dB/Hz)")
+
+    # Loop over the data from all the stages. (Stages are RUs and BUs.)
+    for i, (x, y) in enumerate(zip(imdata[:-1], imdata[1:])):
+        # Calculate at which stage we are.
+        # imdata is ((4 x boosters) + 5) + 1
+        # Where 5 is the last transmit stage and the + 1 is the initial data being transmitted
+        # at location 0.
+        stage = (i // 4) + 1
+        # The last stage is a RU containing 5 components instead of 4. We need to
+        # compensate for this or we advance to a non-existing stage.
+        if stage > stages:
+            stage = stages
+
+        # For the last three stages --- splitter, shifter and amplifier --- we select the data from
+        # one single antenna to plot.
+        component_in_last_stage = (i - ((stages - 1) * 4)) % 5
+        if stage == stages:
+            if component_in_last_stage >= 3:
+                x = x[0]
+            if component_in_last_stage >= 2:
+                y = y[0]
+
+        # Calculate the PSD.
+        freq, psd = calculate_psd_per_symbol(y, wf.fs)
+
+        if stage >= stages:
+            label = tx_stages[component_in_last_stage]
+            label += str(stages)
+        else:
+            label = booster_stages[i % 4]
+            label += str(stage)
+        column = 0
+        if stage > (plot_panes // 2):
+            column = 1
+        row = (stage - 1) % (plot_panes // 2)
+
+        # Select the data for one symbol only.
+        ax[row, column].plot(np.abs(x[0]), np.abs(y[0]), "o", label=label)
+        ax[row, column].legend()
+
+        ax2[row, column].plot(freq, psd, label=label)
+        ax2[row, column].legend()
+
+    return fig, fig2
 
 def plot_stripes(config: dict, stripes: list):
     fig = plt.figure()
@@ -69,8 +156,6 @@ def plot_stripes(config: dict, stripes: list):
     by_label = dict(zip(labels, handles))
     ax.legend(by_label.values(), by_label.keys())
 
-    plt.show(block=True)
-
 
 def plot_room(config: dict):
     fig = plt.figure()
@@ -124,7 +209,7 @@ def plot_room(config: dict):
     ax.scatter3D(ues[:, 0], ues[:, 1], ues[:, 2], c="blue", alpha=0.2)
 
 
-def plot_constellation(iq_symbols: np.ndarray, labels: list[str] | None = None):
+def plot_constellation(iq_symbols: np.ndarray, labels: list[str] | None = None, title: str | None = None):
     """Plot a constellation of IQ symbols.
 
     Parameters
@@ -157,6 +242,7 @@ def plot_constellation(iq_symbols: np.ndarray, labels: list[str] | None = None):
     ax.axis("equal")
     if labels is not None:
         ax.legend()
+    ax.set_title(title if title is not None else "IQ constellation")
 
     return fig
 

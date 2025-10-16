@@ -52,50 +52,68 @@ if __name__ == "__main__":
     # todo load from config
     nr_antennas = 4
 
-    # plot full room with all stripes and all possible ue locations
-    plotter.plot_room(config)
-    logger.debug("%d stripes in the room", len(config["radio_stripes"]))
-
-    # construct waveform class
+    # Construct waveform class.
     waveform_config = config["waveform_config"]
     freq_band_config = config["sub_thz"]
     wf = Waveform.from_config(waveform_config, freq_band_config)
-    logger.debug("%s", wf)
+    logger.debug(f"{wf}")
 
-    # generate ofdm waveform in time domain
+    # Generate a CP-OFDM waveform in time domain.
     bits = wf.generate_bits()
     qam = wf.qam_modulate()
     ofdm_time = wf.ofdm_modulate()  # shape: nr_ofdm_symb x (fftsize + cp length)
     wf.plot_psd(ofdm_time)
 
-    # build all radio stripes
+    # Build all radio stripes.
     stripes = []
     component_config = config["component_config"]
     for stripe_cfg in config["radio_stripes"]:
         stripes.append(RadioStripe.from_config_locations(stripe_cfg, component_config, wf))
 
     # As a simplified example only simulate the first two stripes.
+    # We cannot select stripes arbitrarily. Otherwise the stripe indexes no longer match the
+    # ones used by the channel. For example if we select only stripe 6 it gets index 0 in the
+    # stripes list. The channel will select the channel for stripe index 0 which does not
+    # match with the actual selected stripe. Same goes for selecting radio units.
     stripes = stripes[0:2]
     plotter.plot_stripes(config, stripes)
     for stripe_idx, stripe in enumerate(stripes):
         logger.debug("stripe: %d: %s", stripe_idx, stripe)
 
-    # load channels
+    # load channels. Select only a single UE position to start with. Same indexing remark
+    # applies here as for the stripes.
     ue_pos = config["ue_positions"][0]
     channel = Channel.from_sionna(ue_pos, debug=True)
     channel.Nr_stripes = 2
-    logger.debug("%s", channel)
+    logger.debug(f"{channel}")
+
+    # Currently we use the central unit at the UE side to transmit the OFDM signal.
+    cu = CentralUnit()  # TODO: are these configs loadable?
+    logger.debug(f"CU: {cu}")
+    ofdm_time_after_cu = cu.run(ofdm_time)  # shape: nr_ofdm_symbols x (fft_size + cp length)
+    logger.debug(f"shape of ofdm timee: {ofdm_time_after_cu.shape}")
+    logger.debug(f"np alike: {np.allclose(ofdm_time, ofdm_time_after_cu)}")
 
     # We use a single radio unit to represent the UE.
     ue = RadioUnit(ue_pos["x"], ue_pos["y"], ue_pos["z"], wf)
-    logger.debug("ue RU: %s", ue)
+    logger.debug(f"ue RU: {ue}")
     shifts = [0, 0, 0, 0]
-    iq_data_tx, imdata = ue.transmit(ofdm_time, shifts)
-
+    iq_data_tx, imdata = ue.transmit(ofdm_time_after_cu, shifts)
+    # Make an IQ-plot and PSD-plot of the data transmitted at the UE (one antenna).
     wf.plot_iq_time(iq_data_tx[0], title="Transmitted at UE")
+    wf.plot_psd(iq_data_tx[0], title="Transmitted at UE")
 
     iq_data_rus = channel.transmit_ul(iq_data_tx, wf)
-    wf.plot_iq_time(iq_data_rus[0][0][0], title="After wireless channel")
+    wf.plot_psd(iq_data_rus[0][0][0], title="After wireless channel")
+
+    # Plot the received IQ-data for several RUs of the first stripe.
+    ru_ofdm_freqs = []
+    for i, ru_data in enumerate(iq_data_rus[0][0:10]):
+        ru_ofdm_freqs.append(wf.ofdm_time_to_freq(ru_data[0])[0])
+
+    labels = [f"RU{i+1}" for i in range(20)]
+    fig = plotter.plot_constellation(np.array(ru_ofdm_freqs), labels=labels, title="IQ received at the different RUs.")
+    fig.show()
 
     logger.debug("Receiving data on all stripes.")
     iq_stripes = []
@@ -149,4 +167,4 @@ if __name__ == "__main__":
 
     ber = wf.compute_ber(bits, y_bits)
     logger.debug(f"BER: {ber}")
-    plt.show()
+    plt.show(block=True)

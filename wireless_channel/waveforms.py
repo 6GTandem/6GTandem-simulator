@@ -417,15 +417,17 @@ class Waveform():
         return n_errors / len(bits_tx)
 
     def plot_constellation(self, symbols_rx, title=None, symbols_tx=None):
-        plt.scatter(np.real(symbols_rx), np.imag(symbols_rx), label='Rx symbols')
+        fig, ax = plt.subplots()
+        ax.scatter(np.real(symbols_rx), np.imag(symbols_rx), label='Rx symbols')
         if symbols_tx is not None:
-            plt.scatter(np.real(symbols_tx), np.imag(symbols_tx), label='Tx symbols')
-        plt.title(title if title is not None else f"{self.qam_order}-QAM Constellation")
-        plt.xlabel("In-phase (I)")
-        plt.ylabel("Quadrature (Q)")
-        plt.axis("equal")
-        plt.legend()
-        plt.show(block=True)
+            ax.scatter(np.real(symbols_tx), np.imag(symbols_tx), label='Tx symbols')
+        ax.set_title(title if title is not None else f"{self.qam_order}-QAM Constellation")
+        ax.set_xlabel("In-phase (I)")
+        ax.set_ylabel("Quadrature (Q)")
+        ax.axis("equal")
+        ax.legend()
+
+        return fig
 
     def plot_iq_time(self, iq, title=None):
         ywf = self.ofdm_time_to_freq(iq)
@@ -433,7 +435,7 @@ class Waveform():
         qam = self.ofdm_to_qam(ywf)
         self.plot_constellation(qam, title=title)
 
-    def plot_psd(self, ofdm_time=None, nperseg=1024):
+    def plot_psd(self, ofdm_time=None, nperseg=1024, title=None):
         if ofdm_time is None:
             ofdm_time = self.ofdm_time
 
@@ -443,11 +445,13 @@ class Waveform():
         Pxx_db = 10 * np.log10(np.fft.fftshift(Pxx))
         f_shifted = np.fft.fftshift(f)  # + fc  # shift to RF
         f_shifted_GHz = f_shifted / 1e9
-        plt.figure(figsize=(10, 4))
-        plt.plot(f_shifted_GHz, Pxx_db)
-        plt.xlabel("Frequency (GHz)")
-        plt.xlim([-10, 10])
-        plt.ylabel("PSD (dB)")
-        plt.title("OFDM PSD at RF")
-        plt.grid(True)
-        plt.show(block=True)
+
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.plot(f_shifted_GHz, Pxx_db)
+        ax.set_xlabel("Frequency (GHz)")
+        ax.set_xlim((-10, 10))
+        ax.set_ylabel("PSD (dB)")
+        ax.set_title(title if title is not None else "OFDM PSD Plot")
+        ax.grid(True)
+
+        return fig
