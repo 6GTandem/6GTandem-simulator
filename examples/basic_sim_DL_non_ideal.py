@@ -97,7 +97,7 @@ if __name__ == "__main__":
         phase_shifts = [0, 0, 0, 0]
         iq_out, imdata = stripe.transmit(iq_data, phase_shifts)
 
-        fig, fig2 = plotter.plot_im_data(imdata, wf)
+        fig, fig2 = plotter.plot_im_data_tx(imdata, wf)
 
         fig.savefig(f"am_am_plot_stripe{stripe_idx}.pdf")
         fig2.savefig(f"spec_plot_stripe{stripe_idx}.pdf")

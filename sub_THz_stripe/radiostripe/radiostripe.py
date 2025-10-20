@@ -115,7 +115,7 @@ class RadioStripe(Component):
         return y, imdata
 
     def receive(self, x: np.ndarray, shifts: list[int]):
-        """Receives incoming IQ-data on the antennas of the acitve unit and runs it along the stripe.
+        """Receives incoming IQ-data on the antennas of the active unit and runs it along the stripe.
 
         :param x: IQ-data in the form of an (n x m) array with n the amount of rows being equal to the amount of splits.
         :param shifts: See `PhaseShifter`.
@@ -124,8 +124,8 @@ class RadioStripe(Component):
         """
         imdata = [x]
         # Data is received by the active radio unit.
-        y = self.radio_units[self.active_unit].receive(x, shifts)
-        imdata.append(y)
+        y, im = self.radio_units[self.active_unit].receive(x, shifts)
+        imdata.extend(im)
         y = self.fibers[self.active_unit].run(y)
         imdata.append(y)
 
@@ -134,8 +134,8 @@ class RadioStripe(Component):
             self.radio_units[: self.active_unit - 1][::-1],
             self.fibers[: self.active_unit - 1][::-1],
         ):
-            y = ru.boost(y)
-            imdata.append(y)
+            y, im = ru.boost(y)
+            imdata.extend(im)
             y = fib.run(y)
             imdata.append(y)
 
@@ -151,16 +151,18 @@ class RadioStripe(Component):
         :returns: IQ-data array arriving at the end of the stripe.
         """
         y_in = np.zeros(x[0][0].shape, dtype=np.complex128)
-        imdata = [x]
+        imdata = []
 
-        for ru, fib, data in zip(self.radio_units[::-1], self.fibers[::-1], x):
-            rdata, imdata = ru.receive(data, shifts)
-            y_in, imdata = ru.boost(y_in)
+        for ru, fib, data in zip(self.radio_units[::-1], self.fibers[::-1], x[::-1]):
+            imdata.append(data)
+            rdata, im = ru.receive(data, shifts)
+            imdata.extend(im)
+            imdata.append(y_in)
+            y_in, im = ru.boost(y_in)
+            imdata.extend(im)
             y_combined = np.sum((rdata, y_in), axis=0)
             y_out = fib.run(y_combined)
             y_in = y_out  # becomes new in
-
-            imdata.append(y_out)
 
         return y_in, imdata
 

@@ -1,3 +1,5 @@
+import sys
+from PySide6 import QtCore, QtWidgets, QtGui
 import matplotlib.pyplot as plt
 import numpy as np
 import logging
@@ -11,9 +13,138 @@ logger = logging.getLogger(__name__)
 
 booster_stages = ["fiber", "coupler", "amplifier", "coupler"]
 tx_stages = ["fiber", "coupler", "splitter", "shifter", "amplifier"]
-rx_stages = ["amplifier", "shifter", "combiner", "coupler", "fiber"]
+rx_stages = ["amplifier", "shifter", "combiner", "coupler"]
 
-def plot_im_data(imdata: list[np.ndarray], wf: Waveform):
+
+class DynamicPlotter(QtWidgets.QWidget):
+    def __init__(self, data: list[np.ndarray], stages: int, mode: str, wf: Waveform):
+        super().__init__()
+        self.mode = mode
+        self.stages = stages
+        self.data = data
+        self.wf = wf
+
+        self.setWindowTitle("Stages to plot.")
+
+        # Layout for the checkboxes.
+        self.vlayout = QtWidgets.QGridLayout(self)
+
+        # Create all the checkboxes
+        self.checkboxes: list[QtWidgets.QCheckBox] = []
+        for stage in range(1, stages + 1):
+            if stage == stages and self.mode == "tx":
+                for component in rx_stages:
+                    setattr(self, f"checkbox_{component}{stage}", QtWidgets.QCheckBox(f"{component}{stage}"))
+                    self.checkboxes.append(getattr(self, f"checkbox_{component}{stage}"))
+            else:
+                if self.mode == "rx":
+                    setattr(self, f"checkbox_ant{stage}", QtWidgets.QCheckBox(f"ant{stage}"))
+                    self.checkboxes.append(getattr(self, f"checkbox_ant{stage}"))
+                    for component in rx_stages:
+                        setattr(self, f"checkbox_{component}{stage}", QtWidgets.QCheckBox(f"{component}{stage}"))
+                        self.checkboxes.append(getattr(self, f"checkbox_{component}{stage}"))
+                for component in booster_stages:
+                    setattr(self, f"checkbox_{component}{stage}", QtWidgets.QCheckBox(f"{component}{stage}"))
+                    self.checkboxes.append(getattr(self, f"checkbox_{component}{stage}"))
+
+        # Add the checkboxes to the vertical layout and assign all the checkboxes to the same slot.
+        for i, wdgt in enumerate(self.checkboxes):
+            self.vlayout.addWidget(wdgt, i % 20, i // 20)
+            wdgt.stateChanged.connect(self.update_plots)
+
+        self.setLayout(self.vlayout)
+
+        # Create the plot to dynamically plot the data.
+        self.fig, self.axs = plt.subplots(1, 2)
+        self.fig.show()
+
+    @QtCore.Slot()
+    def update_plots(self, state):
+        # First clear all the data currently on the plot.
+        for ax in self.axs:
+            ax.clear()
+
+        # Go over all the checkboxes and plot the data of the active ones.
+        for i, (chkbx, x, y) in enumerate(zip(self.checkboxes, self.data[:-1], self.data[1:])):
+            if chkbx.isChecked():
+                if self.mode == "tx":
+                    # Calculate at which stage we are.
+                    # imdata is ((4 x boosters) + 5) + 1
+                    # Where 5 is the last transmit stage and the + 1 is the initial data being transmitted
+                    # at location 0.
+                    stage = (i // 4) + 1
+                    # The last stage is a RU containing 5 components instead of 4. We need to
+                    # compensate for this or we advance to a non-existing stage.
+                    if stage > self.stages:
+                        stage = self.stages
+
+                    # For the last three stages --- splitter, shifter and amplifier --- we select the data from
+                    # one single antenna to plot.
+                    component_in_last_stage = (i - ((self.stages - 1) * 4)) % 5
+                    if stage == self.stages:
+                        if component_in_last_stage >= 3:
+                            x = x[0]
+                        if component_in_last_stage >= 2:
+                            y = y[0]
+
+                    # Calculate the PSD.
+                    freq, psd = calculate_psd_per_symbol(y, self.wf.fs)
+
+                    if stage >= self.stages:
+                        label = tx_stages[component_in_last_stage]
+                        label += str(self.stages)
+                    else:
+                        label = booster_stages[i % 4]
+                        label += str(stage)
+
+                    # Select the data for one symbol only.
+                    self.axs[0].plot(np.abs(x[0]), np.abs(y[0]), "o", label=label)
+                    self.axs[1].plot(freq, psd, label=label)
+                else:
+                    # Calculate at which stage we are.
+                    stage = (i // 9) + 1
+
+                    # All the data before the combiner is split in the number of antennas present. We only
+                    # plot the data of one single antenna (the first one).
+                    component_in_stage = (i % 9) + 1
+                    if component_in_stage in (1, 2, 3):
+                        x = x[0]
+                    if component_in_stage in (1, 2, 9):
+                        y = y[0]
+
+                    # Calculate the PSD.
+                    freq, psd = calculate_psd_per_symbol(x, self.wf.fs)
+
+                    match component_in_stage:
+                        case 1:
+                            label = f"ant{stage}"
+                        case 2 | 3 | 4 | 5:
+                            label = rx_stages[component_in_stage - 2]
+                            label += str(stage)
+                        case 6 | 7 | 8 | 9:
+                            label = booster_stages[component_in_stage - 6]
+                            label += str(stage)
+                        case _:
+                            label = "Unknown"
+
+                    # Select the data for one symbol only.
+                    self.axs[0].plot(np.abs(x[0]), np.abs(y[0]), "o", label=label)
+                    self.axs[1].plot(freq, psd, label=label)
+
+        for ax in self.axs:
+            ax.legend()
+
+        # Set the proper axis labels.
+        self.axs[0].set_xlabel("Input amplitude |x|")
+        self.axs[0].set_ylabel("Output amplitude |y|")
+        self.axs[1].set_xlabel("Normalized Frequency")
+        self.axs[1].set_ylabel("Power Spectral Density (dB/Hz)")
+
+        # Update the figure after adding the data.
+        self.fig.canvas.draw()
+
+
+def plot_im_data_tx(imdata: list[np.ndarray], wf: Waveform):
     """Plot the intermediate data coming out of the stripe.
 
     Parameters
@@ -95,6 +226,88 @@ def plot_im_data(imdata: list[np.ndarray], wf: Waveform):
         ax2[row, column].legend()
 
     return fig, fig2
+
+
+def plot_im_data_rx_all(imdata: list[np.ndarray], wf: Waveform):
+    """Plot the intermediate data coming out of the stripe.
+
+    Parameters
+    ----------
+        imdata (list[np.ndarray])
+            aaa
+
+    Returns
+    -------
+    matplotlib.Figure
+        A matplotlib Figure object containing the created plot.
+    """
+    # Calculate how many ru stages are included in the intermediate data.
+    stages = (len(imdata) // 9) + 1
+    # Make plot panes for all the stages
+    plot_panes = stages
+    if plot_panes % 2 != 0:
+        plot_panes += 1
+
+    # Make a figure for AM/AM plots and spec plots.
+    fig, ax = plt.subplots(plot_panes // 2, 2)
+    fig2, ax2 = plt.subplots(plot_panes // 2, 2)
+
+    # Keep the array 1xm for simplicity.
+    if len(ax.shape) == 1:
+        ax = np.array([ax])
+    if len(ax2.shape) == 1:
+        ax2 = np.array([ax2])
+
+    # Set the proper axis labels.
+    ax[-1, 0].set_xlabel("Input amplitude |x|")
+    ax[-1, -1].set_xlabel("Input amplitude |x|")
+    ax[0, 0].set_ylabel("Output amplitude |y|")
+
+    ax2[-1, 0].set_xlabel("Normalized Frequency")
+    ax2[-1, -1].set_xlabel("Normalized Frequency")
+    ax2[0, 0].set_ylabel("Power Spectral Density (dB/Hz)")
+
+    # Loop over the data from all the stages. (Stages are all RUs.)
+    for i, (x, y) in enumerate(zip(imdata[:-1], imdata[1:])):
+        # Calculate at which stage we are.
+        stage = (i // 9) + 1
+
+        # All the data before the combiner is split in the number of antennas present. We only
+        # plot the data of one single antenna (the first one).
+        component_in_stage = (i % 9) + 1
+        if component_in_stage in (1, 2, 3):
+            x = x[0]
+        if component_in_stage in (1, 2, 9):
+            y = y[0]
+
+        # Calculate the PSD.
+        freq, psd = calculate_psd_per_symbol(x, wf.fs)
+
+        match component_in_stage:
+            case 1:
+                label = f"ant{stage}"
+            case 2 | 3 | 4 | 5:
+                label = rx_stages[component_in_stage - 2]
+                label += str(stage)
+            case 6 | 7 | 8 | 9:
+                label = booster_stages[component_in_stage - 6]
+                label += str(stage)
+            case _:
+                label = "Unknown"
+        column = 0
+        if stage > (plot_panes // 2):
+            column = 1
+        row = (stage - 1) % (plot_panes // 2)
+
+        # Select the data for one symbol only.
+        ax[row, column].plot(np.abs(x[0]), np.abs(y[0]), "o", label=label)
+        ax[row, column].legend()
+
+        ax2[row, column].plot(freq, psd, label=label)
+        ax2[row, column].legend()
+
+    return fig, fig2
+
 
 def plot_stripes(config: dict, stripes: list):
     fig = plt.figure()

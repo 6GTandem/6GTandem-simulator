@@ -17,6 +17,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # todo test receive all
 
+from PySide6 import QtWidgets
 from matplotlib import pyplot as plt
 import numpy as np
 import logging
@@ -33,8 +34,8 @@ from plotter import plotter
 booster_stages = ["fiber", "coupler", "amplifier", "coupler"]
 tx_stages = ["fiber", "coupler", "splitter", "shifter", "amplifier"]
 
-
 if __name__ == "__main__":
+    app = QtWidgets.QApplication([])
     # Logfile name the same as the current script name.
     script_name = __file__.split(".")[0]
     logfile = f"{script_name}.log"
@@ -82,7 +83,7 @@ if __name__ == "__main__":
 
     # load channels. Select only a single UE position to start with. Same indexing remark
     # applies here as for the stripes.
-    ue_pos = config["ue_positions"][0]
+    ue_pos = config["ue_positions"][3017]
     channel = Channel.from_sionna(ue_pos, debug=True)
     channel.Nr_stripes = 2
     logger.debug(f"{channel}")
@@ -113,7 +114,6 @@ if __name__ == "__main__":
 
     labels = [f"RU{i+1}" for i in range(20)]
     fig = plotter.plot_constellation(np.array(ru_ofdm_freqs), labels=labels, title="IQ received at the different RUs.")
-    fig.show()
 
     logger.debug("Receiving data on all stripes.")
     iq_stripes = []
@@ -122,6 +122,12 @@ if __name__ == "__main__":
         logger.debug("shape of iq data: %s", iq_data_rus.shape)
         phase_shifts = [0, 0, 0, 0]
         iq_out, imdata = stripe.receive_all(iq_data_rus[stripe_idx], phase_shifts)
+
+        fig, fig2 = plotter.plot_im_data_rx_all(imdata[:9*5], wf)
+
+        fig.savefig(f"am_am_plot_stripe{stripe_idx}.pdf")
+        fig2.savefig(f"spec_plot_stripe{stripe_idx}.pdf")
+
         iq_stripes.append(iq_out)
 
     y_combined_freq = wf.ofdm_time_to_freq(iq_stripes[0])
@@ -167,4 +173,9 @@ if __name__ == "__main__":
 
     ber = wf.compute_ber(bits, y_bits)
     logger.debug(f"BER: {ber}")
-    plt.show(block=True)
+    #plt.show(block=True)
+
+    widget = plotter.DynamicPlotter(imdata, len(stripes[0].radio_units), "rx", wf)
+    widget.show()
+
+    sys.exit(app.exec())

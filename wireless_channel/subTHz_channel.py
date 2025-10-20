@@ -283,7 +283,9 @@ class Channel:
 
                 # pad zeros
                 for m in range(self.Nr_ru_antennas):
-                    Y_f_padded[:, m, :] = wf.pad_subcarriers(Y_f[:, m, :])  # (n_ofdm_symbols x n_carriers) => (n_ofdm_symbosl x fftsize)
+                    Y_f_padded[:, m, :] = wf.pad_subcarriers(
+                        Y_f[:, m, :]
+                    )  # (n_ofdm_symbols x n_carriers) => (n_ofdm_symbosl x fftsize)
 
                     # IFFT back to time domain (should error => fft size + cp length
                     Y_time[s, r, m, :, :] = wf.ofdm_freq_to_time(Y_f_padded[:, m, :])
