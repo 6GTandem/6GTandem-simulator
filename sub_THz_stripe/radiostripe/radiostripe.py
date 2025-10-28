@@ -215,35 +215,8 @@ class RadioStripe(Component):
                 if amplifier_config is not None:
                     amp = Amplifier(**amplifier_config)
                 if coupler_config is not None:
-                    if "model" in coupler_config:
-                        # Load the couplers S-parameter file
-                        base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                        coupler_spars = rf.Network(os.path.join(base_path, f"../models/{coupler_config['model']}"))
-
-                        # Subcarrier frequencies
-                        ofdm_freqs = np.linspace(
-                            wf.fc - wf.bw / 2, wf.fc + wf.bw / 2, wf.n_carriers * wf.oversampling_factor
-                        )
-
-                        # Extract frequency and S21 (transmission)
-                        coup_freqs = coupler_spars.f
-                        coup_s21 = coupler_spars.s[:, 1, 0]  # S21
-
-                        # Interpolate magnitude and phase separately for better accuracy
-                        coup_s21_mag = np.abs(coup_s21)
-                        coup_s21_phase = np.angle(coup_s21)
-
-                        interp_mag = np.interp(ofdm_freqs, coup_freqs, coup_s21_mag)
-                        interp_phase = np.interp(ofdm_freqs, coup_freqs, coup_s21_phase)
-                        coup_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
-
-                        damping = 0  # in dB
-                        filter_mode = "freq_domain"
-                        coup_in = Coupler(damping=damping, filter=coup_s21_ofdm, filter_mode=filter_mode, wf=wf)
-                        coup_out = Coupler(damping=damping, filter=coup_s21_ofdm, filter_mode=filter_mode, wf=wf)
-                    else:
-                        coup_in = Coupler(**coupler_config)
-                        coup_out = Coupler(**coupler_config)
+                    coup_in = Coupler.from_config(coupler_config, wf)
+                    coup_out = Coupler.from_config(coupler_config, wf)
 
                 loc = unit_cfg["radio_unit"]
                 ru = RadioUnit(
