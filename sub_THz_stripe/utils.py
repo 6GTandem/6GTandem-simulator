@@ -79,63 +79,45 @@ def rc(t, beta):
     return pulse
 
 
-def delay(x, n: list = [1], filter_length: int = 512):
+def delay(x, signal_delay: float, filter_length: int = 512):
     """Delays the vector x by n steps.
 
     If filter_length is omitted a length of 512 is assumed for the filter.
     If x is oversampled by a factor of 2 or more, the filter_length can be set to 5,
     making the function considerably faster. Omitting sets it to 1.
 
-    When n is a vector, the output is a matrix where the rows are delayed x, with
-    the different delays in n.
-    When x is a matrix the output is a matrix with size(x, 2)*length(n) columns. The
-    first size(x, 2) columns is then x delayed by the first element of n, and so on.
-
     (c) Thomas Eriksson 2017-2023
 
     Time: The function can delay ~ 7e6 complex samples per second, with FilterLength = 512.
     """
+    # Round the delay so we can use it as index.
+    delay_int = round(signal_delay)
+    # Roll the input with the given delay. Afterwards we set the wrapped around values to zero to avoid artifacts.
+    y1 = np.roll(x, delay_int)
 
-    # In case the input is a matrix the output matrix has the same amount of columns but (x.rows * len(n)) rows.
-    # Every x.rows of the output matrix forms one delayed version of the input.
-    shape = (x.shape[0] * len(n), x.shape[1])
-    rows = x.shape[0]
+    # If the delay is greater than zero add zeros to the beginning of the array.
+    # When it is smaller than zero add zeros at the end of the array.
+    if signal_delay >= 0:
+        y1[:delay_int] = np.zeros(delay_int)
+    else:
+        y1[len(y1) + delay_int:] = np.zeros(abs(delay_int))
 
-    # Zero array/matrix used to build up the output.
-    y = np.zeros(shape=shape, dtype=np.complex128)
-
-    # Iterate over all the given delays.
-    for i, delayn in enumerate(n):
-        # Round the delay so we can use it as index.
-        delay_int = round(delayn)
-        # Roll the input with the given delay.
-        y1 = np.roll(x, delay_int)
-
-        # If the delay is greater than zero add zeros to the beginning of the array.
-        # When it is smaller than zero add zeros at the end of the array.
-        if delayn >= 0:
-            y1[:, :delay_int] = np.zeros((rows, delay_int))
+    frac = signal_delay - delay_int
+    # Check if integer
+    if frac != 0:
+        raise NotImplementedError("This functionality must be checked before using it.")
+        # Simple version if there is some oversampling
+        if filter_length < 10:
+            h = rc(np.arange(-filter_length, filter_length + 1) - frac, 0.5)
         else:
-            y1[:, y1.shape[1] +
-                delay_int:] = np.zeros((rows, abs(delay_int)))
+            h = (np.sinc(np.arange(-filter_length, filter_length +
+                    1) - frac) * np.hanning(2 * filter_length + 1))
 
-        frac = delayn - delay_int
-        # Check if integer
-        if frac != 0:
-            # Simple version if there is some oversampling
-            if filter_length < 10:
-                h = rc(np.arange(-filter_length, filter_length + 1) - frac, 0.5)
-            else:
-                h = (np.sinc(np.arange(-filter_length, filter_length +
-                     1) - frac) * np.hanning(2 * filter_length + 1))
+        y1 = np.concatenate([y1, np.zeros((rows, filter_length))], axis=1)
+        y1 = lfilter(h, 1, y1)
+        y1 = y1[:, y1.shape[1]-x.shape[1]:]
 
-            y1 = np.concatenate([y1, np.zeros((rows, filter_length))], axis=1)
-            y1 = lfilter(h, 1, y1)
-            y1 = y1[:, y1.shape[1]-x.shape[1]:]
-
-        y[(i*rows):((i+1) * rows), :] = y1
-
-    return y
+    return y1
 
 
 def randn_c(rows: int = 1, cols: int = 1, threshold: int = 0):

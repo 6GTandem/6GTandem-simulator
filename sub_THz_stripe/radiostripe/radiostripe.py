@@ -267,28 +267,7 @@ class RadioStripe(Component):
         fibers = []
         for i in range(len(radio_units)):
             if fiber_config is not None:
-                if "model" in fiber_config:
-                    # Load the fiber model from the given file.
-                    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                    fiber_spars = pd.read_csv(os.path.join(base_path, f"../models/{fiber_config['model']}"))
-
-                    # Subcarrier frequencies
-                    ofdm_freqs = np.linspace(
-                        wf.fc - wf.bw / 2, wf.fc + wf.bw / 2, wf.n_carriers * wf.oversampling_factor
-                    )
-
-                    fib_freqs = fiber_spars["freq[Hz]"]
-                    fib_phase = np.unwrap(np.deg2rad(fiber_spars["ang:Trc2_S21"]))
-                    fib_mag = 10 ** (fiber_spars["db:Trc2_S21"] / 20.0)
-
-                    interp_mag = np.interp(ofdm_freqs, fib_freqs, fib_mag)
-                    interp_phase = np.interp(ofdm_freqs, fib_freqs, fib_phase)
-                    fib_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
-
-                    filter_mode = "freq_domain"
-                    fiber = Fiber(damping_per_meter=0, length=0, filter=fib_s21_ofdm, filter_mode=filter_mode, wf=wf)
-                else:
-                    fiber = Fiber(**fiber_config)
+                fiber = Fiber.from_config(fiber_config, wf)
             else:
                 p1 = np.array([units[i].x, units[i].y, units[i].z])
                 p2 = np.array([units[i + 1].x, units[i + 1].y, units[i + 1].z])

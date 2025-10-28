@@ -1,9 +1,12 @@
+import os
 import numpy as np
+import pandas as pd
 import logging
 
 from ..component.component import Component
 from wireless_channel.waveforms import Waveform
-from ..utils import db_to_magnitude, delay
+from ..utils import db_to_magnitude
+from ..utils import delay as delay_signal
 from scipy.signal import lfilter
 
 logger = logging.getLogger(__name__)
@@ -31,13 +34,15 @@ class Fiber(Component):
 
         super().__init__(*args, **kwargs)
 
-    def run(self, x):
+    def run(self, x, delay=False):
         if self.filter_mode == 'time_domain':
             logger.debug("Fiber model is being applied in the time domain.")
             taps = np.fft.ifft(np.fft.ifftshift(self.filter))
             logger.debug(f"Filter taps used: {taps}")
             #x_filt = delay(lfilter(taps, [1.0], x.flatten(), [self.delay]) #todo delay needed or not???
             x_filt = lfilter(taps, [1.0], x.flatten())
+            if delay:
+                x_filt = delay_signal(x_filt, [self.delay])
             xout = np.reshape(x_filt, (self.wf.n_ofdm_symbols, -1))
 
         elif self.filter_mode == 'freq_domain':
@@ -53,6 +58,10 @@ class Fiber(Component):
 
             logger.debug(f'xfreq filtered shape: {x_freq_filtered.shape}')
             xout = self.wf.ofdm_freq_to_time(x_freq_filtered) #back to time
+            xout = xout.flatten()
+            if delay:
+                xout = delay_signal(xout, self.delay)
+            xout = np.reshape(xout, (self.wf.n_ofdm_symbols, -1))
 
         return xout * db_to_magnitude(self.damping)
 
@@ -63,3 +72,33 @@ class Fiber(Component):
     @property
     def damping(self):
         return self.length * self.damping_per_meter
+    
+    @classmethod
+    def from_config(cls, config: dict, wf: Waveform):
+        if "model" in config:
+            # Load the fiber model from the given file.
+            base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            fiber_spars = pd.read_csv(os.path.join(base_path, f"../models/PMF/{config['model']}"))
+
+            # Subcarrier frequencies
+            ofdm_freqs = np.linspace(
+                wf.fc - wf.bw / 2, wf.fc + wf.bw / 2, wf.n_carriers * wf.oversampling_factor
+            )
+
+            fib_freqs = fiber_spars["freq[Hz]"]
+            fib_phase = np.unwrap(np.deg2rad(fiber_spars["ang:Trc2_S21"]))
+            fib_mag = 10 ** (fiber_spars["db:Trc2_S21"] / 20.0)
+
+            interp_mag = np.interp(ofdm_freqs, fib_freqs, fib_mag)
+            interp_phase = np.interp(ofdm_freqs, fib_freqs, fib_phase)
+            fib_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
+
+            filter_mode = "freq_domain"
+            damping = config.get("damping_per_meter", 0)
+            length = config.get("length", 0)
+            
+            fiber = cls(damping_per_meter=damping, length=length, filter=fib_s21_ofdm, filter_mode=filter_mode, wf=wf)
+        else:
+            fiber = cls(**config)
+        
+        return fiber
