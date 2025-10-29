@@ -79,28 +79,58 @@ def rc(t, beta):
     return pulse
 
 
-def delay(x, signal_delay: float, filter_length: int = 512):
-    """Delays the vector x by n steps.
+def delay(x: np.ndarray, signal_delay: float, filter_length: int = 512, window: str = "fixed"):
+    """Delay the input vector x by signal_delay samples.
 
+    Parameters
+    ----------
+    x: np.ndarray
+        Input data being delayed.
+    signal_delay: float
+        How many samples to delay the signal. This can be an integer number of samples or a
+        fractional delay in case of oversampling.
+    filter_length: int
+        Length of the filter applied to the data in case of a fractional delay. With integer
+        delays this parameter is unused.
+    window: str
+        Keep the signal window fixed or make it dynamic. When the window is fixed samples going
+        out of the window due to the delay are omitted. Depending on the length of the delay
+        this can detoriate the signal quickly. With a dynamic window the output signal length
+        is increased by signal_delay samples through zero padding. This keeps the original
+        signal intact and only delays it.
+
+    TODO: Confirm this filtering functionality for fractional delays works a expected.
+    In case the signal_delay is a fractional delay a sinc or raised cosine filter is applied to
+    the data to mitigate artifacts.
     If filter_length is omitted a length of 512 is assumed for the filter.
     If x is oversampled by a factor of 2 or more, the filter_length can be set to 5,
     making the function considerably faster. Omitting sets it to 1.
 
     (c) Thomas Eriksson 2017-2023
-
-    Time: The function can delay ~ 7e6 complex samples per second, with FilterLength = 512.
     """
     # Round the delay so we can use it as index.
     delay_int = round(signal_delay)
-    # Roll the input with the given delay. Afterwards we set the wrapped around values to zero to avoid artifacts.
-    y1 = np.roll(x, delay_int)
 
-    # If the delay is greater than zero add zeros to the beginning of the array.
-    # When it is smaller than zero add zeros at the end of the array.
-    if signal_delay >= 0:
-        y1[:delay_int] = np.zeros(delay_int)
+    if window == "fixed":
+        # Roll the input with the given delay. Afterwards we set the wrapped around values to zero to avoid artifacts.
+        y1 = np.roll(x, delay_int)
+
+        # If the delay is greater than zero add zeros to the beginning of the array.
+        # When it is smaller than zero add zeros at the end of the array.
+        if signal_delay >= 0:
+            y1[:delay_int] = np.zeros(delay_int)
+        else:
+            y1[len(y1) + delay_int:] = np.zeros(abs(delay_int))
     else:
-        y1[len(y1) + delay_int:] = np.zeros(abs(delay_int))
+        # With a non-fixed window zeros are added to the signal.
+        y1 = np.zeros(delay_int)
+
+        # If the delay is greater than zero add zeros to the beginning of the array.
+        # When it is smaller than zero add zeros at the end of the array.
+        if signal_delay >= 0:
+            y1 = np.concatenate([y1, x])
+        else:
+            y1 = np.concatenate([x, y1])
 
     frac = signal_delay - delay_int
     # Check if integer
