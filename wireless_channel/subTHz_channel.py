@@ -76,9 +76,8 @@ class Channel:
             tx_index = match.argmax().item()  # first match
             channel = self.csi["channel"].isel(tx_pair=tx_index).values
             return channel
-        else:
-            logger.warning("No matching stripe/RU combination found.")
-            return None
+        
+        raise ValueError(f"Stripe/RU combination does not exist: Stripe: {stripe_idx}, RU: {ru_idx}")
 
     @classmethod
     def from_sionna(cls, ue_coordinates, debug=False):

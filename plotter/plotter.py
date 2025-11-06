@@ -371,6 +371,13 @@ def plot_stripes(config: dict, stripes: list):
 
 
 def plot_room(config: dict):
+    """Plot the strip configuration in the room.
+
+    Parameters
+    ----------
+    config : dict
+        Configuration dictionary holding the room configuration. This comes from the config YAML file.
+    """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
     ax.set_aspect("auto")

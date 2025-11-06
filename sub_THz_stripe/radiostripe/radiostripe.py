@@ -114,7 +114,7 @@ class RadioStripe(Component):
 
         return y, imdata
 
-    def receive(self, x: np.ndarray, shifts: list[int]):
+    def receive(self, x: np.ndarray, shifts: list[int], delay: bool = False):
         """Receives incoming IQ-data on the antennas of the active unit and runs it along the stripe.
 
         :param x: IQ-data in the form of an (n x m) array with n the amount of rows being equal to the amount of splits.
@@ -124,9 +124,9 @@ class RadioStripe(Component):
         """
         imdata = [x]
         # Data is received by the active radio unit.
-        y, im = self.radio_units[self.active_unit].receive(x, shifts)
+        y, im = self.radio_units[self.active_unit].receive(x[self.active_unit], shifts)
         imdata.extend(im)
-        y = self.fibers[self.active_unit].run(y)
+        y = self.fibers[self.active_unit].run(y, delay=delay)
         imdata.append(y)
 
         # Data passes through the radio units between the active unit and the central unit.
@@ -136,12 +136,12 @@ class RadioStripe(Component):
         ):
             y, im = ru.boost(y)
             imdata.extend(im)
-            y = fib.run(y)
+            y = fib.run(y, delay=delay)
             imdata.append(y)
 
-        return y
+        return y, imdata
 
-    def receive_all(self, x: list[np.ndarray], shifts: list[int]):
+    def receive_all(self, x: list[np.ndarray], shifts: list[int], delay: bool = False, window: str = "fixed"):
         """Takes incoming IQ-data on the antennas and runs it along the stripe towards the central unit.
 
         :param x: List containing all the IQ data being received on all the radio units. The data at x[0] is the unit
@@ -160,8 +160,18 @@ class RadioStripe(Component):
             imdata.append(y_in)
             y_in, im = ru.boost(y_in)
             imdata.extend(im)
+            # If the window is dynamic we need to append zeros to the received data to make
+            # its length match the data coming from the fiber.
+            if window != "fixed":
+                rdata = np.pad(
+                    rdata,
+                    (
+                        (0, 0),
+                        (0, y_in.shape[1] - rdata.shape[1]),
+                    ),
+                )
             y_combined = np.sum((rdata, y_in), axis=0)
-            y_out = fib.run(y_combined)
+            y_out = fib.run(y_combined, delay=delay, window=window)
             y_in = y_out  # becomes new in
 
         return y_in, imdata
