@@ -30,6 +30,7 @@ class Channel:
         Nr_ru_antennas: int = 1,
         Nr_rus: int = 5,
         Nr_stripes: int = 2,
+        ue_idx: int | None = None
     ):
         # todo load all this based on csi
         self.channelmodel = channelmodel
@@ -38,6 +39,7 @@ class Channel:
         self.Nr_ue_antennas = Nr_ue_antennas
         self.Nr_ru_antennas = Nr_ru_antennas
         self.Nr_subcarriers = Nr_subcarriers
+        self.ue_idx = ue_idx
 
         if channelmodel == "subTHz-Rayleigh":
             self.csi = self.subTHz_Rayleigh()
@@ -111,7 +113,7 @@ class Channel:
         Nr_rus = ds_sub_thz["RU_idx"].max().item() + 1
         Nr_stripes = ds_sub_thz["stripe_idx"].max().item() + 1
 
-        channel = cls(channelmodel, Nr_subcarriers, Nr_ue_antennas, Nr_ru_antennas, Nr_rus, Nr_stripes)
+        channel = cls(channelmodel, Nr_subcarriers, Nr_ue_antennas, Nr_ru_antennas, Nr_rus, Nr_stripes, ue_idx)
 
         csi_channel = ds_sub_thz["channel"]
         if csi_channel.dtype.fields is not None and "r" in csi_channel.dtype.fields and "i" in csi_channel.dtype.fields:

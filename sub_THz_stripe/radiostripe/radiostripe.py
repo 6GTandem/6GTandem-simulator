@@ -141,10 +141,10 @@ class RadioStripe(Component):
 
         return y, imdata
 
-    def receive_all(self, x: list[np.ndarray], shifts: list[int], delay: bool = False, window: str = "fixed"):
+    def receive_all(self, x: np.ndarray, shifts: list[int], delay: bool = False, window: str = "fixed"):
         """Takes incoming IQ-data on the antennas and runs it along the stripe towards the central unit.
 
-        :param x: List containing all the IQ data being received on all the radio units. The data at x[0] is the unit
+        :param x: Array containing all the IQ data being received on all the radio units. The data at x[0] is the unit
                   closest to the central unit.
         :param shifts: See `PhaseShifter`.
 
