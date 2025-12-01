@@ -7,7 +7,7 @@ global_seed = None
 
 
 def getdbm(x):
-    return 10 * np.log10(np.mean(abs(x) ** 2) / 50 / 1e-3)
+    return 10 * np.log10(np.mean(np.abs(x) ** 2) / 50 / 1e-3)
 
 
 def setdbm(x, dnew):

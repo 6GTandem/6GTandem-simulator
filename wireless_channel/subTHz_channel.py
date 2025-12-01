@@ -82,16 +82,25 @@ class Channel:
         raise ValueError(f"Stripe/RU combination does not exist: Stripe: {stripe_idx}, RU: {ru_idx}")
 
     @classmethod
-    def from_sionna(cls, ue_coordinates, debug=False):
-        """
-        Construct a Waveform from a configuration dictionary.
+    def from_sionna(cls, ue_coordinates: dict, config_file: str, debug: bool = False):
+        """Load the channel state information (CSI) for a specific UE.
 
-        :param waveform_config: dictionary containing waveform parameters
-        :param freq_band_config: dictionary containing frequency band parameters (fc, bw, num_carriers)
-        :return: Waveform instance
+        Parameters
+        ----------
+        ue_cooridnates : dict
+            Coordinates of the UE from which to load the CSI. Dictionary containing the coordinates under the
+            x, y and z keys.
+        config_file : str
+            Config file containing all the UE locations coming from Sionna.
+        debug : bool
+            Use a channel only containing 1s for debugging when True.
+
+        Returns
+        -------
+        Channel
+            `Channel` object for the specified UE. 
         """
         # todo load locations metadata => ue_idx
-        config_file = "ue_locations_5681.nc"
         dir_path = os.path.dirname(os.path.realpath(__file__))
         config_path = os.path.join(dir_path, "..", "configurations")
         ue_ds = xr.load_dataset(os.path.join(config_path, config_file))

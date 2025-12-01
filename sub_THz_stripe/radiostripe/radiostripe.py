@@ -85,8 +85,7 @@ class RadioStripe(Component):
         """
         assert nactive_unit >= 0 and nactive_unit < len(
             self.radio_units
-        ), f"Radio unit {nactive_unit} does not exist \
-                                                                             . [0, {len(self.radio_units)}["
+        ), f"Radio unit {nactive_unit} does not exist. [0, {len(self.radio_units)}["
         self._active_unit = nactive_unit
 
     def transmit(self, x: np.ndarray, shifts: list[int]):
@@ -130,14 +129,15 @@ class RadioStripe(Component):
         imdata.append(y)
 
         # Data passes through the radio units between the active unit and the central unit.
-        for ru, fib in zip(
-            self.radio_units[: self.active_unit - 1][::-1],
-            self.fibers[: self.active_unit - 1][::-1],
-        ):
-            y, im = ru.boost(y)
-            imdata.extend(im)
-            y = fib.run(y, delay=delay)
-            imdata.append(y)
+        if self.active_unit != 0:
+            for ru, fib in zip(
+                self.radio_units[: self.active_unit - 1][::-1],
+                self.fibers[: self.active_unit - 1][::-1],
+            ):
+                y, im = ru.boost(y)
+                imdata.extend(im)
+                y = fib.run(y, delay=delay)
+                imdata.append(y)
 
         return y, imdata
 
@@ -176,7 +176,7 @@ class RadioStripe(Component):
 
         return y_in, imdata
 
-    def calibrate(self, x, desired_signal_db):
+    def calibrate(self, x, desired_signal_dbm):
         """This function sets the small-signal gain of the link amplifiers.
 
         To give an approximate constant power(DesiredAmplifierDBM) at the output of each link.
@@ -185,14 +185,29 @@ class RadioStripe(Component):
         """
         for ru, fib in zip(self.radio_units, self.fibers):
             z2 = x
-            for j in range(3):
+            for j in range(10):
                 z, _ = ru.boost(x)
                 z2 = fib.run(z)
-                current_amp_db = getdbm(z2)
-                scale = db_to_magnitude(desired_signal_db - current_amp_db)
+                current_amp_dbm = getdbm(z2)
+                scale = db_to_magnitude(desired_signal_dbm - current_amp_dbm)
                 ru.amp.gain = ru.amp.gain * scale
 
             z = z2
+
+    def calibrate_losses(self, x):
+        """This function sets the small-signal gain of the link amplifiers to compensate the stripe losses.
+
+        The small signal gain of the amplifiers is set so that after all the losses from the Fiber and Couplers
+        the same amplitude is achieved at the output of the RadioUnit as received on its input.
+        """
+        for ru, fib in zip(self.radio_units, self.fibers):
+            ru.amp.gain = 1
+            z, _ = ru.boost(x)
+            z2 = fib.run(z)
+            pavg_out = np.mean(np.abs(z2) ** 2)
+            pavg_in = np.mean(np.abs(x) ** 2)
+            scale = np.sqrt(pavg_in / pavg_out)
+            ru.amp.gain = scale
 
     @classmethod
     def from_config_locations(

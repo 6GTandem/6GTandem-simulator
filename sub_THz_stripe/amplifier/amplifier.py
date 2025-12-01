@@ -24,20 +24,32 @@ class Amplifier(Component):
         >>> y = pa.run(x)
     """
 
-    def __init__(self, gain=1, max_out_amp=1, noise_var=0, smoothness=1, *args, **kwargs):
+    def __init__(self, gain=1, max_gain=1, max_out_amp=1, noise_var=0, smoothness=1, *args, **kwargs):
         """Initialize the amplifier object with the given parameters.
 
         :param gain: The low signal-gain of the amplifier.
+        :param max_gain: The maximum gain that can be physically achieved by the amplifier.
         :param max_out_amp: The maximum output amplitude in Volts.
         :param noise_var: The variance of the AWGN [V^2] per channel.
         :param smoothness: Used in Mode 'softlimiter'.
         """
+        self._gain = 1
+        self.max_gain = max_gain
         self.gain = gain
         self.max_output_amplitude = max_out_amp
         self.noise_var = noise_var
         self.smoothness = smoothness
 
         super().__init__(*args, **kwargs)
+    
+    @property
+    def gain(self):
+        return self._gain
+    
+    @gain.setter
+    def gain(self, new_gain):
+        assert new_gain <= self.max_gain, f"Gain is higher than the maximum achievable gain: {new_gain} > {self.max_gain}"
+        self._gain = new_gain
 
     def set_maximum_output_power(self, max_power_dbm):
         """ Set the maximum output amplitude.
