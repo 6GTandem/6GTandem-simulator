@@ -8,8 +8,22 @@ from wireless_channel.waveforms import Waveform
 
 
 class RadioUnit(Component):
-    def __init__(self, x, y, z, wf: Waveform, amp: Amplifier | None = None, coup_in: Coupler | None = None,
-                 coup_out: Coupler | None = None, splitter: Splitter | None = None, combiner: Combiner | None = None, pshift: PhaseShifter | None = None, *args, **kwargs):
+    def __init__(
+        self,
+        x,
+        y,
+        z,
+        wf: Waveform,
+        boost_amp: Amplifier | None = None,
+        antenna_amp: Amplifier | None = None,
+        coup_in: Coupler | None = None,
+        coup_out: Coupler | None = None,
+        splitter: Splitter | None = None,
+        combiner: Combiner | None = None,
+        pshift: PhaseShifter | None = None,
+        *args,
+        **kwargs,
+    ):
         """Instantiate a Radio Unit.
 
         Radio unit:
@@ -23,15 +37,19 @@ class RadioUnit(Component):
 
         Operating as radio unit:
         ------------------------
-        Coupler In -> Amplifier -> Coupler out
-                      Switch    -> Splitter -> Phase shifter -> Antenna
+        Coupler In -> Splitter -> Phase shifter -> Amplifier -> Antenna
 
         """
         # Instantiate the components if they are not given.
-        if amp is None:
-            self.amp = Amplifier()
+        if boost_amp is None:
+            self.boost_amp = Amplifier()
         else:
-            self.amp = amp
+            self.boost_amp = boost_amp
+
+        if antenna_amp is None:
+            self.antenna_amp = Amplifier()
+        else:
+            self.antenna_amp = antenna_amp
 
         if coup_in is None:
             self.coupler_in = Coupler(wf)
@@ -69,7 +87,7 @@ class RadioUnit(Component):
         c1data = self.coupler_in.run(idata)
         sdata = self.splitter.run(c1data)
         psdata = self.phase_shifter.run(sdata, shifts)
-        adata = self.amp.run(psdata)
+        adata = self.antenna_amp.run(psdata)
         imdata = [c1data, sdata, psdata, adata]
         odata = adata
 
@@ -77,7 +95,7 @@ class RadioUnit(Component):
 
     def receive(self, idata, shifts: list[int]):
         # From the antennas to the input coupler.
-        adata = self.amp.run(idata)
+        adata = self.antenna_amp.run(idata)
         psdata = self.phase_shifter.run(adata, shifts)
         cdata = self.combiner.run(psdata)
         odata = self.coupler_in.run(cdata)
@@ -88,7 +106,7 @@ class RadioUnit(Component):
     def boost(self, idata):
         # From the input coupler to the output coupler.
         c1data = self.coupler_in.run(idata)
-        adata = self.amp.run(c1data)
+        adata = self.boost_amp.run(c1data)
         odata = self.coupler_out.run(adata)
         imdata = [c1data, adata, odata]
 
@@ -98,7 +116,7 @@ class RadioUnit(Component):
         """Human-readable summary of the Radio Unit."""
         info = (
             f"RadioUnit @ ({self.x}, {self.y}, {self.z})\n"
-            f"  Amplifier:      {self.amp.__class__.__name__}\n"
+            f"  Amplifier:      {self.boost_amp.__class__.__name__}\n"
             f"  Coupler In:     {self.coupler_in.__class__.__name__}\n"
             f"  Coupler Out:    {self.coupler_out.__class__.__name__}\n"
             f"  Splitter:       {self.splitter.__class__.__name__} "

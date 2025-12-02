@@ -190,7 +190,7 @@ class RadioStripe(Component):
                 z2 = fib.run(z)
                 current_amp_dbm = getdbm(z2)
                 scale = db_to_magnitude(desired_signal_dbm - current_amp_dbm)
-                ru.amp.gain = ru.amp.gain * scale
+                ru.boost_amp.gain = ru.boost_amp.gain * scale
 
             z = z2
 
@@ -200,14 +200,26 @@ class RadioStripe(Component):
         The small signal gain of the amplifiers is set so that after all the losses from the Fiber and Couplers
         the same amplitude is achieved at the output of the RadioUnit as received on its input.
         """
-        for ru, fib in zip(self.radio_units, self.fibers):
-            ru.amp.gain = 1
-            z, _ = ru.boost(x)
-            z2 = fib.run(z)
+        if self.active_unit != 0:
+            for ru, fib in zip(
+                self.radio_units[: self.active_unit - 1][::-1],
+                self.fibers[: self.active_unit - 1][::-1],
+            ):
+                ru.boost_amp.gain = 1
+                z, _ = ru.boost(x)
+                z2 = fib.run(z)
+                pavg_out = np.mean(np.abs(z2) ** 2)
+                pavg_in = np.mean(np.abs(x) ** 2)
+                scale = np.sqrt(pavg_in / pavg_out)
+                ru.boost_amp.gain = scale
+        else:
+            self.radio_units[0].boost_amp.gain = 1
+            z, _ = self.radio_units[0].boost(x)
+            z2 = self.fibers[0].run(z)
             pavg_out = np.mean(np.abs(z2) ** 2)
             pavg_in = np.mean(np.abs(x) ** 2)
             scale = np.sqrt(pavg_in / pavg_out)
-            ru.amp.gain = scale
+            self.radio_units[0].boost_amp.gain = scale
 
     @classmethod
     def from_config_locations(
@@ -227,18 +239,16 @@ class RadioStripe(Component):
         units = []
 
         central_unit = None
-        amplifier_config = component_config.get("amplifier", None)
+        boost_amp = Amplifier(**component_config.get("boost_amplifier", {}))
+        antenna_amp = Amplifier(**component_config.get("antenna_amplifier", {}))
         fiber_config = component_config.get("fiber", None)
         coupler_config = component_config.get("coupler", None)
 
         for unit_cfg in stripe_config:
             if "radio_unit" in unit_cfg:
-                amp = None
                 coup_in = None
                 coup_out = None
 
-                if amplifier_config is not None:
-                    amp = Amplifier(**amplifier_config)
                 if coupler_config is not None:
                     coup_in = Coupler.from_config(coupler_config, wf)
                     coup_out = Coupler.from_config(coupler_config, wf)
@@ -249,7 +259,8 @@ class RadioStripe(Component):
                     y=loc.get("y", 0),
                     z=loc.get("z", 0),
                     wf=wf,
-                    amp=amp,
+                    antenna_amp=antenna_amp,
+                    boost_amp=boost_amp,
                     coup_in=coup_in,
                     coup_out=coup_out,
                 )
