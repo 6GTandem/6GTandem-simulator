@@ -121,23 +121,27 @@ class RadioStripe(Component):
 
         :returns: A 1xm IQ-data array arriving at the central unit.
         """
-        imdata = [x]
+        imdata = [x[self.active_unit]]
         # Data is received by the active radio unit.
         y, im = self.radio_units[self.active_unit].receive(x[self.active_unit], shifts)
         imdata.extend(im)
         y = self.fibers[self.active_unit].run(y, delay=delay)
         imdata.append(y)
 
+        # Now calibrate the booster units to compensate losses.
+        self.calibrate_losses(y)
+
         # Data passes through the radio units between the active unit and the central unit.
         if self.active_unit != 0:
             for ru, fib in zip(
-                self.radio_units[: self.active_unit - 1][::-1],
-                self.fibers[: self.active_unit - 1][::-1],
+                self.radio_units[: self.active_unit][::-1],
+                self.fibers[: self.active_unit][::-1],
             ):
-                y, im = ru.boost(y)
+                y_boost, im = ru.boost(y)
                 imdata.extend(im)
-                y = fib.run(y, delay=delay)
-                imdata.append(y)
+                y_fib = fib.run(y_boost, delay=delay)
+                imdata.append(y_fib)
+                y = y_fib
 
         return y, imdata
 
@@ -176,23 +180,34 @@ class RadioStripe(Component):
 
         return y_in, imdata
 
-    def calibrate(self, x, desired_signal_dbm):
+    def calibrate(self, x):
         """This function sets the small-signal gain of the link amplifiers.
 
         To give an approximate constant power(DesiredAmplifierDBM) at the output of each link.
         The calibration is valid for a given input signal, and recalibration must be performed if
         the signal statistics changes.
         """
-        for ru, fib in zip(self.radio_units, self.fibers):
-            z2 = x
-            for j in range(10):
-                z, _ = ru.boost(x)
+        din = x
+        desired_signal_dbm = getdbm(din)
+        if self.active_unit != 0:
+            for ru, fib in zip(self.radio_units[: self.active_unit][::-1], self.fibers[: self.active_unit][::-1]):
+                ru.boost_amp.gain = 1
+                z, _ = ru.boost(din)
                 z2 = fib.run(z)
                 current_amp_dbm = getdbm(z2)
-                scale = db_to_magnitude(desired_signal_dbm - current_amp_dbm)
-                ru.boost_amp.gain = ru.boost_amp.gain * scale
-
-            z = z2
+                gain = db_to_magnitude(desired_signal_dbm - current_amp_dbm)
+                ru.boost_amp.gain = gain
+                z, _ = ru.boost(din)
+                din = fib.run(z)
+        else:
+            self.radio_units[0].boost_amp.gain = 1
+            z, _ = self.radio_units[0].boost(x)
+            z2 = self.fibers[0].run(z)
+            current_amp_dbm = getdbm(z2)
+            gain = db_to_magnitude(desired_signal_dbm - current_amp_dbm)
+            self.radio_units[0].boost_amp.gain = gain
+            z, _ = self.radio_units[0].boost(din)
+            din = self.fibers[0].run(z)
 
     def calibrate_losses(self, x):
         """This function sets the small-signal gain of the link amplifiers to compensate the stripe losses.
@@ -200,26 +215,34 @@ class RadioStripe(Component):
         The small signal gain of the amplifiers is set so that after all the losses from the Fiber and Couplers
         the same amplitude is achieved at the output of the RadioUnit as received on its input.
         """
+        def scale_gain(din, pwanted, ru: RadioUnit, fib: Fiber):
+            ru.boost_amp.gain = 1
+            # Run the data through the booster unit and fiber.
+            z, _ = ru.boost(din)
+            z2 = fib.run(z)
+            # Calculate the average output and input power.
+            pout = np.mean(np.abs(z2) ** 2)
+            # Calculate the scale using the Thomas F. method.
+            scale = np.sqrt(pwanted / pout)
+            # Adjust the gain accordingly.
+            ru.boost_amp.gain = scale
+
+        din = x
+        pin = np.mean(np.abs(din) ** 2)
         if self.active_unit != 0:
             for ru, fib in zip(
-                self.radio_units[: self.active_unit - 1][::-1],
-                self.fibers[: self.active_unit - 1][::-1],
+                self.radio_units[: self.active_unit][::-1],
+                self.fibers[: self.active_unit][::-1],
             ):
-                ru.boost_amp.gain = 1
-                z, _ = ru.boost(x)
-                z2 = fib.run(z)
-                pavg_out = np.mean(np.abs(z2) ** 2)
-                pavg_in = np.mean(np.abs(x) ** 2)
-                scale = np.sqrt(pavg_in / pavg_out)
-                ru.boost_amp.gain = scale
+                scale_gain(din, pin, ru, fib)
+                z, _ = ru.boost(din)
+                din = fib.run(z)
         else:
-            self.radio_units[0].boost_amp.gain = 1
-            z, _ = self.radio_units[0].boost(x)
-            z2 = self.fibers[0].run(z)
-            pavg_out = np.mean(np.abs(z2) ** 2)
-            pavg_in = np.mean(np.abs(x) ** 2)
-            scale = np.sqrt(pavg_in / pavg_out)
-            self.radio_units[0].boost_amp.gain = scale
+            ru = self.radio_units[0]
+            fib = self.fibers[0]
+            scale_gain(din, pin, ru, fib)
+            z, _ = ru.boost(din)
+            din = fib.run(z)
 
     @classmethod
     def from_config_locations(
@@ -239,8 +262,6 @@ class RadioStripe(Component):
         units = []
 
         central_unit = None
-        boost_amp = Amplifier(**component_config.get("boost_amplifier", {}))
-        antenna_amp = Amplifier(**component_config.get("antenna_amplifier", {}))
         fiber_config = component_config.get("fiber", None)
         coupler_config = component_config.get("coupler", None)
 
@@ -248,6 +269,8 @@ class RadioStripe(Component):
             if "radio_unit" in unit_cfg:
                 coup_in = None
                 coup_out = None
+                boost_amp = Amplifier(**component_config.get("boost_amplifier", {}))
+                antenna_amp = Amplifier(**component_config.get("antenna_amplifier", {}))
 
                 if coupler_config is not None:
                     coup_in = Coupler.from_config(coupler_config, wf)
