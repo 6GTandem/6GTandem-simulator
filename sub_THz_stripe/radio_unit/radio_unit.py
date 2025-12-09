@@ -1,3 +1,5 @@
+import numpy as np
+
 from ..coupler.coupler import Coupler
 from ..splitter.splitter import Splitter
 from ..combiner.combiner import Combiner
@@ -82,7 +84,7 @@ class RadioUnit(Component):
 
         super().__init__(*args, **kwargs)
 
-    def transmit(self, idata, shifts: list[int]):
+    def transmit(self, idata, shifts: list[int] | np.ndarray):
         # From the input coupler to the antennas.
         c1data = self.coupler_in.run(idata)
         sdata = self.splitter.run(c1data)
@@ -93,7 +95,7 @@ class RadioUnit(Component):
 
         return odata, imdata
 
-    def receive(self, idata, shifts: list[int]):
+    def receive(self, idata, shifts: list[int] | np.ndarray):
         # From the antennas to the input coupler.
         adata = self.antenna_amp.run(idata)
         psdata = self.phase_shifter.run(adata, shifts)

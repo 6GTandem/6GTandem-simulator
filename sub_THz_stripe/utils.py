@@ -2,8 +2,44 @@ import numpy as np
 import numpy.random
 
 from scipy.signal import lfilter
+from wireless_channel.waveforms import Waveform
 
 global_seed = None
+
+
+def calculate_sndr(x: np.ndarray, y: np.ndarray, wf: Waveform):
+    """Calculate the signal to noise and distortion ratio in dB.
+
+    The Bussgang theorem is used to conput the SNDR.
+
+    Arguments
+    ---------
+        x np.ndarray
+            Input data representing the signal without distortion or noise.
+        y np.ndarray
+            Data received after transmission containing noise and distortion.
+
+    Returns
+    -------
+        SNDR in dB
+    """
+    x_freq = wf.ofdm_time_to_freq(x)
+    x_freq = wf.extract_subcarriers(x_freq)
+
+    y_freq = wf.ofdm_time_to_freq(y)
+    y_freq = wf.extract_subcarriers(y_freq)
+
+    sndr = []
+    sc = []
+    for xsubc, ysubc in zip(x_freq.T, y_freq.T):
+        a = np.real(np.mean(xsubc * np.conj(xsubc)))
+        b = np.mean(ysubc * np.conj(xsubc)) / a
+        sc.append((1 / b) * xsubc)
+        signal = (np.abs(b) ** 2) * a
+        noise_distortion = np.real(np.mean(ysubc * np.conj(ysubc))) - signal
+        sndr.append(signal / noise_distortion)
+
+    return (10 * np.log10(np.array(sndr))), sc
 
 
 def getdbm(x):
@@ -49,12 +85,12 @@ def db_to_magnitude(db_value: float | int):
 def limiter(x, limit=1, limithi=None):
     y = x
     if limithi is None:
-        i = (abs(x) > limit)
+        i = abs(x) > limit
         y[i] = limit * x[i] / abs(x[i])
     else:
-        i = (x < limit)
+        i = x < limit
         y[i] = limit
-        i = (x > limithi)
+        i = x > limithi
         y[i] = limithi
 
     p = len(i) / len(x)
@@ -64,16 +100,15 @@ def limiter(x, limit=1, limithi=None):
 
 def softlimiter(x, p: int = 1):
     # y = (atan(abs(x). ^ p)*2/pi). ^ (1/p).*exp(1i*angle(x));
-    return (np.tanh(abs(x) ** p)) ** (1/p) * np.exp(1j * np.angle(x))
+    return (np.tanh(abs(x) ** p)) ** (1 / p) * np.exp(1j * np.angle(x))
 
 
 def rc(t, beta):
     # i2=find(1-4*beta^2*t.^2<1e-13);t(i2)=0.11;
-    i2 = ((4 * beta ** 2 * t) ** 2) == 1
+    i2 = ((4 * beta**2 * t) ** 2) == 1
     t[i2] = 0.11
 
-    pulse = (np.sinc(t) * np.cos(np.pi * beta * t) /
-             (1 - 4 * beta ** 2 * t ** 2))
+    pulse = np.sinc(t) * np.cos(np.pi * beta * t) / (1 - 4 * beta**2 * t**2)
 
     pulse[i2] = 0
     return pulse
@@ -120,7 +155,7 @@ def delay(x: np.ndarray, signal_delay: float, filter_length: int = 512, window: 
         if signal_delay >= 0:
             y1[:delay_int] = np.zeros(delay_int)
         else:
-            y1[len(y1) + delay_int:] = np.zeros(abs(delay_int))
+            y1[len(y1) + delay_int :] = np.zeros(abs(delay_int))
     else:
         # With a non-fixed window zeros are added to the signal.
         y1 = np.zeros(delay_int)
@@ -140,12 +175,11 @@ def delay(x: np.ndarray, signal_delay: float, filter_length: int = 512, window: 
         if filter_length < 10:
             h = rc(np.arange(-filter_length, filter_length + 1) - frac, 0.5)
         else:
-            h = (np.sinc(np.arange(-filter_length, filter_length +
-                    1) - frac) * np.hanning(2 * filter_length + 1))
+            h = np.sinc(np.arange(-filter_length, filter_length + 1) - frac) * np.hanning(2 * filter_length + 1)
 
         y1 = np.concatenate([y1, np.zeros((rows, filter_length))], axis=1)
         y1 = lfilter(h, 1, y1)
-        y1 = y1[:, y1.shape[1]-x.shape[1]:]
+        y1 = y1[:, y1.shape[1] - x.shape[1] :]
 
     return y1
 
@@ -159,83 +193,77 @@ def randn_c(rows: int = 1, cols: int = 1, threshold: int = 0):
         rand1 = numpy.random.uniform(size=(rows, cols))
         rand2 = numpy.random.uniform(size=(rows, cols))
     if threshold <= 0:
-        x = (np.sqrt(threshold ** 2 - 2 * np.log(rand1))
-             * np.exp(1j * 2 * np.pi * rand2))
+        x = np.sqrt(threshold**2 - 2 * np.log(rand1)) * np.exp(1j * 2 * np.pi * rand2)
     else:
-        x = (np.sqrt(-2 * np.log(1 - (1 - np.exp(-threshold ** 2 / 2))
-             * rand1)) * np.exp(1j * 2 * np.pi * rand2))
+        x = np.sqrt(-2 * np.log(1 - (1 - np.exp(-(threshold**2) / 2)) * rand1)) * np.exp(1j * 2 * np.pi * rand2)
 
     return x
 
 
 def makespiralconstellation(m, f):
-    m = np.arange(1, m+1)
-    ang = np.sqrt((4 * np.pi * m) ** 2 * f / 2 +
-                  np.sqrt(((4 * np.pi * m) ** 2 * f / 2) ** 2 + (4 * np.pi * m) ** 2))
+    m = np.arange(1, m + 1)
+    ang = np.sqrt((4 * np.pi * m) ** 2 * f / 2 + np.sqrt(((4 * np.pi * m) ** 2 * f / 2) ** 2 + (4 * np.pi * m) ** 2))
 
     return ang * np.exp(1j * ang)
 
 
-def randconst(rows, cols, m=16, type: str = 'QAM'):
+def randconst(rows, cols, m=16, type: str = "QAM"):
     """RANDCONST Complex constellation."""
     match type:
-        case 'QAM':
+        case "QAM":
             match m:
                 case 2:
                     c = np.array([-1, 1])
                 case 8:
-                    c = np.array([[-3, -1, 1, 3], [-3, -1, 1, 3]] +
-                                 1j * np.array(list(np.ones((1, 4))) +
-                                               list(-np.ones((1, 4)))))
-                    c = c.flatten('F')
+                    c = np.array(
+                        [[-3, -1, 1, 3], [-3, -1, 1, 3]] + 1j * np.array(list(np.ones((1, 4))) + list(-np.ones((1, 4))))
+                    )
+                    c = c.flatten("F")
                 case 32:
                     xpoints = np.arange(-5, 6, 2)
                     ypoints = np.arange(-3, 4, 2)
                     x, y = np.meshgrid(xpoints, ypoints)
-                    x = x.flatten('F')
-                    y = y.flatten('F')
+                    x = x.flatten("F")
+                    y = y.flatten("F")
                     c = x + 1j * y
                     arr = np.arange(-3, 4, 2)
-                    c = np.array(list(arr - 1j * 5) +
-                                 list(c) + list(arr + 1j * 5))
+                    c = np.array(list(arr - 1j * 5) + list(c) + list(arr + 1j * 5))
                 case 128:
                     xpoints = np.arange(-11, 12, 2)
                     ypoints = np.arange(-7, 8, 2)
                     x, y = np.meshgrid(xpoints, ypoints)
-                    x = x.flatten('F')
-                    y = y.flatten('F')
+                    x = x.flatten("F")
+                    y = y.flatten("F")
                     c = x + 1j * y
                     arr = np.arange(-7, 8, 2)
-                    c = np.array(list(arr - 1j * 11) + list(arr - 1j * 9) +
-                                 list(c) + list(arr + 1j * 9) + list(arr + 1j * 11))
+                    c = np.array(
+                        list(arr - 1j * 11) + list(arr - 1j * 9) + list(c) + list(arr + 1j * 9) + list(arr + 1j * 11)
+                    )
                 case 512:
                     xpoints = np.arange(-15, 16, 2)
                     ypoints = np.arange(-23, 24, 2)
                     x, y = np.meshgrid(xpoints, ypoints)
-                    x = x.flatten('F')
-                    y = y.flatten('F')
+                    x = x.flatten("F")
+                    y = y.flatten("F")
                     xpoints = np.arange(-3, 4, 2)
                     ypoints = np.arange(-15, 16, 2)
                     x2, y2 = np.meshgrid(xpoints, ypoints)
-                    x2 = x2.flatten('F')
-                    y2 = y2.flatten('F')
-                    c = np.array(list(x + 1j * y) + list(x2 + 1j *
-                                                         y2 - 20) + list(x2 + 1j * y2 + 20))
+                    x2 = x2.flatten("F")
+                    y2 = y2.flatten("F")
+                    c = np.array(list(x + 1j * y) + list(x2 + 1j * y2 - 20) + list(x2 + 1j * y2 + 20))
                 case _:
                     q = np.log2(m)
                     if (q % 2) != 0:
-                        raise ValueError('Bad constellation size.')
+                        raise ValueError("Bad constellation size.")
                     q = round(np.sqrt(m))
                     r = np.arange(1, q + 1) - (q + 1) / 2
-                    c = np.reshape(np.tile(np.transpose(
-                        [r]), (1, q)) + 1j * np.tile(r, (q, 1)), (q ** 2,))
-        case 'PSK':
-            c = np.exp(1j * 2 * np.pi * np.arange(1, m+1) / m)
-        case 'SPIRAL':
+                    c = np.reshape(np.tile(np.transpose([r]), (1, q)) + 1j * np.tile(r, (q, 1)), (q**2,))
+        case "PSK":
+            c = np.exp(1j * 2 * np.pi * np.arange(1, m + 1) / m)
+        case "SPIRAL":
             c = makespiralconstellation(m, 0)
         case _:
-            raise ValueError(
-                'Wrong constellation type. Choose QAM, PSK or SPIRAL')
+            raise ValueError("Wrong constellation type. Choose QAM, PSK or SPIRAL")
 
     c = np.sqrt(2) / np.std(c) * c
 
@@ -247,17 +275,19 @@ def randconst(rows, cols, m=16, type: str = 'QAM'):
 
 
 def rrc(t, beta):
-    i1 = (t == 0)
-    i2 = ((4 * beta * t) ** 2 == 1)
+    i1 = t == 0
+    i2 = (4 * beta * t) ** 2 == 1
 
     t[i1] = 0.11  # value 0.11 not used
     t[i2] = 0.11
-    pulse = (np.sin(np.pi * t * (1 - beta)) + 4 * beta * t *
-             np.cos(np.pi * t * (1 + beta))) / (np.pi * t * (1 - (4 * beta * t) ** 2))
+    pulse = (np.sin(np.pi * t * (1 - beta)) + 4 * beta * t * np.cos(np.pi * t * (1 + beta))) / (
+        np.pi * t * (1 - (4 * beta * t) ** 2)
+    )
 
-    pulse[i1] = (1 - beta + 4 * beta / np.pi)
-    pulse[i2] = beta / np.sqrt(2) * ((1 + 2 / np.pi) * np.sin(
-        np.pi / 4 / beta) + (1 - 2/np.pi) * np.cos(np.pi / 4 / beta))
+    pulse[i1] = 1 - beta + 4 * beta / np.pi
+    pulse[i2] = (
+        beta / np.sqrt(2) * ((1 + 2 / np.pi) * np.sin(np.pi / 4 / beta) + (1 - 2 / np.pi) * np.cos(np.pi / 4 / beta))
+    )
 
     return pulse
 
@@ -278,47 +308,43 @@ def pulseshape(x, oversampling=5, beta=0.07, fl: int = 25):
     """
 
     if fl < round(1 / beta):
-        raise ValueError('Warning: FilterLength too small to guarantee 35 dB.')
+        raise ValueError("Warning: FilterLength too small to guarantee 35 dB.")
 
     if type(oversampling) is int:
-        pulse_filter = rrc(
-            np.arange(0, fl + (1/oversampling), 1/oversampling), beta)
+        pulse_filter = rrc(np.arange(0, fl + (1 / oversampling), 1 / oversampling), beta)
         flipped_filter = np.flip(pulse_filter[1:])
         # this makes sure that t = 0 is represented
         pulse_filter = np.concatenate((flipped_filter, pulse_filter))
 
         # append zeros for filter delay
         shape = (x.shape[0], fl)
-        xz = np.zeros(shape=shape, dtype=np.dtype('complex128'))
+        xz = np.zeros(shape=shape, dtype=np.dtype("complex128"))
         xz = np.concatenate((x, xz), axis=1)
 
         # multiphase filtering. Same as zeropadding and filtering.
         shape = (xz.shape[0], xz.shape[1] * oversampling)
-        xps = np.zeros(shape=shape, dtype=np.dtype('complex128'))
+        xps = np.zeros(shape=shape, dtype=np.dtype("complex128"))
         for d in range(oversampling):
             l2 = lfilter(pulse_filter[d::oversampling], 1, xz)
             xps[:, d::oversampling] = l2
     else:
-        zs = np.zeros(shape=(1, fl), dtype=np.dtype('complex128'))
+        zs = np.zeros(shape=(1, fl), dtype=np.dtype("complex128"))
         x = np.concatenate((zs, x), axis=1)
         # t = linspace(1, length(x)+1-1/oversampling-0.000001, round(length(x)*oversampling))
-        t = np.arange(1, x.shape[1] + 1 - 0.001, 1/oversampling)
-        x = np.concatenate(
-            (np.zeros((1, fl)), x, np.zeros((1, fl + 1))), axis=1)
+        t = np.arange(1, x.shape[1] + 1 - 0.001, 1 / oversampling)
+        x = np.concatenate((np.zeros((1, fl)), x, np.zeros((1, fl + 1))), axis=1)
 
         t = t + fl
-        xps = np.zeros(shape=(x.shape[0], len(t)),
-                       dtype=np.dtype('complex128'))
+        xps = np.zeros(shape=(x.shape[0], len(t)), dtype=np.dtype("complex128"))
 
         p1 = np.round(t - fl).astype(int)
         p2 = np.round(t + fl).astype(int)
 
         for k in range(len(t)):
             t2 = np.arange(p1[k], p2[k] + 1) - t[k] + np.finfo(float).eps
-            a = np.array([np.sin(np.pi * t2 * (1 - beta)) + 4 *
-                          beta * t2 * np.cos(np.pi * t2 * (1 + beta))])
+            a = np.array([np.sin(np.pi * t2 * (1 - beta)) + 4 * beta * t2 * np.cos(np.pi * t2 * (1 + beta))])
             b = np.array([np.pi * t2 * (1 - (4 * beta * t2) ** 2)])
-            c = np.transpose(x[:, p1[k]-1:p2[k]])
+            c = np.transpose(x[:, p1[k] - 1 : p2[k]])
             xps[:, k] = np.matmul((a / b), c)
 
     return xps

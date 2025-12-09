@@ -2,11 +2,11 @@ import numpy as np
 
 from ..component.component import Component
 
-#TODO REIMPLEMENT
+# TODO REIMPLEMENT
 
 
 class PhaseShifter(Component):
-    def __init__(self, num_shifters: int, resolution: int, in_degrees=True, *args, **kwargs):
+    def __init__(self, num_shifters: int, resolution: int, in_degrees=False, *args, **kwargs):
         """
 
         :param num_shifters: Number of phase shifters.
@@ -18,13 +18,14 @@ class PhaseShifter(Component):
 
         super().__init__(*args, **kwargs)
 
-    def run(self, x, shifts: list[int]):
+    def run(self, x, shifts: list[int] | np.ndarray):
         """Apply the phase shift to the input data.
 
         :param x: Array with the input data.
         :param shifts: List of phase shift indexes to apply to the input data.
                        The phase shift index is an integer between 0 - (2 ^ resolution) - 1
         """
+
         def shift(x, k):
             return x * np.exp(1j * k)
 
@@ -39,4 +40,14 @@ class PhaseShifter(Component):
 
     def index_to_deg(self, k):
         """Convert a phase shift index k to a phase shift in radians."""
-        return (2 * np.pi * k) / (2 ** self.resolution)
+        return (2 * np.pi * k) / (2**self.resolution)
+
+    def get_phases(self, beam_idx: int):
+        assert (
+            beam_idx <= self.num_shifters
+        ), f"The requested beam index ({beam_idx}) doesn't exist. Maximum beams: {self.num_shifters}"
+
+        antenna_idxs = np.arange(self.num_shifters)
+        phi = ((2 * np.pi) / self.num_shifters) * antenna_idxs * beam_idx
+
+        return phi

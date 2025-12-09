@@ -113,7 +113,7 @@ class RadioStripe(Component):
 
         return y, imdata
 
-    def receive(self, x: np.ndarray, shifts: list[int], delay: bool = False):
+    def receive(self, x: np.ndarray, shifts: list[int] | np.ndarray, delay: bool = False):
         """Receives incoming IQ-data on the antennas of the active unit and runs it along the stripe.
 
         :param x: IQ-data in the form of an (n x m) array with n the amount of rows being equal to the amount of splits.
@@ -145,7 +145,7 @@ class RadioStripe(Component):
 
         return y, imdata
 
-    def receive_all(self, x: np.ndarray, shifts: list[int], delay: bool = False, window: str = "fixed"):
+    def receive_all(self, x: np.ndarray, shifts: list[int] | np.ndarray, delay: bool = False, window: str = "fixed"):
         """Takes incoming IQ-data on the antennas and runs it along the stripe towards the central unit.
 
         :param x: Array containing all the IQ data being received on all the radio units. The data at x[0] is the unit
