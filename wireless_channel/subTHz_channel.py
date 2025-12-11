@@ -30,7 +30,7 @@ class Channel:
         Nr_ru_antennas: int = 1,
         Nr_rus: int = 5,
         Nr_stripes: int = 2,
-        ue_idx: int | None = None
+        ue_idx: int | None = None,
     ):
         # todo load all this based on csi
         self.channelmodel = channelmodel
@@ -78,11 +78,11 @@ class Channel:
             tx_index = match.argmax().item()  # first match
             channel = self.csi["channel"].isel(tx_pair=tx_index).values
             return channel
-        
+
         raise ValueError(f"Stripe/RU combination does not exist: Stripe: {stripe_idx}, RU: {ru_idx}")
 
     @classmethod
-    def from_sionna(cls, ue_coordinates: dict, config_file: str, debug: bool = False):
+    def from_sionna(cls, ue_coordinates: dict, sim_env: str, debug: bool = False):
         """Load the channel state information (CSI) for a specific UE.
 
         Parameters
@@ -90,20 +90,20 @@ class Channel:
         ue_cooridnates : dict
             Coordinates of the UE from which to load the CSI. Dictionary containing the coordinates under the
             x, y and z keys.
-        config_file : str
-            Config file containing all the UE locations coming from Sionna.
+        sim_env : str
+            Simulation environment to use.
         debug : bool
             Use a channel only containing 1s for debugging when True.
 
         Returns
         -------
         Channel
-            `Channel` object for the specified UE. 
+            `Channel` object for the specified UE.
         """
         # todo load locations metadata => ue_idx
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        config_path = os.path.join(dir_path, "..", "configurations")
-        ue_ds = xr.load_dataset(os.path.join(config_path, config_file))
+        dir_path = os.path.join(dir_path, "sionna_dataset", sim_env)
+        ue_ds = xr.load_dataset(os.path.join(dir_path, "ue_locations", "ue_locations.nc"))
 
         # based on coordinates get UE idx
         x, y, z = ue_coordinates["x"], ue_coordinates["y"], ue_coordinates["z"]
@@ -112,7 +112,7 @@ class Channel:
 
         # based on UE idx load CSI
         csi_file = f"channels_thz_ue_{ue_idx}.nc"
-        ds_sub_thz = xr.load_dataset(os.path.join(dir_path, "sionna_dataset", "sub_thz_channels", csi_file))
+        ds_sub_thz = xr.load_dataset(os.path.join(dir_path, "sub_thz_channels", csi_file))
 
         # extract needed params for Channel class
         channelmodel = "sionna"
