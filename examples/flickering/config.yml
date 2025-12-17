@@ -9,7 +9,7 @@ stripe_config:
   - 3.5
 component_config:
   boost_amplifier:
-    gain: 5.0
+    gain: 1.0
     max_gain: 10.0
     max_out_amp: 33
     noise_var: 0.0

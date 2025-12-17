@@ -1,6 +1,6 @@
 stripe_config:
   N_RUs: 20
-  N_stripes: 6
+  N_stripes: 8
   space_between_RUs: 1
   space_between_stripes: 1
   stripe_start_pos:
@@ -29,7 +29,10 @@ waveform_config:
   pilot_symbol_re: 1
   pilot_symbol_imag: 0
   pilot_mode: block
-room: null
+room:
+  x: 10
+  y: 25
+  z: 5.45
 radio_stripes:
 - - central_unit:
       x: 2
