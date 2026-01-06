@@ -40,6 +40,8 @@ class Waveform():
             self.pilot_mode = kwargs.get("pilot_mode", "interleaved") # "interleaved" = pilots interleaved every pilot_spacing
             # 'block' = first OFDM symbol is full pilot (all carriers), subsequent symbols are pure data
 
+            self.tx_power = kwargs.get("tx_power", 10)
+
             # note that interleaved pilots might not work if the channel is very uncorrelated accross the carries
             # this is due to the ineffectiveness of the interpolation between the data and pilot carriers
             # as a solution block pilots can be used, where the first OFDM symbol is all pilots, and the remaining symbols are pure data
@@ -199,6 +201,12 @@ class Waveform():
                 ofdm_time.append(np.concatenate([cp, time_domain]))
 
         self.ofdm_time = np.array(ofdm_time)
+        # Rescale the waveform to conform with the transmit power.
+        pavg = np.mean(np.abs(self.ofdm_time) ** 2)
+        alpha = np.sqrt(10e-3 / pavg)
+        self.ofdm_time *= alpha
+        self.pilot_symbol *= alpha
+
         return self.ofdm_time
 
 

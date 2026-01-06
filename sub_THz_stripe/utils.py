@@ -10,7 +10,7 @@ global_seed = None
 def calculate_sndr(x: np.ndarray, y: np.ndarray, wf: Waveform):
     """Calculate the signal to noise and distortion ratio in dB.
 
-    The Bussgang theorem is used to conput the SNDR.
+    The Bussgang theorem is used to compute the SNDR.
 
     Arguments
     ---------

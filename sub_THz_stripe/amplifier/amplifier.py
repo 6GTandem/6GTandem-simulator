@@ -73,7 +73,7 @@ class Amplifier(Component):
         noise_density = k * t * db_to_power(nfdb)
         noise_power = noise_density * b
         # P = U^2/R
-        voltage_power = noise_power * 50
+        voltage_power = noise_power
         # Noise variance per channel.
         self.noise_var = voltage_power / 2
 
