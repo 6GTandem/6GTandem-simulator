@@ -169,7 +169,7 @@ if __name__ == "__main__":
         uex = [xstart, xstop]
         uey = [ystart, ystop]
         uez = [ue_locations_config["z_height"]]
-        
+
     # Collect all the bounds of the stripe.
     x_start, y_start, z_start = stripe_start_pos
     x_stop, y_stop, z_stop = stripe_end_pos
@@ -195,7 +195,7 @@ if __name__ == "__main__":
 
     config = {
         "stripe_config": stripe_params,
-        "room": ue_area,
+        "room": {"x": ue_area[0], "y": ue_area[1], "z": ue_area[2]},
         "radio_stripes": radio_stripes,
         "ue_positions": ue_positions,
         "sub_thz": sub_thz_params,

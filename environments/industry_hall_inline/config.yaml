@@ -14,9 +14,9 @@ stripe_config:
   - 7.5
   array_direction: y
 room:
-- 18.2056
-- 25.0
-- 10.75
+  x: 18.2056
+  y: 25.0
+  z: 10.75
 radio_stripes:
 - - central_unit:
       x: 0.21999999999999997
