@@ -2,18 +2,18 @@ boost_amplifier:
   gain: 1.0
   max_gain: 10.0
   max_out_amp: 33
-  noise_var: 0.0
+  noise_fig: 10.0
   smoothness: 0.0
   mode: poly3
 antenna_amplifier:
   gain: 1.0
   max_gain: 10.0
   max_out_amp: 33
-  noise_var: 0.0
+  noise_fig: 10.0
   smoothness: 0.0
   mode: poly3
 fiber:
-  model: with_tape/1m_taped.csv
+  model: with_balun.s2p
   length: 1.0
 coupler:
   model: with_balun.s2p

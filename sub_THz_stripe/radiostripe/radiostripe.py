@@ -269,8 +269,8 @@ class RadioStripe(Component):
             if "radio_unit" in unit_cfg:
                 coup_in = None
                 coup_out = None
-                boost_amp = Amplifier(**component_config.get("boost_amplifier", {}))
-                antenna_amp = Amplifier(**component_config.get("antenna_amplifier", {}))
+                boost_amp = Amplifier(**component_config.get("boost_amplifier", {}), bw=wf.bw)
+                antenna_amp = Amplifier(**component_config.get("antenna_amplifier", {}), bw=wf.bw)
 
                 if coupler_config is not None:
                     coup_in = Coupler.from_config(coupler_config, wf)

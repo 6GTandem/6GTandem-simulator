@@ -74,28 +74,49 @@ def load_ue_positions(ds: xr.Dataset) -> list[dict[str, float]]:
 
 
 def build_radio_stripes(
-    stripe_start_pos, N_stripes, space_between_stripes, space_between_RUs, N_RUs
+    stripe_start_pos, stripe_end_pos, N_stripes, space_between_stripes, space_between_RUs, N_RUs, stripe_direction
 ) -> list[list[dict[str, dict[str, float]]]]:
     """Build radio_stripes with entries like {'radio_unit': {'x':..., 'y':..., 'z':...}}."""
     stripes: list[list[dict[str, dict[str, float]]]] = []
-    x0, y0, z0 = stripe_start_pos
+
+    # Compute the RU positions.
+    x_pos = np.linspace(stripe_start_pos[0], stripe_end_pos[0], N_RUs).tolist()
+    y_pos = np.linspace(stripe_start_pos[1], stripe_end_pos[1], N_RUs).tolist()
+    z_pos = np.linspace(stripe_start_pos[2], stripe_end_pos[2], N_RUs).tolist()
+
     for stripe_idx in range(N_stripes):
         stripe_list: list[dict[str, dict[str, float]]] = []
+        rux = x_pos[0]
+        ruy = y_pos[0]
+
+        if stripe_direction == "y":
+            rux -= space_between_RUs
+            ruy += stripe_idx * space_between_stripes
+        elif stripe_direction == "x":
+            ruy -= space_between_RUs
+            rux += stripe_idx * space_between_stripes
+
         stripe_list.append(
             {
                 "central_unit": {
-                    "x": x0 + stripe_idx * space_between_stripes,
-                    "y": y0 - space_between_RUs,
-                    "z": z0,
+                    "x": rux,
+                    "y": ruy,
+                    "z": z_pos[0],
                 }
             }
         )
         for ru_idx in range(N_RUs):
-            x = x0 + stripe_idx * space_between_stripes
-            y = y0 + ru_idx * space_between_RUs
-            z = z0
-            stripe_list.append({"radio_unit": {"x": x, "y": y, "z": z}})
+            rux = x_pos[ru_idx]
+            ruy = y_pos[ru_idx]
+
+            if stripe_direction == "y":
+                rux += stripe_idx * space_between_stripes
+            elif stripe_direction == "x":
+                ruy += stripe_idx * space_between_stripes
+
+            stripe_list.append({"radio_unit": {"x": rux, "y": ruy, "z": z_pos[ru_idx]}})
         stripes.append(stripe_list)
+
     return stripes
 
 
@@ -104,27 +125,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "simulation_environment", type=str, help="Name of the simulation environment present in the sionna datasets."
     )
-    parser.add_argument(
-        "stripe_config", type=str, help="Name YAML file containing the configuration for the stripe components."
-    )
-    parser.add_argument(
-        "waveform_config", type=str, help="Name of the YAML file containing the waveform configuration."
-    )
     parser.add_argument("output_file", type=str, help="Output YAML file name.")
     args = parser.parse_args()
 
     simulation_environment = args.simulation_environment
-    stripe_config = args.stripe_config
-    waveform_config = args.waveform_config
     output_file = args.output_file
-
-    # Load the configuration of the stripe components.
-    with open(stripe_config, "r") as f:
-        co_params = yaml.safe_load(f)
-
-    # Load the configuration of the waveform being transmitted.
-    with open(waveform_config, "r") as f:
-        wf_params = yaml.safe_load(f)
 
     # ---- Load parameters from office_rt_config.yml ----
     dataset_path = Path("wireless_channel/sionna_dataset")
@@ -136,9 +141,45 @@ if __name__ == "__main__":
     N_RUs = stripe_params.get("N_RUs")
     N_stripes = stripe_params.get("N_stripes")
     space_between_RUs = stripe_params.get("space_between_RUs")
+    stripe_direction = stripe_params.get("stripe_direction")
     space_between_stripes = stripe_params.get("space_between_stripes")
     stripe_start_pos = tuple(stripe_params.get("stripe_start_pos"))
-    ROOM = rt_params.get("room")
+    stripe_end_pos = tuple(stripe_params.get("stripe_end_pos"))
+
+    # Make the room area the same as the area in which the UEs are plotted.
+    ue_locations_config = rt_params.get("ue_locations_config")
+    ue_area = ue_locations_config.get("ue_area")
+    # If ue_area are defined in zones we have to extract it differently.
+    if ue_area is None:
+        zones = ue_locations_config.get("zones")
+        x, y = 0, 0
+
+        # Collect all the x and y values of the UE zones.
+        uex = []
+        uey = []
+        uez = []
+        for zone_name, zone in zones.items():
+            xstart, xstop, ystart, ystop, zstart, zstop = zone["bounds"]
+
+            uex.extend([xstart, xstop])
+            uey.extend([ystart, ystop])
+            uez.extend([zstart, zstop])
+    else:
+        xstart, xstop, ystart, ystop = ue_area
+        uex = [xstart, xstop]
+        uey = [ystart, ystop]
+        uez = [ue_locations_config["z_height"]]
+        
+    # Collect all the bounds of the stripe.
+    x_start, y_start, z_start = stripe_start_pos
+    x_stop, y_stop, z_stop = stripe_end_pos
+
+    # Look for the largest x, y and z value and use this for the room bounds.
+    x = float(np.max([x_start, x_stop] + uex))
+    y = float(np.max([y_start, y_stop] + uey))
+    z = float(np.max([z_start, z_stop] + uez))
+
+    ue_area = (x, y, z)
 
     # Load additional params for sub_thz and sub10GHz from YAML, following example.yml structure
     sub_thz_params = rt_params.get("subTHz_config")
@@ -148,19 +189,13 @@ if __name__ == "__main__":
     nc_path = PurePath(dataset_path, simulation_environment, "ue_locations/ue_locations.nc")
     ds = xr.open_dataset(nc_path)
     ue_positions = load_ue_positions(ds)
-    radio_stripes = build_radio_stripes(stripe_start_pos, N_stripes, space_between_stripes, space_between_RUs, N_RUs)
+    radio_stripes = build_radio_stripes(
+        stripe_start_pos, stripe_end_pos, N_stripes, space_between_stripes, space_between_RUs, N_RUs, stripe_direction
+    )
 
     config = {
-        "stripe_config": {
-            "N_RUs": N_RUs,
-            "N_stripes": N_stripes,
-            "space_between_RUs": space_between_RUs,
-            "space_between_stripes": space_between_stripes,
-            "stripe_start_pos": list(stripe_start_pos),
-        },
-        "component_config": co_params,
-        "waveform_config": wf_params,
-        "room": ROOM,
+        "stripe_config": stripe_params,
+        "room": ue_area,
         "radio_stripes": radio_stripes,
         "ue_positions": ue_positions,
         "sub_thz": sub_thz_params,
