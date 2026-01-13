@@ -1,17 +1,17 @@
-import os
 import numpy as np
-import pandas as pd
 import logging
 
 from sub_THz_stripe.central_unit.central_unit import CentralUnit
 from wireless_channel.waveforms import Waveform
 from typing import Any
-import skrf as rf
 
 from ..radio_unit.radio_unit import RadioUnit
 from ..fiber.fiber import Fiber
 from ..amplifier.amplifier import Amplifier
 from ..coupler.coupler import Coupler
+from ..splitter.splitter import Splitter
+from ..combiner.combiner import Combiner
+from ..phase_shifter.phase_shifter import PhaseShifter
 from ..component.component import Component
 from ..utils import db_to_magnitude, getdbm
 
@@ -215,6 +215,7 @@ class RadioStripe(Component):
         The small signal gain of the amplifiers is set so that after all the losses from the Fiber and Couplers
         the same amplitude is achieved at the output of the RadioUnit as received on its input.
         """
+
         def scale_gain(din, pwanted, ru: RadioUnit, fib: Fiber):
             ru.boost_amp.gain = 1
             # Run the data through the booster unit and fiber.
@@ -246,7 +247,11 @@ class RadioStripe(Component):
 
     @classmethod
     def from_config_locations(
-        cls, stripe_config: list[dict[str, dict[str, float]]], component_config: dict[str, dict[str, Any]], wf: Waveform
+        cls,
+        stripe_config: list[dict[str, dict[str, float]]],
+        component_config: dict[str, dict[str, Any]],
+        antennas: int,
+        wf: Waveform,
     ):
         """Initialize a RadioStripe from a stripe configuration containing radio unit locations.
 
@@ -267,8 +272,8 @@ class RadioStripe(Component):
 
         for unit_cfg in stripe_config:
             if "radio_unit" in unit_cfg:
-                coup_in = None
-                coup_out = None
+                coup_in = Coupler(wf)
+                coup_out = Coupler(wf)
                 boost_amp = Amplifier(**component_config.get("boost_amplifier", {}), bw=wf.bw)
                 antenna_amp = Amplifier(**component_config.get("antenna_amplifier", {}), bw=wf.bw)
 
@@ -276,16 +281,22 @@ class RadioStripe(Component):
                     coup_in = Coupler.from_config(coupler_config, wf)
                     coup_out = Coupler.from_config(coupler_config, wf)
 
+                split = Splitter(num_splits=antennas)
+                comb = Combiner()
+                ps = PhaseShifter(num_shifters=antennas, **component_config.get("phase_shifter", {}))
+
                 loc = unit_cfg["radio_unit"]
                 ru = RadioUnit(
                     x=loc.get("x", 0),
                     y=loc.get("y", 0),
                     z=loc.get("z", 0),
-                    wf=wf,
                     antenna_amp=antenna_amp,
                     boost_amp=boost_amp,
                     coup_in=coup_in,
                     coup_out=coup_out,
+                    splitter=split,
+                    combiner=comb,
+                    pshift=ps,
                 )
                 radio_units.append(ru)
                 unit = ru

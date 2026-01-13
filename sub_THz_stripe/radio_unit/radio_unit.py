@@ -6,7 +6,6 @@ from ..combiner.combiner import Combiner
 from ..component.component import Component
 from ..amplifier.amplifier import Amplifier
 from ..phase_shifter.phase_shifter import PhaseShifter
-from wireless_channel.waveforms import Waveform
 
 
 class RadioUnit(Component):

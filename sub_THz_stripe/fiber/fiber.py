@@ -1,7 +1,7 @@
 import os
 import numpy as np
-import pandas as pd
 import logging
+import skrf as rf
 
 from ..component.component import Component
 from wireless_channel.waveforms import Waveform
