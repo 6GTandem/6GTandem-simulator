@@ -15,14 +15,13 @@ class RadioUnit(Component):
         x,
         y,
         z,
-        wf: Waveform,
-        boost_amp: Amplifier | None = None,
-        antenna_amp: Amplifier | None = None,
-        coup_in: Coupler | None = None,
-        coup_out: Coupler | None = None,
-        splitter: Splitter | None = None,
-        combiner: Combiner | None = None,
-        pshift: PhaseShifter | None = None,
+        boost_amp: Amplifier,
+        antenna_amp: Amplifier,
+        coup_in: Coupler,
+        coup_out: Coupler,
+        splitter: Splitter,
+        combiner: Combiner,
+        pshift: PhaseShifter,
         *args,
         **kwargs,
     ):
@@ -43,40 +42,13 @@ class RadioUnit(Component):
 
         """
         # Instantiate the components if they are not given.
-        if boost_amp is None:
-            self.boost_amp = Amplifier()
-        else:
-            self.boost_amp = boost_amp
-
-        if antenna_amp is None:
-            self.antenna_amp = Amplifier()
-        else:
-            self.antenna_amp = antenna_amp
-
-        if coup_in is None:
-            self.coupler_in = Coupler(wf)
-        else:
-            self.coupler_in = coup_in
-
-        if coup_out is None:
-            self.coupler_out = Coupler(wf)
-        else:
-            self.coupler_out = coup_out
-
-        if splitter is None:
-            self.splitter = Splitter(num_splits=4)
-        else:
-            self.splitter = splitter
-
-        if combiner is None:
-            self.combiner = Combiner()
-        else:
-            self.combiner = combiner
-
-        if pshift is None:
-            self.phase_shifter = PhaseShifter(num_shifters=4, resolution=2)
-        else:
-            self.phase_shifter = pshift
+        self.boost_amp = boost_amp
+        self.antenna_amp = antenna_amp
+        self.coupler_in = coup_in
+        self.coupler_out = coup_out
+        self.splitter = splitter
+        self.combiner = combiner
+        self.phase_shifter = pshift
 
         self.x = x
         self.y = y
