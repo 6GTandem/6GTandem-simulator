@@ -109,14 +109,16 @@ class Fiber(Component):
         if "model" in config:
             # Load the fiber model from the given file.
             base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            fiber_spars = pd.read_csv(os.path.join(base_path, f"../models/PMF/{config['model']}"))
+            fiber_spars = rf.Network(os.path.join(base_path, f"../models/PMF/{config['model']}"))
 
             # Subcarrier frequencies
             ofdm_freqs = np.linspace(wf.fc - wf.bw / 2, wf.fc + wf.bw / 2, wf.n_carriers * wf.oversampling_factor)
 
-            fib_freqs = fiber_spars["freq[Hz]"]
-            fib_phase = np.unwrap(np.deg2rad(fiber_spars["ang:Trc2_S21"]))
-            fib_mag = 10 ** ((fiber_spars["db:Trc2_S21"] + 3) / 20.0)
+            fib_freqs = fiber_spars.f
+            fib_s21 = fiber_spars.s[:, 1, 0]
+            
+            fib_mag = np.abs(fib_s21)
+            fib_phase = np.angle(fib_s21)
 
             interp_mag = np.interp(ofdm_freqs, fib_freqs, fib_mag)
             interp_phase = np.interp(ofdm_freqs, fib_freqs, fib_phase)

@@ -24,7 +24,7 @@ class Amplifier(Component):
         >>> y = pa.run(x)
     """
 
-    def __init__(self, gain=1, max_gain=1, max_out_amp=1, noise_var=0, smoothness=1, *args, **kwargs):
+    def __init__(self, bw, gain=1, max_gain=1, max_out_amp=1, noise_fig=0, smoothness=1, *args, **kwargs):
         """Initialize the amplifier object with the given parameters.
 
         :param gain: The low signal-gain of the amplifier.
@@ -37,7 +37,8 @@ class Amplifier(Component):
         self.max_gain = max_gain
         self.gain = gain
         self.max_output_amplitude = max_out_amp
-        self.noise_var = noise_var
+        self.noise_fig = noise_fig
+        self.set_noise_var(25 + 273.15, bw, self.noise_fig)
         self.smoothness = smoothness
 
         super().__init__(*args, **kwargs)
