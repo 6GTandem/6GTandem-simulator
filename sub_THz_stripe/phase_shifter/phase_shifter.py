@@ -38,16 +38,12 @@ class PhaseShifter(Component):
 
         return np.array(y)
 
-    def index_to_deg(self, k):
-        """Convert a phase shift index k to a phase shift in radians."""
-        return (2 * np.pi * k) / (2**self.resolution)
-
-    def get_phases(self, beam_idx: int):
+    def get_phases(self, beam_angle: float):
         assert (
-            beam_idx <= self.num_shifters
-        ), f"The requested beam index ({beam_idx}) doesn't exist. Maximum beams: {self.num_shifters}"
+            beam_angle <= 80 and beam_angle >= -80
+        ), f"The requested beam angle ({beam_angle}) doesn't lie between 80 and -80deg."
 
-        antenna_idxs = np.arange(self.num_shifters)
-        phi = ((2 * np.pi) / self.num_shifters) * antenna_idxs * beam_idx
+        spacing = np.arange(1, self.num_shifters + 1) / 2
+        phi = 2 * np.pi * spacing * np.sin(np.deg2rad(beam_angle))
 
         return phi
