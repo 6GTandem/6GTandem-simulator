@@ -18,9 +18,9 @@ class Fiber(Component):
         wf: Waveform,
         length: float = 1,
         damping_per_meter: float = 0,
-        fs: float = 15e9,
         filter_mode="time_domain",
         filter: np.ndarray = np.array([1]),
+        deembedding: float = 0,
         *args,
         **kwargs,
     ):
@@ -40,6 +40,7 @@ class Fiber(Component):
         self.filter = filter  # passed in frequency domain
         self.filter_mode = filter_mode
         self.wf = wf
+        self.deembedding = deembedding
 
         super().__init__(*args, **kwargs)
 
@@ -77,7 +78,7 @@ class Fiber(Component):
                     xout = delay_signal(xout, self.delay, window=window)
                 xout = np.reshape(xout, (self.wf.n_ofdm_symbols, -1))
 
-        return xout * db_to_magnitude(self.damping)
+        return xout * db_to_magnitude(self.damping) * db_to_magnitude(self.deembedding)
 
     @property
     def delay(self):
@@ -127,8 +128,9 @@ class Fiber(Component):
             filter_mode = "freq_domain"
             damping = config.get("damping_per_meter", 0)
             length = config.get("length", 0)
+            deembedding = config.get("deembedding", 0)
 
-            fiber = cls(damping_per_meter=damping, length=length, filter=fib_s21_ofdm, filter_mode=filter_mode, wf=wf)
+            fiber = cls(damping_per_meter=damping, length=length, filter=fib_s21_ofdm, filter_mode=filter_mode, wf=wf, deembedding=deembedding)
         else:
             fiber = cls(**config, filter_mode="no_filter", wf=wf)
 

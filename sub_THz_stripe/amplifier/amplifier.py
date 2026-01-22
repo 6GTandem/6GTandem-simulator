@@ -61,7 +61,7 @@ class Amplifier(Component):
 
         # The polynomial coefficients have to be recalculated in case the gain changes.
         if self.polynomial is not None:
-            self.coeffs, self.amax = self.polynomial_fitting(self.polynomial, self.gain)
+            self.coeffs, self.max_input_amplitude = self.polynomial_fitting(self.polynomial, self.gain)
 
     def set_maximum_output_power(self, max_power_dbm):
         """ Set the maximum output amplitude.
@@ -109,6 +109,7 @@ class Amplifier(Component):
         x_powers = np.column_stack([x_scaled ** p for p in odd_powers])
     
         coeffs, *_ = np.linalg.lstsq(x_powers, y_voltage, rcond=None)
+        print(coeffs)
 
         return coeffs, np.max(x_scaled)
 
@@ -117,7 +118,7 @@ class Amplifier(Component):
 
         match self.mode:
             case 'ideal' | 'linear':
-                xout = x
+                xout = x * self.gain
             case 'atan':
                 # alpha=0.6340 # This factor gives 1dB compression at x=1
                 alpha = 2 / np.pi  # This factor gives Amax=1;
@@ -147,10 +148,10 @@ class Amplifier(Component):
             case 'poly5':
                 if self.polynomial is None or self.max_input_amplitude is None or self.coeffs is None:
                     raise ValueError("Selected polynomial model but no coefficients configured")
-                xlim = x
-                xlim[abs(x) > self.max_input_amplitude] = self.max_input_amplitude
+                xlim = x.copy()
+                xlim[np.abs(x) > self.max_input_amplitude] = self.max_input_amplitude
                 
-                xout = sum(c * x ** p for c, p in zip(self.coeffs, range(1, self.polynomial + 1, 2)))
+                xout = sum(c * xlim * np.abs(xlim) ** (p-1) for c, p in zip(self.coeffs, range(1, self.polynomial + 1, 2)))
             case 'limiter':
                 xout = x
                 # abs(xout) > 1 gives saturation at 1 V.

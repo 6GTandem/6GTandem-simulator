@@ -97,8 +97,12 @@ class RadioStripe(Component):
         :returns: A (n x m) matrix with the amount of rows n equal to the amount of splits (See `Splitter`).
         """
         # Data comes from the central unit and first passes through the chain of RUs.
-        y = x
+        y = x.copy()
         imdata = [x]
+
+        # Now calibrate the booster units to compensate losses.
+        self.calibrate_losses(y)
+
         for i, (ru, fib) in enumerate(
             zip(self.radio_units[: self.active_unit + 1], self.fibers[: self.active_unit + 1])
         ):
