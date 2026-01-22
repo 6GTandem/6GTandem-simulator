@@ -76,7 +76,8 @@ class Waveform():
                  fc=freq_band_config['fc'],
                  pilot_spacing= waveform_config['pilot_spacing'],
                  pilot_symbol= waveform_config['pilot_symbol_re'] + 1j * waveform_config['pilot_symbol_imag'],
-                 pilot_mode = waveform_config['pilot_mode']
+                 pilot_mode = waveform_config['pilot_mode'],
+                 tx_power = waveform_config['tx_power']
                  )
         return wf
 
@@ -136,6 +137,26 @@ class Waveform():
         self.qam_symbols = (I + 1j * Q) / np.sqrt((2 / 3) * (self.qam_order - 1))
         return self.qam_symbols
 
+    @staticmethod
+    def generate_zadoff_chu_sequence(root, length):
+        """
+        Generate a Zadoff-Chu sequence.
+
+        :param root: The root index of the sequence (integer, coprime with length).
+        :param length: The length of the sequence (integer).
+        :return: A numpy array containing the Zadoff-Chu sequence.
+        """
+        if root is None:
+            # Deduce the root as the smallest integer coprime with the length
+            root = next(r for r in range(1, length) if np.gcd(r, length) == 1)
+
+        if np.gcd(root, length) != 1:
+            raise ValueError("Root and length must be coprime.")
+
+        n = np.arange(length)
+        zc_sequence = np.exp(-1j * np.pi * root * n * (n + 1) / length)
+        return zc_sequence
+
     def _map_data_and_pilots(self, data_symbols):
         """Given a 1D array of data QAM symbols of length data_per_symbol, return a full-length
         array of length n_carriers with pilots inserted at pilot_indices and data filled in the
@@ -185,6 +206,7 @@ class Waveform():
             # block mode:
             # 1) first symbol: pilots on every carrier
             pilot_grid = np.ones(self.n_carriers, dtype=complex) * self.pilot_symbol
+            #pilot_grid = self.generate_zadoff_chu_sequence(None, self.n_carriers)
             freq_oversampled = self.pad_subcarriers(pilot_grid[np.newaxis, :])[0]
             time_domain = np.fft.ifft(freq_oversampled, self.fft_size)
             cp = time_domain[-self.cp_length:]
@@ -203,7 +225,8 @@ class Waveform():
         self.ofdm_time = np.array(ofdm_time)
         # Rescale the waveform to conform with the transmit power.
         pavg = np.mean(np.abs(self.ofdm_time) ** 2)
-        alpha = np.sqrt(10e-3 / pavg)
+        txp = (10 ** (self.tx_power / 10)) / 1000
+        alpha = np.sqrt(txp / pavg)
         self.ofdm_time *= alpha
         self.pilot_symbol *= alpha
 
