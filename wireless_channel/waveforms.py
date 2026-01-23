@@ -35,10 +35,10 @@ class Waveform():
 
             # Pilot configuration
             self.pilot_spacing = kwargs.get("pilot_spacing", 16)  # every 16th carrier is a pilot by default
-            #self.pilot_symbol = kwargs.get("pilot_symbol", (1 + 1j))
-            self.pilot_symbol = kwargs.get("pilot_symbol", (1 + 1j) / np.sqrt((2 / 3) * (self.qam_order - 1)))
             self.pilot_mode = kwargs.get("pilot_mode", "interleaved") # "interleaved" = pilots interleaved every pilot_spacing
             # 'block' = first OFDM symbol is full pilot (all carriers), subsequent symbols are pure data
+
+
 
             self.tx_power = kwargs.get("tx_power", 10)
 
@@ -50,9 +50,18 @@ class Waveform():
                 raise ValueError("pilot_mode must be 'interleaved or 'block'")
 
             # derived
-            self.pilot_indices = np.arange(0, self.n_carriers, self.pilot_spacing)
-            self.n_pilots = len(self.pilot_indices)
-            self.data_carriers = np.setdiff1d(np.arange(self.n_carriers), self.pilot_indices)
+            if self.pilot_mode == "interleaved":
+                self.pilot_indices = np.arange(0, self.n_carriers, self.pilot_spacing)
+                self.n_pilots = len(self.pilot_indices)
+                self.data_carriers = np.setdiff1d(np.arange(self.n_carriers), self.pilot_indices)
+            elif self.pilot_mode == "block":
+                self.n_pilots = self.n_carriers  # all carriers in first symbol are pilots
+                self.pilot_indices = np.arange(0, self.n_carriers)
+
+            # todo remove pilot_symbol from config
+            self.pilot_symbols = self.set_pilots()
+            # #self.pilot_symbol = kwargs.get("pilot_symbol", (1 + 1j))
+            # self.pilot_symbol = kwargs.get("pilot_symbol", (1 + 1j) / np.sqrt((2 / 3) * (self.qam_order - 1)))
 
         else:
             raise ValueError(f"Unsupported waveform type: {self.waveform_type}")
@@ -103,6 +112,32 @@ class Waveform():
     # ------------------------
     # OFDM methods
     # ------------------------
+
+    def set_pilots(self):
+        """
+        generate pilot symbols as random QAM symbols
+        """
+        k = int(np.log2(self.qam_order))
+        num_pilot_bits = self.n_pilots * k
+        pilot_bits = np.random.randint(0, 2, num_pilot_bits)
+
+
+        if len(pilot_bits) % k != 0:
+            raise ValueError("Number of pilot bits must be a multiple of log2(qam_order).")
+
+        bit_groups = pilot_bits.reshape((-1, k))
+        symbols_idx = np.array([int("".join(str(b) for b in grp), 2) for grp in bit_groups])
+        m_side = int(np.sqrt(self.qam_order))
+
+        def gray_map(x): return x ^ (x >> 1)
+
+        I = gray_map(symbols_idx % m_side)
+        Q = gray_map(symbols_idx // m_side)
+        I = 2 * I - (m_side - 1)
+        Q = 2 * Q - (m_side - 1)
+        pilot_symbols = (I + 1j * Q) / np.sqrt((2 / 3) * (self.qam_order - 1))
+        return pilot_symbols
+
     def generate_bits(self):
         # number of data carriers per OFDM symbol depends on pilot_mode
         if self.pilot_mode == "interleaved":
@@ -164,7 +199,7 @@ class Waveform():
         """
 
         grid = np.zeros(self.n_carriers, dtype=complex)
-        grid[self.pilot_indices] = self.pilot_symbol
+        grid[self.pilot_indices] = self.pilot_symbols
         grid[self.data_carriers] = data_symbols
         return grid
 
@@ -205,7 +240,10 @@ class Waveform():
         else:
             # block mode:
             # 1) first symbol: pilots on every carrier
-            pilot_grid = np.ones(self.n_carriers, dtype=complex) * self.pilot_symbol
+            #pilot_grid = np.ones(self.n_carriers, dtype=complex) * self.pilot_symbol
+            pilot_grid = self.pilot_symbols
+
+            #todo change here
             #pilot_grid = self.generate_zadoff_chu_sequence(None, self.n_carriers)
             freq_oversampled = self.pad_subcarriers(pilot_grid[np.newaxis, :])[0]
             time_domain = np.fft.ifft(freq_oversampled, self.fft_size)
@@ -228,7 +266,7 @@ class Waveform():
         txp = (10 ** (self.tx_power / 10)) / 1000
         alpha = np.sqrt(txp / pavg)
         self.ofdm_time *= alpha
-        self.pilot_symbol *= alpha
+        self.pilot_symbols *= alpha
 
         return self.ofdm_time
 
@@ -300,7 +338,7 @@ class Waveform():
             for si in range(n_sym):
                 y = rx_subcarriers[si]
                 y_p = y[pilot_idx]
-                h_p = y_p / self.pilot_symbol
+                h_p = y_p / self.pilot_symbols
                 if len(pilot_idx) == 1:
                     H_est[si, :] = h_p[0]
                     continue
@@ -313,7 +351,7 @@ class Waveform():
             # Expect first symbol (index 0) to be full pilots
             # estimate H from first symbol and reuse for all OFDM symbols
             y0 = rx_subcarriers[0, :]
-            H0 = y0 / self.pilot_symbol
+            H0 = y0 / self.pilot_symbols
             for si in range(n_sym):
                 H_est[si, :] = H0
 
