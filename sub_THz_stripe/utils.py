@@ -41,6 +41,28 @@ def calculate_sndr(x: np.ndarray, y: np.ndarray, wf: Waveform):
 
     return (10 * np.log10(np.array(sndr))), sc
 
+def calculate_papr(data, percentile: float = 99.5):
+    """Calculate the PAPR of and OFDM signal.
+
+    Arguments
+    ---------
+        data np.ndarray
+            The input data for which to calculate the PAPR.
+        percentile float
+            For which percentile to calculate the PAPR.
+    
+    Returns
+    -------
+        The PAPR in dB.
+    """
+    abs_data = np.abs(data)
+    threshold = np.percentile(abs_data, percentile)
+    sdata = abs_data[abs_data > threshold]
+
+    papr = np.max(sdata ** 2) / np.mean(sdata ** 2)
+
+    return 10 * np.log10(papr)
+
 
 def getdbm(x):
     return 10 * np.log10(np.mean(np.abs(x) ** 2) / 1e-3)
