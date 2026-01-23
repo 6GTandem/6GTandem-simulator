@@ -2,6 +2,7 @@ import numpy as np
 import numpy.random
 
 from scipy.signal import lfilter
+import matplotlib.pyplot as plt
 from wireless_channel.waveforms import Waveform
 
 global_seed = None
@@ -57,11 +58,42 @@ def calculate_papr(data, percentile: float = 99.5):
     """
     abs_data = np.abs(data)
     threshold = np.percentile(abs_data, percentile)
-    sdata = abs_data[abs_data > threshold]
+    sdata = abs_data[abs_data < threshold]
 
     papr = np.max(sdata ** 2) / np.mean(sdata ** 2)
 
     return 10 * np.log10(papr)
+
+def calculate_nmse(sig_in: np.ndarray, sig_out: np.ndarray, wf: Waveform):
+    x_combined_freq = wf.ofdm_time_to_freq(sig_in)
+    xsubc = wf.extract_subcarriers(x_combined_freq)
+
+    # channel estimation
+    y_combined_freq = wf.ofdm_time_to_freq(sig_out)
+    ysubc = wf.extract_subcarriers(y_combined_freq)
+    H_est = wf.channel_estimate_ls(ysubc)
+
+    # equalization
+    eq_subc = wf.equalize_one_tap(ysubc, H_est)
+
+    plt.scatter(xsubc.real, xsubc.imag, label="tx")
+    plt.scatter(eq_subc.real, eq_subc.imag, label="rx")
+    plt.legend()
+    plt.show()
+    nmse = np.sum(np.abs(eq_subc - xsubc) ** 2) / np.sum(np.abs(xsubc) ** 2)
+
+    xsubc = wf.pad_subcarriers(xsubc)
+    x_time = wf.ofdm_freq_to_time(xsubc)
+    eq_subc = wf.pad_subcarriers(eq_subc)
+    y_time = wf.ofdm_freq_to_time(eq_subc)
+    print(f"Psig_in utils: {10 * np.log10(np.mean(np.abs(sig_in ** 2) * 1000))} dBm")
+    print(f"X_time utils: {10 * np.log10(np.mean(np.abs(x_time ** 2) * 1000))} dBm")
+
+    noise = y_time - x_time
+    noise = np.mean(np.abs(noise) ** 2)
+    x_time = np.mean(np.abs(x_time) ** 2)
+
+    return 10 * np.log10(nmse), 10 * np.log10(noise * 1000), 10 * np.log10(x_time * 1000)
 
 
 def getdbm(x):

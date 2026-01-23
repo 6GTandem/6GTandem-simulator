@@ -82,12 +82,10 @@ class Amplifier(Component):
 
     def set_noise_var(self, t, b, nfdb):
         k = 1.3806e-23
-        noise_density = k * t * db_to_power(nfdb)
-        noise_power = noise_density * b
-        # P = U^2/R
-        voltage_power = noise_power
-        # Noise variance per channel.
-        self.noise_var = voltage_power / 2
+        noise_power_watts =  10 ** (nfdb / 10) * k * t * b
+
+        self.noise_var = noise_power_watts
+
     
     def polynomial_fitting(self, order, gain):
         # Read out the measurement data.
@@ -109,16 +107,17 @@ class Amplifier(Component):
         x_powers = np.column_stack([x_scaled ** p for p in odd_powers])
     
         coeffs, *_ = np.linalg.lstsq(x_powers, y_voltage, rcond=None)
-        print(coeffs)
 
         return coeffs, np.max(x_scaled)
 
     def run(self, x: np.ndarray):
-        x = (x + math.sqrt(self.noise_var) * (numpy.random.normal(size=np.shape(x)) + 1j * numpy.random.normal(size=np.shape(x))))
+        noise = np.random.normal(0, np.sqrt(self.noise_var / 2), size=np.shape(x)) + 1j * numpy.random.normal(0, np.sqrt(self.noise_var / 2), size=np.shape(x))
+        print(f"Noise variance: {10 * np.log10(np.var(noise) * 1000)} dBm")
+        x_noise = x + noise
 
         match self.mode:
             case 'ideal' | 'linear':
-                xout = x * self.gain
+                xout = x_noise * self.gain
             case 'atan':
                 # alpha=0.6340 # This factor gives 1dB compression at x=1
                 alpha = 2 / np.pi  # This factor gives Amax=1;
@@ -148,8 +147,8 @@ class Amplifier(Component):
             case 'poly5':
                 if self.polynomial is None or self.max_input_amplitude is None or self.coeffs is None:
                     raise ValueError("Selected polynomial model but no coefficients configured")
-                xlim = x.copy()
-                xlim[np.abs(x) > self.max_input_amplitude] = self.max_input_amplitude
+                xlim = x_noise.copy()
+                xlim[np.abs(x_noise) > self.max_input_amplitude] = self.max_input_amplitude
                 
                 xout = sum(c * xlim * np.abs(xlim) ** (p-1) for c, p in zip(self.coeffs, range(1, self.polynomial + 1, 2)))
             case 'limiter':

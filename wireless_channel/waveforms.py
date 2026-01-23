@@ -441,6 +441,7 @@ class Waveform():
         subcarriers[:, :half] = ofdm_freq_oversampled[:, :half]
         subcarriers[:, half:] = ofdm_freq_oversampled[:, -half:]
 
+        # Divide by oversampling factor for power scaling.
         return subcarriers
 
     def awgn(self, signal, snr_dB):

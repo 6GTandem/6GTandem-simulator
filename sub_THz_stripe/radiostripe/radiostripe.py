@@ -13,7 +13,7 @@ from ..splitter.splitter import Splitter
 from ..combiner.combiner import Combiner
 from ..phase_shifter.phase_shifter import PhaseShifter
 from ..component.component import Component
-from ..utils import db_to_magnitude, getdbm
+from ..utils import db_to_magnitude, getdbm, calculate_nmse 
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +106,7 @@ class RadioStripe(Component):
         for i, (ru, fib) in enumerate(
             zip(self.radio_units[: self.active_unit + 1], self.fibers[: self.active_unit + 1])
         ):
+            sig_in = y.copy()
             y = fib.run(y)
             imdata.append(y)
             if i == self.active_unit:
@@ -114,6 +115,11 @@ class RadioStripe(Component):
             else:
                 y, imd = ru.boost(y)
                 imdata.extend(imd)
+                nmse, pnoise, psig = calculate_nmse(imdata[0], y, self.wf)
+                print(f"Psig_in stage{i}: {10 * np.log10(np.mean(np.abs(sig_in ** 2) * 1000))} dBm")
+                print(f"Psig stage{i}: {psig} dBm")
+                print(f"Pnoise stage{i}: {pnoise} dBm")
+                print(f"NMSE stage{i}: {nmse} dB")
 
         return y, imdata
 
@@ -278,8 +284,8 @@ class RadioStripe(Component):
             if "radio_unit" in unit_cfg:
                 coup_in = Coupler(wf)
                 coup_out = Coupler(wf)
-                boost_amp = Amplifier(**component_config.get("boost_amplifier", {}), bw=wf.bw)
-                antenna_amp = Amplifier(**component_config.get("antenna_amplifier", {}), bw=wf.bw)
+                boost_amp = Amplifier(**component_config.get("boost_amplifier", {}), bw=wf.bw*wf.oversampling_factor)
+                antenna_amp = Amplifier(**component_config.get("antenna_amplifier", {}), bw=wf.bw*wf.oversampling_factor)
 
                 if coupler_config is not None:
                     coup_in = Coupler.from_config(coupler_config, wf)
