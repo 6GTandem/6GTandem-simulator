@@ -1,19 +1,20 @@
 boost_amplifier:
-  gain: 1.0
-  max_gain: 10.0
-  max_out_amp: 33
+  gain: 1.0 # Voltage gain.
+  max_gain: 15.0
   noise_fig: 10.0
   smoothness: 0.0
-  mode: poly3
+  mode: poly5
 antenna_amplifier:
-  gain: 1.0
-  max_gain: 10.0
-  max_out_amp: 33
-  noise_fig: 10.0
+  gain: 1.0 # Voltage gain. Equals 10dB power gain.
+  max_gain: 15.0
+  noise_fig: -100.0
   smoothness: 0.0
-  mode: poly3
+  mode: linear
 fiber:
-  model: with_balun.s2p
+  model: pmf1m.s2p
   length: 1.0
+  deembedding: 3.0
 coupler:
   model: with_balun.s2p
+phase_shifter:
+  resolution: 4

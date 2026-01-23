@@ -158,7 +158,7 @@ def plot_im_data_tx(imdata: list[np.ndarray], wf: Waveform):
         A matplotlib Figure object containing the created plot.
     """
     # Calculate how many booster stages are included in the intermediate data.
-    stages = ((len(imdata) - 6) // 4) + 1
+    stages = (len(imdata) // 4) + 1
     # Make plot panes for all the stages
     plot_panes = stages
     if plot_panes % 2 != 0:
@@ -213,6 +213,71 @@ def plot_im_data_tx(imdata: list[np.ndarray], wf: Waveform):
         else:
             label = booster_stages[i % 4]
             label += str(stage)
+        column = 0
+        if stage > (plot_panes // 2):
+            column = 1
+        row = (stage - 1) % (plot_panes // 2)
+
+        # Select the data for one symbol only.
+        ax[row, column].plot(np.abs(x[0]), np.abs(y[0]), "o", label=label)
+        ax[row, column].legend()
+
+        ax2[row, column].plot(freq, psd, label=label)
+        ax2[row, column].legend()
+
+    return fig, fig2
+
+
+def plot_im_data_rx(imdata: list[np.ndarray], wf: Waveform):
+    """Plot the intermediate data coming out of the stripe.
+
+    Parameters
+    ----------
+        imdata (list[np.ndarray])
+            aaa
+
+    Returns
+    -------
+    matplotlib.Figure
+        A matplotlib Figure object containing the created plot.
+    """
+    # Calculate how many ru stages are included in the intermediate data.
+    stages = len(imdata) // 4
+    # Make plot panes for all the stages
+    plot_panes = stages
+    if plot_panes % 2 != 0:
+        plot_panes += 1
+
+    # Make a figure for AM/AM plots and spec plots.
+    fig, ax = plt.subplots(plot_panes // 2, 2)
+    fig2, ax2 = plt.subplots(plot_panes // 2, 2)
+
+    # Keep the array 1xm for simplicity.
+    if len(ax.shape) == 1:
+        ax = np.array([ax])
+    if len(ax2.shape) == 1:
+        ax2 = np.array([ax2])
+
+    # Set the proper axis labels.
+    ax[-1, 0].set_xlabel("Input amplitude |x|")
+    ax[-1, -1].set_xlabel("Input amplitude |x|")
+    ax[0, 0].set_ylabel("Output amplitude |y|")
+
+    ax2[-1, 0].set_xlabel("Normalized Frequency")
+    ax2[-1, -1].set_xlabel("Normalized Frequency")
+    ax2[0, 0].set_ylabel("Power Spectral Density (dB/Hz)")
+
+    # Loop over the data from all the stages. (Stages are all RUs.)
+    for i, (x, y) in enumerate(zip(imdata[:-1], imdata[1:])):
+        # Calculate at which stage we are.
+        stage = (i // 4) + 1
+
+        component_in_stage = i % 4
+        label = booster_stages[component_in_stage]
+
+        # Calculate the PSD.
+        freq, psd = calculate_psd_per_symbol(x, wf.fs)
+
         column = 0
         if stage > (plot_panes // 2):
             column = 1

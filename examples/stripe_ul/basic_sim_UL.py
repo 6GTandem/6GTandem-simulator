@@ -44,10 +44,7 @@ if __name__ == "__main__":
     logger = logging.getLogger("6GTandemBasicDL")
 
     # read config file
-    config_file = "office_config.yml"
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    config_path = os.path.join(dir_path, "..", "configurations")
-    with open(os.path.join(config_path, config_file), "r", encoding="utf8") as file:
+    with open("examples/stripe_ul/config.yml", "r", encoding="utf8") as file:
         config = yaml.safe_load(file)
 
     # todo load from config
@@ -83,8 +80,8 @@ if __name__ == "__main__":
 
     # load channels. Select only a single UE position to start with. Same indexing remark
     # applies here as for the stripes.
-    ue_pos = config["ue_positions"][3017]
-    channel = Channel.from_sionna(ue_pos, debug=True)
+    ue_pos = config["ue_positions"][0]
+    channel = Channel.from_sionna(ue_pos, "office1_smoothed")
     channel.Nr_stripes = 2
     logger.debug(f"{channel}")
 
