@@ -112,7 +112,6 @@ class Amplifier(Component):
 
     def run(self, x: np.ndarray):
         noise = np.random.normal(0, np.sqrt(self.noise_var / 2), size=np.shape(x)) + 1j * numpy.random.normal(0, np.sqrt(self.noise_var / 2), size=np.shape(x))
-        print(f"Noise variance: {10 * np.log10(np.var(noise) * 1000)} dBm")
         x_noise = x + noise
 
         match self.mode:

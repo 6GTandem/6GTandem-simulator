@@ -76,8 +76,8 @@ def calculate_nmse(sig_in: np.ndarray, sig_out: np.ndarray, wf: Waveform):
     # equalization
     eq_subc = wf.equalize_one_tap(ysubc, H_est)
 
-    plt.scatter(xsubc.real, xsubc.imag, label="tx")
     plt.scatter(eq_subc.real, eq_subc.imag, label="rx")
+    plt.scatter(xsubc.real, xsubc.imag, label="tx")
     plt.legend()
     plt.show()
     nmse = np.sum(np.abs(eq_subc - xsubc) ** 2) / np.sum(np.abs(xsubc) ** 2)
