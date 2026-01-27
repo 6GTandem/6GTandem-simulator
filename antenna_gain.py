@@ -29,14 +29,20 @@ def array_factor_ula(
     theta_rad: np.ndarray,
     phi_rad: float,
     n_elements: int,
+    steer_theta_deg: float = 0.0,
+    steer_phi_deg: float = 0.0,
 ) -> np.ndarray:
     dx = WAVELENGTH / 2.0
     k = 2.0 * np.pi / WAVELENGTH
     af = np.zeros_like(theta_rad, dtype=np.complex128)
     sin_theta = np.sin(theta_rad)
     cos_phi = np.cos(phi_rad)
+    steer_theta = np.deg2rad(steer_theta_deg)
+    steer_phi = np.deg2rad(steer_phi_deg)
+    sin_steer = np.sin(steer_theta)
+    cos_steer_phi = np.cos(steer_phi)
     for m in range(n_elements):
-        phase = k * (m * dx) * sin_theta * cos_phi
+        phase = k * (m * dx) * (sin_theta * cos_phi - sin_steer * cos_steer_phi)
         af += np.exp(1j * phase)
     return af
 
@@ -45,12 +51,13 @@ def main() -> None:
     df = pd.read_csv(ELEMENT_CSV)
     fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
 
-    nx, ny = parse_topology(TOPOLOGY)
+    # nx, ny = parse_topology(TOPOLOGY)
 
-    dx = dy = WAVELENGTH / 2.0
-    k = 2.0 * np.pi / WAVELENGTH
+    # dx = dy = WAVELENGTH / 2.0
+    # k = 2.0 * np.pi / WAVELENGTH
 
     for phi_angle in PHI_ANGLES_DEG:
+
         phi_cut = df[df["Phi[deg]"] == phi_angle]
 
         # Extract columns
@@ -60,11 +67,51 @@ def main() -> None:
         # Convert magnitude to relative gain (dB)
         gain = 20 * np.log10(mag/np.max(mag))
 
-        ax.plot(theta_rad, gain, label=f"Phi {phi_angle}")
+        # ax.plot(theta_rad, gain, label=f"Phi {phi_angle}")
 
-        af =  20 * np.log10(np.abs(array_factor_ula(theta_rad, np.deg2rad(phi_angle), 4) ))
+        af =  20 * np.log10(np.abs(array_factor_ula(theta_rad, np.deg2rad(phi_angle), 4, 0.0)))
 
-        ax.plot(theta_rad, gain + af - np.max(gain + af), label=f"Array {phi_angle}")
+        ax.plot(theta_rad, gain + af - np.max(gain + af), label=f"Array {phi_angle} - Beam angle 0°")
+
+        af = 20 * np.log10(
+            np.abs(array_factor_ula(theta_rad, np.deg2rad(phi_angle), 4, 10.0))
+        )
+
+        ax.plot(
+            theta_rad,
+            gain + af - np.max(gain + af),
+            label=f"Array {phi_angle} - Beam angle 10°",
+        )
+
+        af = 20 * np.log10(
+            np.abs(array_factor_ula(theta_rad, np.deg2rad(phi_angle), 4, -20.0))
+        )
+
+        ax.plot(
+            theta_rad,
+            gain + af - np.max(gain + af),
+            label=f"Array {phi_angle} - Beam angle -20°",
+        )
+
+        af = 20 * np.log10(
+            np.abs(array_factor_ula(theta_rad, np.deg2rad(phi_angle), 4, 30.0))
+        )
+
+        ax.plot(
+            theta_rad,
+            gain + af - np.max(gain + af),
+            label=f"Array {phi_angle} - Beam angle 30°",
+        )
+
+        af = 20 * np.log10(
+            np.abs(array_factor_ula(theta_rad, np.deg2rad(phi_angle), 4, -90.0))
+        )
+
+        ax.plot(
+            theta_rad,
+            gain + af - np.max(gain + af),
+            label=f"Array {phi_angle} - Beam angle -90°",
+        )
 
     ax.set_theta_zero_location("N")
     ax.set_rmin(-35)
@@ -74,7 +121,6 @@ def main() -> None:
 
     out_path = Path(__file__).with_name(f"antenna-polar-theta-af-1x4.png")
     fig.savefig(out_path, dpi=300, bbox_inches="tight")
-
 
 if __name__ == "__main__":
     main()
