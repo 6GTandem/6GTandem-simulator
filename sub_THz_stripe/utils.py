@@ -75,11 +75,13 @@ def calculate_nmse(sig_in: np.ndarray, sig_out: np.ndarray, wf: Waveform):
 
     # equalization
     eq_subc = wf.equalize_one_tap(ysubc, H_est)
+    plt_data = eq_subc.copy()
 
-    plt.scatter(eq_subc.real, eq_subc.imag, label="rx")
-    plt.scatter(xsubc.real, xsubc.imag, label="tx")
-    plt.legend()
-    plt.show()
+    fig, ax = plt.subplots()
+    ax.scatter(eq_subc.real, eq_subc.imag, label="rx")
+    ax.scatter(xsubc.real, xsubc.imag, label="tx")
+    ax.legend()
+    fig.show()
     nmse = np.sum(np.abs(eq_subc - xsubc) ** 2) / np.sum(np.abs(xsubc) ** 2)
 
     xsubc = wf.pad_subcarriers(xsubc)
@@ -93,7 +95,7 @@ def calculate_nmse(sig_in: np.ndarray, sig_out: np.ndarray, wf: Waveform):
     noise = np.mean(np.abs(noise) ** 2)
     x_time = np.mean(np.abs(x_time) ** 2)
 
-    return 10 * np.log10(nmse), 10 * np.log10(noise * 1000), 10 * np.log10(x_time * 1000)
+    return 10 * np.log10(nmse), 10 * np.log10(noise * 1000), 10 * np.log10(x_time * 1000), plt_data
 
 
 def getdbm(x):

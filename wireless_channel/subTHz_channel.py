@@ -302,6 +302,51 @@ class Channel:
 
         return Y_time
 
+    def transmit_ul_id(self, X, stripe_idx, ru_idx, wf: Waveform):
+        """
+        transmit from UE to all RUs
+        Y_ul = H^T X_f
+        shapes:
+        Y_ul: Nr_stripes x Nr_rus x Nr_ru_antennas x Nr_subcarriers
+        H: Nr_stripes x Nr_rus x Nr_ue_antennas x Nr_ru_antennas x Nr_subcarriers
+        X: Nr_stripes x Nr_ue_antennas x Nr_samples
+        X_f: fft of the time domain samples X
+        """
+        Y_f = np.zeros((wf.n_ofdm_symbols, self.Nr_ue_antennas, self.Nr_subcarriers), dtype=complex)
+        Y_f_padded = np.zeros((wf.n_ofdm_symbols, self.Nr_ru_antennas, wf.fft_size), dtype=complex)
+        Y_time = np.zeros(
+            (self.Nr_ru_antennas, wf.n_ofdm_symbols, wf.fft_size + wf.cp_length),
+            dtype=complex,
+        )
+
+        assert self.Nr_subcarriers == wf.n_carriers, "Nr_subcarriers in Channel must match n_carriers in Waveform."
+
+        X_f = np.zeros((self.Nr_ue_antennas, wf.n_ofdm_symbols, wf.n_carriers), dtype=complex)
+        # Convert time-domain signal to frequency domain.
+        for m in range(self.Nr_ue_antennas):
+            X_f[m, :, :] = wf.extract_subcarriers(wf.ofdm_time_to_freq(X[m, :, :]))
+
+        # select channel
+        H = self.get_csi(stripe_idx, ru_idx)  # [Nr_ue_antennas x Nr_ru_antennas x Nr_subcarriers]
+        H = np.transpose(H, (1, 0, 2))
+        logger.debug(f"channel shape: {H.shape}")
+
+        # Apply the channel.
+        for sym in range(wf.n_ofdm_symbols):
+            for k in range(self.Nr_subcarriers):
+                Y_f[sym, :, k] = H[:, :, k] @ X_f[:, sym, k]
+
+        # pad zeros
+        for m in range(self.Nr_ru_antennas):
+            Y_f_padded[:, m, :] = wf.pad_subcarriers(
+                Y_f[:, m, :]
+            )  # (n_ofdm_symbols x n_carriers) => (n_ofdm_symbosl x fftsize)
+
+            # IFFT back to time domain (should error => fft size + cp length
+            Y_time[m, :, :] = wf.ofdm_freq_to_time(Y_f_padded[:, m, :])
+
+        return Y_time
+
     def transmit_dl(self, X_list: list[np.ndarray], active_ru_idxes: list[int], waveform: Waveform):
 
         # todo debug and see if makes sense!!!

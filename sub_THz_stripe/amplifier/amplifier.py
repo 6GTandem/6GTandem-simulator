@@ -107,6 +107,7 @@ class Amplifier(Component):
         x_powers = np.column_stack([x_scaled ** p for p in odd_powers])
     
         coeffs, *_ = np.linalg.lstsq(x_powers, y_voltage, rcond=None)
+        self.coeffs = coeffs
 
         return coeffs, np.max(x_scaled)
 

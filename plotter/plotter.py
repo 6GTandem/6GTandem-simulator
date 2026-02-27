@@ -11,7 +11,7 @@ from utils import remove_oversampling, cp_ofdm_to_freq, calculate_psd_per_symbol
 
 logger = logging.getLogger(__name__)
 
-booster_stages = ["fiber", "coupler", "amplifier", "coupler"]
+booster_stages = ["coupler", "amplifier", "coupler", "fiber"]
 tx_stages = ["fiber", "coupler", "splitter", "shifter", "amplifier"]
 rx_stages = ["amplifier", "shifter", "combiner", "coupler"]
 

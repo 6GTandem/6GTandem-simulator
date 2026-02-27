@@ -5,11 +5,11 @@ boost_amplifier:
   smoothness: 0.0
   mode: poly5
 antenna_amplifier:
-  gain: 1.0 # Voltage gain. Equals 10dB power gain.
+  gain: 3.16 # Voltage gain. Equals 10dB power gain.
   max_gain: 15.0
-  noise_fig: -100.0
+  noise_fig: 10.0
   smoothness: 0.0
-  mode: linear
+  mode: poly5
 fiber:
   model: pmf1m.s2p
   length: 1.0

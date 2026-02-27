@@ -125,9 +125,9 @@ class RadioStripe(Component):
 
         :returns: A 1xm IQ-data array arriving at the central unit.
         """
-        imdata = [x[self.active_unit]]
+        imdata = [x]
         # Data is received by the active radio unit.
-        y, im = self.radio_units[self.active_unit].receive(x[self.active_unit], shifts)
+        y, im = self.radio_units[self.active_unit].receive(x, shifts)
         imdata.extend(im)
         y = self.fibers[self.active_unit].run(y, delay=delay)
         imdata.append(y)
