@@ -17,7 +17,7 @@ from sub_THz_stripe.coupler.coupler import Coupler
 from sub_THz_stripe.phase_shifter.phase_shifter import PhaseShifter
 from sub_THz_stripe.splitter.splitter import Splitter
 
-environment = "office_space_inline"
+environment = "industry_hall_blocking"
 
 # Read out the config file.
 config_file = f"environments/{environment}/config.yaml"
@@ -53,7 +53,9 @@ coup = Coupler(wf=wf)
 split = Splitter(config["antenna"]["N_antennas"])
 comb = Combiner()
 ps = PhaseShifter(num_shifters=config["antenna"]["N_antennas"], resolution=4)
-ue_ru = RadioUnit(x=0, y=0, z=0, boost_amp=amp, antenna_amp=amp, coup_in=coup, coup_out=coup, splitter=split, combiner=comb, pshift=ps)
+ue_ru = RadioUnit(
+    x=0, y=0, z=0, boost_amp=amp, antenna_amp=amp, coup_in=coup, coup_out=coup, splitter=split, combiner=comb, pshift=ps
+)
 
 # Read out the Component config file.
 config_file = "environments/component_config.yaml"
@@ -65,6 +67,7 @@ stripes: list[RadioStripe] = []
 for stripe_cfg in config["radio_stripes"]:
     stripes.append(RadioStripe.from_config_locations(stripe_cfg, component_config, config["antenna"]["N_antennas"], wf))
 
+
 def receive_worker(stripe: RadioStripe, data, phase_shifts, ue_idx, stripe_idx, ru_idx):
     stripe.active_unit = ru_idx
     y, imdata = stripe.receive(data, phase_shifts, False)
@@ -72,8 +75,10 @@ def receive_worker(stripe: RadioStripe, data, phase_shifts, ue_idx, stripe_idx, 
     out = [ue_idx, stripe_idx, ru_idx, y]
     return out
 
-dataset_path = Path("wireless_channel/sionna_dataset/", environment, "bf/")
+
+dataset_path = Path("wireless_channel/sionna_dataset/", environment, "flickering/")
 dataset_path.mkdir(parents=True, exist_ok=True)
+
 
 def find_closest_ru(data, ue, n_stripes, n_rus):
     """
@@ -81,27 +86,29 @@ def find_closest_ru(data, ue, n_stripes, n_rus):
     ue: dict with 'x', 'y', 'z' of the UE
     """
 
-    ue_x, ue_y = ue["x"], ue["y"]
+    ue_x, ue_y, ue_z = ue["x"], ue["y"], ue["z"]
 
     closest_distance = float("inf")
     closest_index = None
     closest_ru_coords = None
 
     # Loop over outer list (groups)
-    ru_index = 0  # radio_unit index
+    ru_index = 0
     for group in data:
+
         # Loop over elements inside each group
         for entry in group:
             if "radio_unit" in entry:  # skip central_unit
                 ru = entry["radio_unit"]
                 dx = ru["x"] - ue_x
                 dy = ru["y"] - ue_y
-                dist = math.sqrt(dx*dx + dy*dy)
+                dz = ru["z"] - ue_z
+                dist = math.sqrt(dx**2 + dy**2 + dz**2)
 
                 if dist < closest_distance:
                     closest_distance = dist
                     closest_index = ru_index
-                    closest_ru_coords = (ru["x"], ru["y"])
+                    closest_ru_coords = (ru["x"], ru["y"], ru["z"])
 
                 ru_index += 1
             
@@ -125,9 +132,9 @@ def ue_worker(ue_pos: dict, wf: Waveform, stripes: list[RadioStripe]):
             channel = Channel.from_sionna(ue_pos, environment)
 
             # First determine which RUs are closest to the user as we will only analyze the 9 closest units.
-            n_stripes = stripe_config['N_stripes']
-            n_rus = stripe_config['N_RUs']
-            dist, _, stripe_idx, ru_idx = find_closest_ru(config['radio_stripes'], ue_pos, n_stripes, n_rus)
+            n_stripes = stripe_config["N_stripes"]
+            n_rus = stripe_config["N_RUs"]
+            dist, _, stripe_idx, ru_idx = find_closest_ru(config["radio_stripes"], ue_pos, n_stripes, n_rus)
             # print(f"UE coords: {ue_pos}")
             # print(f"Distance: {dist}")
             # print(f"RU coords: {_}")
@@ -136,24 +143,27 @@ def ue_worker(ue_pos: dict, wf: Waveform, stripes: list[RadioStripe]):
             if stripe_idx == n_stripes - 1:
                 stripe_idx = n_stripes - 2
             if ru_idx == n_rus - 1:
-                ru_idx = n_rus - 2
+                ru_idx = n_rus - 3
             if stripe_idx == 0:
                 stripe_idx = 1
             if ru_idx == 0:
-                ru_idx = 1
+                ru_idx = 2
 
-            xgrid, ygrid = np.meshgrid((stripe_idx - 1, stripe_idx, stripe_idx + 1), (ru_idx - 1, ru_idx, ru_idx + 1))
-            
+            xgrid, ygrid = np.meshgrid((stripe_idx - 1, stripe_idx, stripe_idx + 1), (ru_idx - 2, ru_idx - 1, ru_idx, ru_idx + 1, ru_idx + 2))
+
             # Now receive this data on all the stripes.
             for row, col in zip(xgrid, ygrid):
                 for rux, ruy in zip(row, col):
-                #for stripe_idx, (stripe, data) in enumerate(zip(stripes, iq_data_rx)):
-                    if rux >= 0 and ruy >= 0:
+                    # for stripe_idx, (stripe, data) in enumerate(zip(stripes, iq_data_rx)):
+                    if rux >= 0 and ruy >= 0 and rux < n_stripes and ruy < n_rus:
                         stripe = stripes[rux]
                         # Transmit the data over the channel and get the data at all the radio units.
-                        data = channel.transmit_ul_id(iq_data_tx, rux, ruy, wf)
+                        selected_ru = ruy
+                        if stripe_config.get('invert_stripe_dir', False):
+                            selected_ru = n_rus - 1 - ruy
+                        data = channel.transmit_ul_id(iq_data_tx, rux, selected_ru, wf)
                         ru_shift = stripe.radio_units[0].phase_shifter.get_phases(ru_beam)
-                        #for ru_idx in range(len(stripe.radio_units)): 
+                        # for ru_idx in range(len(stripe.radio_units)):
                         # Receive the data over the stripe coming from ru_idx.
                         stripe.active_unit = ruy
                         y, imdata = stripe.receive(data, ru_shift, False)
@@ -200,11 +210,42 @@ def ue_worker(ue_pos: dict, wf: Waveform, stripes: list[RadioStripe]):
                         sndr_cu, _ = calculate_sndr(ofdm_time, y, wf)
                         sndr_cu = np.mean(sndr_cu)
                         # Save the data.
-                        ue_data.append([channel.ue_idx, rux, ruy, ue_beam, ru_beam, pavg_ru, pavg_ant, pavg_cu, sndr_ru, sndr_cu, nmse, ber])
+                        ue_data.append(
+                            [
+                                channel.ue_idx,
+                                rux,
+                                ruy,
+                                ue_beam,
+                                ru_beam,
+                                pavg_ru,
+                                pavg_ant,
+                                pavg_cu,
+                                sndr_ru,
+                                sndr_cu,
+                                nmse,
+                                ber,
+                            ]
+                        )
                         # time_data.append([ofdm_time, y, x_combined_freq, y_combined_freq])
-            
+
             # Save the data to disk.
-            df = pd.DataFrame(ue_data, columns=["ue_id", "stripe_id", "ru_id", "ue_beam_id", "ru_beam_id", "pavg_ru", "pavg_ant", "pavg_cu", "sndr_ru", "sndr_cu", "nmse", "ber"])
+            df = pd.DataFrame(
+                ue_data,
+                columns=[
+                    "ue_id",
+                    "stripe_id",
+                    "ru_id",
+                    "ue_beam_id",
+                    "ru_beam_id",
+                    "pavg_ru",
+                    "pavg_ant",
+                    "pavg_cu",
+                    "sndr_ru",
+                    "sndr_cu",
+                    "nmse",
+                    "ber",
+                ],
+            )
             file_path = PurePath(dataset_path, f"flickering_data_{channel.ue_idx}.pkl")
             df.to_pickle(file_path)
             # df = pd.DataFrame(time_data, columns=["x", "y", "x_freq", "y_freq"])
@@ -212,16 +253,17 @@ def ue_worker(ue_pos: dict, wf: Waveform, stripes: list[RadioStripe]):
             # file_path = PurePath(dataset_path, f"time_data_{channel.ue_idx}.hdf5")
             # df.to_hdf(file_path, key="data")
             # meta_df.to_hdf(file_path, key="meta")
-            
+
+
 # Loop over all the UE positions and perform an exhaustive search.
 workers = []
 # for ue in config["ue_positions"][:10]:
 #     print(f"UE Pos: {ue}")
 #     ue_worker(ue, wf, stripes)
-# ue_worker(config["ue_positions"][1], wf, stripes)
+#ue_worker(config["ue_positions"][-1], wf, stripes)
 with concurrent.futures.ProcessPoolExecutor(max_workers=20) as executor:
-    for ue_pos in config["ue_positions"][940:]:
+    for ue_pos in config["ue_positions"]:
         worker = executor.submit(ue_worker, ue_pos, wf, stripes)
         workers.append(worker)
-    
+
     concurrent.futures.wait(workers)
