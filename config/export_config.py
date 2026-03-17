@@ -90,11 +90,17 @@ def build_radio_stripes(
         ruy = y_pos[0]
 
         if stripe_direction == "y":
-            rux -= space_between_RUs
-            ruy += stripe_idx * space_between_stripes
-        elif stripe_direction == "x":
-            ruy -= space_between_RUs
+            if stripe_start_pos[1] < stripe_end_pos[1]:
+                ruy -= space_between_RUs
+            else:
+                ruy += space_between_RUs
             rux += stripe_idx * space_between_stripes
+        elif stripe_direction == "x":
+            if stripe_start_pos[0] < stripe_end_pos[0]:
+                rux -= space_between_RUs
+            else:
+                rux += space_between_RUs
+            ruy += stripe_idx * space_between_stripes
 
         stripe_list.append(
             {

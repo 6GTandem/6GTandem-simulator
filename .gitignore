@@ -200,3 +200,14 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 sub-THz-fiber-model/arraypattern.mat
+
+# VS Code workspace files
+*.code-workspace
+
+# Workspace specific settings
+.vscode/workspace.json
+.vscode/*.code-snippets
+
+# Per-folder settings
+.vscode/settings.json
+.vscode/launch.json
