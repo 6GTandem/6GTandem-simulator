@@ -1,0 +1,45 @@
+stripe_config:
+  N_RUs: 1
+  N_stripes: 1
+  space_between_RUs: 1
+  space_between_stripes: 1
+  stripe_direction: y
+  stripe_start_pos:
+  - 3.0076
+  - 7.5579
+  - 2.5
+  stripe_end_pos:
+  - 3.0076
+  - 7.5579
+  - 2.5
+  array_direction: x
+room:
+  x: 3.01
+  y: 7.56
+  z: 2.5
+radio_stripes:
+- - central_unit:
+      x: 3.0076
+      y: 8.5579
+      z: 2.5
+  - radio_unit:
+      x: 3.0076
+      y: 7.5579
+      z: 2.5
+ue_positions:
+- x: 3.009999990463257
+  y: 7.559999942779541
+  z: 1.13100004196167
+sub_thz:
+  fc: 140000000000.0
+  bw: 40000000000.0
+  num_subcarriers: 2001
+  doppler: false
+sub10GHz:
+  fc: 9000000000.0
+antenna:
+  N_antennas: 1
+  tx_pattern: horn_antenna
+  rx_pattern: open_waveguide
+  polarization: V
+central_unit_fiber_length: 1.0

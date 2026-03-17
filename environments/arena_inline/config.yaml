@@ -4,14 +4,17 @@ stripe_config:
   space_between_RUs: 1
   space_between_stripes: 3
   stripe_direction: y
-  stripe_start_pos:
+  stripe_end_pos:
   - 1.4
   - 59.69
   - 25.5
-  stripe_end_pos:
+  stripe_start_pos:
   - 1.4
   - 69.6399
   - 24.5
+  # In case the stripe start pos and end pos has been manually swapped in order to change the position of the central
+  # unit, add True here. Otherwise the wrong UE channels from Sionna will be selected.
+  invert_stripe_dir: True 
   array_direction: y
 room:
   x: 8.286
@@ -19,149 +22,149 @@ room:
   z: 25.5
 radio_stripes:
 - - central_unit:
-      x: 0.3999999999999999
-      y: 59.69
-      z: 25.5
+      x: 1.4
+      y: 70.6399
+      z: 24.5
   - radio_unit:
       x: 1.4
-      y: 59.69
-      z: 25.5
-  - radio_unit:
-      x: 1.4
-      y: 60.68499
-      z: 25.4
-  - radio_unit:
-      x: 1.4
-      y: 61.67998
-      z: 25.3
-  - radio_unit:
-      x: 1.4
-      y: 62.674969999999995
-      z: 25.2
-  - radio_unit:
-      x: 1.4
-      y: 63.669959999999996
-      z: 25.1
-  - radio_unit:
-      x: 1.4
-      y: 64.66495
-      z: 25.0
-  - radio_unit:
-      x: 1.4
-      y: 65.65993999999999
-      z: 24.9
-  - radio_unit:
-      x: 1.4
-      y: 66.65493
-      z: 24.8
-  - radio_unit:
-      x: 1.4
-      y: 67.64992
-      z: 24.7
+      y: 69.6399
+      z: 24.5
   - radio_unit:
       x: 1.4
       y: 68.64491
       z: 24.6
   - radio_unit:
       x: 1.4
-      y: 69.6399
-      z: 24.5
+      y: 67.64992
+      z: 24.7
+  - radio_unit:
+      x: 1.4
+      y: 66.65493
+      z: 24.8
+  - radio_unit:
+      x: 1.4
+      y: 65.65993999999999
+      z: 24.9
+  - radio_unit:
+      x: 1.4
+      y: 64.66495
+      z: 25.0
+  - radio_unit:
+      x: 1.4
+      y: 63.669959999999996
+      z: 25.1
+  - radio_unit:
+      x: 1.4
+      y: 62.674969999999995
+      z: 25.2
+  - radio_unit:
+      x: 1.4
+      y: 61.67998
+      z: 25.3
+  - radio_unit:
+      x: 1.4
+      y: 60.68499
+      z: 25.4
+  - radio_unit:
+      x: 1.4
+      y: 59.69
+      z: 25.5
 - - central_unit:
-      x: 0.3999999999999999
-      y: 62.69
-      z: 25.5
+      x: 4.4
+      y: 70.6399
+      z: 24.5
   - radio_unit:
       x: 4.4
-      y: 59.69
-      z: 25.5
-  - radio_unit:
-      x: 4.4
-      y: 60.68499
-      z: 25.4
-  - radio_unit:
-      x: 4.4
-      y: 61.67998
-      z: 25.3
-  - radio_unit:
-      x: 4.4
-      y: 62.674969999999995
-      z: 25.2
-  - radio_unit:
-      x: 4.4
-      y: 63.669959999999996
-      z: 25.1
-  - radio_unit:
-      x: 4.4
-      y: 64.66495
-      z: 25.0
-  - radio_unit:
-      x: 4.4
-      y: 65.65993999999999
-      z: 24.9
-  - radio_unit:
-      x: 4.4
-      y: 66.65493
-      z: 24.8
-  - radio_unit:
-      x: 4.4
-      y: 67.64992
-      z: 24.7
+      y: 69.6399
+      z: 24.5
   - radio_unit:
       x: 4.4
       y: 68.64491
       z: 24.6
   - radio_unit:
       x: 4.4
-      y: 69.6399
-      z: 24.5
+      y: 67.64992
+      z: 24.7
+  - radio_unit:
+      x: 4.4
+      y: 66.65493
+      z: 24.8
+  - radio_unit:
+      x: 4.4
+      y: 65.65993999999999
+      z: 24.9
+  - radio_unit:
+      x: 4.4
+      y: 64.66495
+      z: 25.0
+  - radio_unit:
+      x: 4.4
+      y: 63.669959999999996
+      z: 25.1
+  - radio_unit:
+      x: 4.4
+      y: 62.674969999999995
+      z: 25.2
+  - radio_unit:
+      x: 4.4
+      y: 61.67998
+      z: 25.3
+  - radio_unit:
+      x: 4.4
+      y: 60.68499
+      z: 25.4
+  - radio_unit:
+      x: 4.4
+      y: 59.69
+      z: 25.5
 - - central_unit:
-      x: 0.3999999999999999
-      y: 65.69
-      z: 25.5
+      x: 7.4
+      y: 70.6399
+      z: 24.5
   - radio_unit:
       x: 7.4
-      y: 59.69
-      z: 25.5
-  - radio_unit:
-      x: 7.4
-      y: 60.68499
-      z: 25.4
-  - radio_unit:
-      x: 7.4
-      y: 61.67998
-      z: 25.3
-  - radio_unit:
-      x: 7.4
-      y: 62.674969999999995
-      z: 25.2
-  - radio_unit:
-      x: 7.4
-      y: 63.669959999999996
-      z: 25.1
-  - radio_unit:
-      x: 7.4
-      y: 64.66495
-      z: 25.0
-  - radio_unit:
-      x: 7.4
-      y: 65.65993999999999
-      z: 24.9
-  - radio_unit:
-      x: 7.4
-      y: 66.65493
-      z: 24.8
-  - radio_unit:
-      x: 7.4
-      y: 67.64992
-      z: 24.7
+      y: 69.6399
+      z: 24.5
   - radio_unit:
       x: 7.4
       y: 68.64491
       z: 24.6
   - radio_unit:
       x: 7.4
-      y: 69.6399
-      z: 24.5
+      y: 67.64992
+      z: 24.7
+  - radio_unit:
+      x: 7.4
+      y: 66.65493
+      z: 24.8
+  - radio_unit:
+      x: 7.4
+      y: 65.65993999999999
+      z: 24.9
+  - radio_unit:
+      x: 7.4
+      y: 64.66495
+      z: 25.0
+  - radio_unit:
+      x: 7.4
+      y: 63.669959999999996
+      z: 25.1
+  - radio_unit:
+      x: 7.4
+      y: 62.674969999999995
+      z: 25.2
+  - radio_unit:
+      x: 7.4
+      y: 61.67998
+      z: 25.3
+  - radio_unit:
+      x: 7.4
+      y: 60.68499
+      z: 25.4
+  - radio_unit:
+      x: 7.4
+      y: 59.69
+      z: 25.5
 ue_positions:
 - x: 0.8489999771118164
   y: 59.59000015258789
