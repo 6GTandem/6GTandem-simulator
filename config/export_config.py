@@ -131,7 +131,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "simulation_environment", type=str, help="Name of the simulation environment present in the sionna datasets."
     )
-    parser.add_argument("output_file", type=str, help="Output YAML file name.")
+    parser.add_argument("output_file", type=str, help="Output YAML file name. (environments/<your_env>/config.yaml)")
     args = parser.parse_args()
 
     simulation_environment = args.simulation_environment
@@ -139,7 +139,13 @@ if __name__ == "__main__":
 
     # ---- Load parameters from office_rt_config.yml ----
     dataset_path = Path("wireless_channel/sionna_dataset")
-    rt_config_path = PurePath(dataset_path, simulation_environment, "config.yaml")
+    env_path = dataset_path / simulation_environment
+    config_candidates = [env_path / "config.yaml", env_path / "config_used.yaml"]
+    rt_config_path = next((path for path in config_candidates if path.exists()), None)
+    if rt_config_path is None:
+        candidate_list = ", ".join(str(path) for path in config_candidates)
+        raise FileNotFoundError(f"Could not find environment config. Tried: {candidate_list}")
+
     with open(rt_config_path, "r") as f:
         rt_params = yaml.safe_load(f)
 

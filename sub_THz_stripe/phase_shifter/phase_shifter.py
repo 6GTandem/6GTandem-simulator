@@ -30,7 +30,7 @@ class PhaseShifter(Component):
             return x * np.exp(1j * k)
 
         y = []
-        assert self.num_shifters == x.shape[0], "Input data shape does not match number of phase shifters."
+        assert self.num_shifters == x.shape[0], f"Input data shape ({x.shape[0]}) does not match number of phase shifters ({self.num_shifters})."
         for r, k in zip(x, shifts):
             if self.in_degrees:
                 k = np.deg2rad(k)

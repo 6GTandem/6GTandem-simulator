@@ -3,8 +3,22 @@ import math
 import numpy as np
 import pandas as pd
 import concurrent.futures
+import logging
+from datetime import datetime
 
 from pathlib import Path, PurePath
+
+# Configure logging to file and console
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(message)s',
+    datefmt='%H:%M:%S',
+    handlers=[
+        logging.FileHandler('flickering.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 from wireless_channel.waveforms import Waveform
 from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
 from sub_THz_stripe.radio_unit.radio_unit import RadioUnit
@@ -17,8 +31,12 @@ from sub_THz_stripe.coupler.coupler import Coupler
 from sub_THz_stripe.phase_shifter.phase_shifter import PhaseShifter
 from sub_THz_stripe.splitter.splitter import Splitter
 
-environment = "industry_hall_blocking"
+start_time = datetime.now()
+logger.info("Starting flickering.py")
 
+environment = "office_space_reduced_inline"
+
+logger.info("Loading configuration files...")
 # Read out the config file.
 config_file = f"environments/{environment}/config.yaml"
 with open(config_file, "r", encoding="utf8") as file:
@@ -63,9 +81,11 @@ with open(config_file, "r", encoding="utf8") as file:
     component_config = yaml.safe_load(file)
 
 # Build all the RadioStripe objects based on the configuration.
+logger.info(f"Building {len(config['radio_stripes'])} radio stripes...")
 stripes: list[RadioStripe] = []
 for stripe_cfg in config["radio_stripes"]:
     stripes.append(RadioStripe.from_config_locations(stripe_cfg, component_config, config["antenna"]["N_antennas"], wf))
+logger.info(f"Setup complete. Processing {len(config['ue_positions'])} UE positions...")
 
 
 def receive_worker(stripe: RadioStripe, data, phase_shifts, ue_idx, stripe_idx, ru_idx):
@@ -120,7 +140,7 @@ def find_closest_ru(data, ue, n_stripes, n_rus):
 
 def ue_worker(ue_pos: dict, wf: Waveform, stripes: list[RadioStripe]):
     ue_data = []
-    beam_angles = [-30, 10, 0, 10, 30]
+    beam_angles = [-30, -10, 0, 10, 30]
     for ue_beam in beam_angles:
         for ru_beam in beam_angles:
             # Transmit the data towards the stripe. We only perform this task once. Every UE in the room will transmit the same
@@ -257,13 +277,25 @@ def ue_worker(ue_pos: dict, wf: Waveform, stripes: list[RadioStripe]):
 
 # Loop over all the UE positions and perform an exhaustive search.
 workers = []
+total_ues = len(config["ue_positions"])
+processed_count = 0
 # for ue in config["ue_positions"][:10]:
 #     print(f"UE Pos: {ue}")
 #     ue_worker(ue, wf, stripes)
 #ue_worker(config["ue_positions"][-1], wf, stripes)
 with concurrent.futures.ProcessPoolExecutor(max_workers=20) as executor:
-    for ue_pos in config["ue_positions"]:
+    for ue_idx, ue_pos in enumerate(config["ue_positions"]):
         worker = executor.submit(ue_worker, ue_pos, wf, stripes)
         workers.append(worker)
 
-    concurrent.futures.wait(workers)
+    # Monitor progress with timing
+    for future in concurrent.futures.as_completed(workers):
+        processed_count += 1
+        elapsed = datetime.now() - start_time
+        rate = processed_count / elapsed.total_seconds() if elapsed.total_seconds() > 0 else 0
+        remaining = (total_ues - processed_count) / rate if rate > 0 else 0
+        logger.info(f"UE progress: {processed_count}/{total_ues} | Elapsed: {elapsed.seconds//60}m {elapsed.seconds%60}s | Est. remaining: {int(remaining)//60}m {int(remaining)%60}s")
+
+total_elapsed = datetime.now() - start_time
+logger.info("Flickering analysis complete!")
+logger.info(f"Total time: {total_elapsed.seconds//60}m {total_elapsed.seconds%60}s ({total_elapsed.total_seconds():.1f}s)")
