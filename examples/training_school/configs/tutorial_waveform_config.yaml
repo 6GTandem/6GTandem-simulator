@@ -1,10 +1,10 @@
 waveform_type: "cp-ofdm"
-n_ofdm_symbols: 1
+n_ofdm_symbols: 2
 qam_order: 4
 oversampling_factor: 4
 cp_length: 200
 pilot_spacing: 4
 pilot_symbol_re: 1
 pilot_symbol_imag: 0
-pilot_mode: interleaved
+pilot_mode: 'block' #interleaved
 tx_power: -8 # dBm

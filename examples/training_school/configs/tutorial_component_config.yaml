@@ -1,7 +1,7 @@
 boost_amplifier:
   gain: 1.0 # Voltage gain.
   max_gain: 15.0
-  noise_fig: 10.0
+  noise_fig: -100 #10.0
   smoothness: 0.0
   mode: poly5
 antenna_amplifier:
@@ -18,3 +18,5 @@ coupler:
   model: with_balun.s2p
 phase_shifter:
   resolution: 4
+antenna:
+  pattern: tr38901  # options: isotropic, tr38901

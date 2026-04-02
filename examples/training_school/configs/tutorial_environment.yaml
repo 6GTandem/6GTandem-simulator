@@ -1,6 +1,6 @@
 stripe_config:
-  N_RUs: 20
-  N_stripes: 8
+  N_RUs: 0
+  N_stripes: 0
   space_between_RUs: 1
   space_between_stripes: 1
   stripe_direction: y
@@ -14,8 +14,8 @@ stripe_config:
   - 3.5
   array_direction: x
 room:
-  x: 9.35
-  y: 24.89
+  x: 10
+  y: 25
   z: 3.5
 radio_stripes:
 - - central_unit:

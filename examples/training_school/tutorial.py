@@ -46,7 +46,7 @@ from sub_THz_stripe.phase_shifter.phase_shifter import PhaseShifter
 from sub_THz_stripe.radio_unit.radio_unit import RadioUnit
 from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
 from sub_THz_stripe.splitter.splitter import Splitter
-from wireless_channel.subTHz_channel import Channel
+from wireless_channel.subTHz_channel import build_channel
 from wireless_channel.waveforms import Waveform
 
 print(f"Repository root: {root}")
@@ -98,6 +98,8 @@ num_rus_per_stripe = 5  # number of RUs per stripe (must be <= RUs in config)
 ue_position_index = 0   # which UE position from the config to use
 active_ru_index   = 0   # which RU within each stripe is the active reception entry point
 plot_room         = True
+channel_model     = "sionna"   # "sionna" or "los"
+los_normalize_gain = False
 
 # ---------------------------------------------------------------------------
 # Load tutorial-local config files
@@ -131,11 +133,6 @@ def make_ideal_component_config(component_cfg):
     for amp_key in ("boost_amplifier", "antenna_amplifier"):
         cfg.setdefault(amp_key, {})
         cfg[amp_key]["mode"] = "ideal"
-        cfg[amp_key]["gain"] = 1.0
-        cfg[amp_key]["noise_fig"] = 0.0
-        cfg[amp_key]["smoothness"] = 0.0
-    cfg["fiber"] = {}
-    cfg["coupler"] = {"damping": 0.0}
     return cfg
 
 
@@ -374,7 +371,18 @@ iq_tx_demo, _    = ue_ru_demo.transmit(ofdm_after_cu_demo, phase_shifts_demo)
 
 # Propagate through the wireless channel.
 # debug=True uses an all-ones channel response (no fading) for clarity in this demo.
-channel_demo           = Channel.from_sionna(ue_pos, environment, debug=True)
+channel_demo           = build_channel(
+    channel_model=channel_model,
+    ue_coordinates=ue_pos,
+    sim_env=environment,
+    component_config=component_config_ideal,
+    stripe_positions=selected_stripes_cfg,
+    waveform=wf,
+    Nr_ue_antennas=n_antennas,
+    Nr_ru_antennas=n_antennas,
+    debug=True,
+    los_normalize_gain=los_normalize_gain,
+)
 channel_demo.Nr_stripes = len(stripes_ideal)
 channel_demo.Nr_rus     = len(stripes_ideal[0].radio_units)
 iq_rus_demo            = channel_demo.transmit_ul(iq_tx_demo, wf)
@@ -435,7 +443,9 @@ save_or_show_plot("demo_after_eq")
 
 # %%
 def run_uplink_scenario(stripes, waveform, ue_position, sim_environment,
-                        component_cfg, debug_channel=False):
+                        component_cfg, stripe_positions_cfg,
+                        channel_model="sionna", los_normalize_gain=False,
+                        debug_channel=False):
     bits     = waveform.generate_bits()
     qam      = waveform.qam_modulate()
     ofdm_time = waveform.ofdm_modulate()
@@ -447,7 +457,18 @@ def run_uplink_scenario(stripes, waveform, ue_position, sim_environment,
     phase_shifts = np.zeros(n_antennas)
     iq_data_tx, _ = ue_ru.transmit(ofdm_time_after_cu, phase_shifts)
 
-    channel            = Channel.from_sionna(ue_position, sim_environment, debug=debug_channel)
+    channel            = build_channel(
+        channel_model=channel_model,
+        ue_coordinates=ue_position,
+        sim_env=sim_environment,
+        component_config=component_cfg,
+        stripe_positions=stripe_positions_cfg,
+        waveform=waveform,
+        Nr_ue_antennas=n_antennas,
+        Nr_ru_antennas=n_antennas,
+        debug=debug_channel,
+        los_normalize_gain=los_normalize_gain,
+    )
     channel.Nr_stripes = len(stripes)
     channel.Nr_rus     = len(stripes[0].radio_units)
     iq_data_rus        = channel.transmit_ul(iq_data_tx, waveform)
@@ -487,6 +508,9 @@ ideal_results = run_uplink_scenario(
     ue_position=ue_pos,
     sim_environment=environment,
     component_cfg=component_config_ideal,
+    stripe_positions_cfg=selected_stripes_cfg,
+    channel_model=channel_model,
+    los_normalize_gain=los_normalize_gain,
     debug_channel=True,
 )
 
@@ -529,6 +553,9 @@ impaired_results = run_uplink_scenario(
     ue_position=ue_pos,
     sim_environment=environment,
     component_cfg=component_config_impaired,
+    stripe_positions_cfg=selected_stripes_cfg,
+    channel_model=channel_model,
+    los_normalize_gain=los_normalize_gain,
     debug_channel=False,
 )
 
