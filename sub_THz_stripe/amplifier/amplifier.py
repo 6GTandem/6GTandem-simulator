@@ -25,7 +25,7 @@ class Amplifier(Component):
         >>> y = pa.run(x)
     """
 
-    def __init__(self, bw, gain=1, max_gain=1, noise_fig=0, smoothness=1, *args, **kwargs):
+    def __init__(self, bw, gain=1, max_gain=1, noise_fig=0, smoothness=1, rapp_slope=2.0, rapp_psat=30.0, *args, **kwargs):
         """Initialize the amplifier object with the given parameters.
 
         :param gain: The low signal-gain of the amplifier.
@@ -49,6 +49,11 @@ class Amplifier(Component):
         if self.mode.startswith('poly'):
             self.polynomial = int(self.mode[-1])
             self.coeffs, self.max_input_amplitude = self.polynomial_fitting(self.polynomial, self.gain)
+        
+        if self.mode == 'rapp':
+            # Config uses dBm for RAPP saturation power; convert to Watts.
+            self.psat = db_to_power(rapp_psat) * 1e-3
+            self.s = rapp_slope # smoothness factor
     
     @property
     def gain(self):
@@ -111,9 +116,15 @@ class Amplifier(Component):
 
         return coeffs, np.max(x_scaled)
 
+    
+    def rapp_amam(self, Xamp):
+        return self.gain * Xamp / ((1 + np.abs(self.gain * Xamp / np.sqrt(self.psat)) ** (2*self.s)) ** (1 / (2*self.s)))
+
     def run(self, x: np.ndarray):
         noise = np.random.normal(0, np.sqrt(self.noise_var / 2), size=np.shape(x)) + 1j * numpy.random.normal(0, np.sqrt(self.noise_var / 2), size=np.shape(x))
         x_noise = x + noise
+
+        print(f'pa running with gain {self.gain} in mode: {self.mode}')
 
         match self.mode:
             case 'ideal' | 'linear':
@@ -145,11 +156,11 @@ class Amplifier(Component):
                 xout[abs(x) > peakx] = peakx * (1 - alpha * abs(peakx)
                                                 ** 2) * np.exp(1j * np.angle(xout[abs(x) > peakx]))
             case 'poly5':
+                print(f'in poly case')
                 if self.polynomial is None or self.max_input_amplitude is None or self.coeffs is None:
                     raise ValueError("Selected polynomial model but no coefficients configured")
                 xlim = x_noise.copy()
                 xlim[np.abs(x_noise) > self.max_input_amplitude] = self.max_input_amplitude
-                
                 xout = sum(c * xlim * np.abs(xlim) ** (p-1) for c, p in zip(self.coeffs, range(1, self.polynomial + 1, 2)))
             case 'limiter':
                 xout = x
@@ -158,5 +169,22 @@ class Amplifier(Component):
                     abs(xout[abs(xout) > 1])
             case 'softlimiter' | '6gtandem':
                 xout = softlimiter(x, self.smoothness)
+            case 'rapp':
+                distorted_amp = self.rapp_amam(np.abs(x_noise))
+                xout = distorted_amp * np.exp(1j * np.angle(x_noise))
+
+        # Report average powers in dBm using the 50-ohm voltage-to-power mapping.
+        eps = 1e-30
+        p_in_w = np.mean(np.abs(x_noise) ** 2) / 50.0
+        p_out_w = np.mean(np.abs(xout) ** 2) / 50.0
+        p_in_dbm = 10.0 * np.log10((p_in_w + eps) / 1e-3)
+        p_out_dbm = 10.0 * np.log10((p_out_w + eps) / 1e-3)
+        if hasattr(self, "psat"):
+            psat_dbm = 10.0 * np.log10((self.psat + eps) / 1e-3)
+            psat_txt = f"{psat_dbm:.2f} dBm"
+        else:
+            psat_txt = "n/a"
+        print(f"PA powers: Pin={p_in_dbm:.2f} dBm, Pout={p_out_dbm:.2f} dBm, Psat={psat_txt}")
+
 
         return xout

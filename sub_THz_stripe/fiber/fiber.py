@@ -44,6 +44,18 @@ class Fiber(Component):
 
         super().__init__(*args, **kwargs)
 
+    @property
+    def extra_length_for_damping(self):
+        """Return the fiber length (m) that still needs explicit damping.
+
+        The measured S-parameter model (e.g. pmf1m.s2p) already contains the
+        attenuation of a 1 meter segment. Only the additional length beyond
+        that first meter should receive extra attenuation.
+        """
+        if self.filter_mode == "freq_domain":
+            return max(0.0, float(self.length) - 1.0)
+        return float(self.length)
+
     def run(self, x, delay: bool = False, window: str = "fixed"):
         match self.filter_mode:
             case "time_domain":
@@ -86,7 +98,7 @@ class Fiber(Component):
 
     @property
     def damping(self):
-        return self.length * self.damping_per_meter
+        return self.extra_length_for_damping * self.damping_per_meter
 
     @classmethod
     def from_config(cls, config: dict, wf: Waveform):
@@ -98,7 +110,8 @@ class Fiber(Component):
             Dictionary containing the following keys:
             'model': A model file located in the models/PMF folder.
             'length': Physical length of the fiber in meter. (optional)
-            'damping_per_meter': Additional damping per meter in dB. (optional)
+            'attenuation_db_per_m': Additional damping per meter in dB. (optional)
+            'damping_per_meter': Legacy alias for attenuation_db_per_m. (optional)
         wf : Waveform
             Waveform object used to extract the right wavefrom characteristics.
 
@@ -126,12 +139,28 @@ class Fiber(Component):
             fib_s21_ofdm = interp_mag * np.exp(1j * interp_phase)
 
             filter_mode = "freq_domain"
-            damping = config.get("damping_per_meter", 0)
+            attenuation_db_per_m = config.get(
+                "attenuation_db_per_m",
+                config.get("atttenuation_db_per_m", config.get("damping_per_meter", 0)),
+            )
             length = config.get("length", 0)
             deembedding = config.get("deembedding", 0)
 
-            fiber = cls(damping_per_meter=damping, length=length, filter=fib_s21_ofdm, filter_mode=filter_mode, wf=wf, deembedding=deembedding)
+            fiber = cls(
+                damping_per_meter=attenuation_db_per_m,
+                length=length,
+                filter=fib_s21_ofdm,
+                filter_mode=filter_mode,
+                wf=wf,
+                deembedding=deembedding,
+            )
         else:
-            fiber = cls(**config, filter_mode="no_filter", wf=wf)
+            local_config = dict(config)
+            attenuation_db_per_m = local_config.pop(
+                "attenuation_db_per_m",
+                local_config.pop("atttenuation_db_per_m", local_config.get("damping_per_meter", 0)),
+            )
+            local_config["damping_per_meter"] = attenuation_db_per_m
+            fiber = cls(**local_config, filter_mode="no_filter", wf=wf)
 
         return fiber

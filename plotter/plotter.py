@@ -494,6 +494,77 @@ def plot_room(config: dict):
     ax.scatter3D(ues[:, 0], ues[:, 1], ues[:, 2], c="blue", alpha=0.2)
 
 
+def plot_room_with_active_selection(
+    config: dict,
+    active_ue_pos: dict | None = None,
+    active_ru_pos: dict | None = None,
+):
+    """Plot the room and highlight the selected active UE/RU.
+
+    Parameters
+    ----------
+    config : dict
+        Same config dict used by :func:`plot_room`.
+    active_ue_pos : dict | None
+        UE coordinates to highlight, e.g. {"x": .., "y": .., "z": ..}.
+    active_ru_pos : dict | None
+        RU coordinates to highlight, e.g. {"x": .., "y": .., "z": ..}.
+    """
+    plot_room(config)
+    ax = plt.gca()
+
+    if active_ue_pos is not None:
+        ax.scatter3D(
+            [active_ue_pos["x"]],
+            [active_ue_pos["y"]],
+            [active_ue_pos["z"]],
+            c="cyan",
+            s=120,
+            edgecolors="black",
+            linewidths=1.2,
+            marker="o",
+            label="Active UE",
+        )
+
+    if active_ru_pos is not None:
+        ax.scatter3D(
+            [active_ru_pos["x"]],
+            [active_ru_pos["y"]],
+            [active_ru_pos["z"]],
+            c="lime",
+            s=140,
+            edgecolors="black",
+            linewidths=1.2,
+            marker="^",
+            label="Active RU",
+        )
+
+    if active_ue_pos is not None and active_ru_pos is not None:
+        dx = float(active_ue_pos["x"]) - float(active_ru_pos["x"])
+        dy = float(active_ue_pos["y"]) - float(active_ru_pos["y"])
+        dz = float(active_ue_pos["z"]) - float(active_ru_pos["z"])
+        link_distance = float(np.sqrt(dx * dx + dy * dy + dz * dz))
+        ax.plot3D(
+            [active_ue_pos["x"], active_ru_pos["x"]],
+            [active_ue_pos["y"], active_ru_pos["y"]],
+            [active_ue_pos["z"], active_ru_pos["z"]],
+            linestyle="--",
+            color="gray",
+            alpha=0.8,
+            label=f"Active UE-RU link (d={link_distance:.2f} m)",
+        )
+
+    handles, labels = ax.get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    ax.legend(
+        by_label.values(),
+        by_label.keys(),
+        loc="upper left",
+        bbox_to_anchor=(1.02, 1.0),
+        borderaxespad=0.0,
+    )
+
+
 def plot_constellation(iq_symbols: np.ndarray, labels: list[str] | None = None, title: str | None = None):
     """Plot a constellation of IQ symbols.
 

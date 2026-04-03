@@ -1,22 +1,25 @@
 boost_amplifier:
-  gain: 1.0 # Voltage gain.
+  gain: 1.0
   max_gain: 15.0
-  noise_fig: -100 #10.0
-  smoothness: 0.0
-  mode: poly5
+  noise_fig: 10
+  mode: rapp
+  rapp_slope: 2.0
+  rapp_psat: 20.0
 antenna_amplifier:
-  gain: 3.16 # Voltage gain. Equals 10dB power gain.
+  gain: 3.16
   max_gain: 15.0
   noise_fig: 10.0
-  smoothness: 0.0
-  mode: poly5
+  mode: rapp
+  rapp_slope: 2.0
+  rapp_psat: 20.0
 fiber:
   model: pmf1m.s2p
-  length: 1.0
-  deembedding: 3.0
+  length: 3.0
+  attenuation_db_per_m: -3.0
+  deembedding: 2.0
 coupler:
   model: with_balun.s2p
 phase_shifter:
   resolution: 4
 antenna:
-  pattern: tr38901  # options: isotropic, tr38901
+  pattern: tr38901
