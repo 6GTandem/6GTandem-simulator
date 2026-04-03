@@ -40,10 +40,11 @@ NUM_RUS_PER_STRIPE = 20
 
 # Antenna boresight orientation (global frame): azimuth and elevation in degrees.
 # Azimuth: 0=+x, 90=+y. Elevation: 0=horizon, 90=+z.
+# Default LOS deployment assumes RU arrays point downward and UE arrays upward.
 UE_BORESIGHT_AZ_DEG = 0.0
-UE_BORESIGHT_EL_DEG = 0.0
-RU_BORESIGHT_AZ_DEG = 180.0
-RU_BORESIGHT_EL_DEG = 0.0
+UE_BORESIGHT_EL_DEG = 90.0
+RU_BORESIGHT_AZ_DEG = 0.0
+RU_BORESIGHT_EL_DEG = -90.0
 
 MIN_DISTANCE_M = 1e-3
 PLOT = True

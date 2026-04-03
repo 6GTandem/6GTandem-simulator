@@ -4,6 +4,8 @@ import numpy as np
 import numpy.random
 import sub_THz_stripe.utils
 
+from wireless_channel.subTHz_channel import Channel
+
 
 def read_octave_file(file_name: str):
     """Read a data file coming from Octave to validate our code."""
@@ -485,3 +487,50 @@ class UtilsTest(unittest.TestCase):
         out = sub_THz_stripe.utils.pulseshape(input_data, 2.5, 0.2)
 
         self.assertTrue(np.allclose(out, output_data))
+
+
+class LOSPatternOrientationTest(unittest.TestCase):
+    """Regression checks for LOS antenna pattern orientation defaults."""
+
+    def test_vertical_defaults_align_with_main_lobe(self):
+        ue_xyz = np.array([2.0, 2.5, 1.5], dtype=float)
+        ru_xyz = np.array([2.0, 2.5, 3.5], dtype=float)
+
+        diagnostics = Channel._compute_link_pattern_diagnostics(
+            pattern="tr38901",
+            ue_xyz=ue_xyz,
+            ru_xyz=ru_xyz,
+            component_config=None,
+        )
+
+        self.assertAlmostEqual(90.0, diagnostics["tx_theta_deg"], places=6)
+        self.assertAlmostEqual(0.0, diagnostics["tx_phi_deg"], places=6)
+        self.assertAlmostEqual(90.0, diagnostics["rx_theta_deg"], places=6)
+        self.assertAlmostEqual(0.0, diagnostics["rx_phi_deg"], places=6)
+        self.assertAlmostEqual(20.0, diagnostics["tx_power_gain_db"], places=6)
+        self.assertAlmostEqual(20.0, diagnostics["rx_power_gain_db"], places=6)
+        self.assertAlmostEqual(40.0, diagnostics["total_power_gain_db"], places=6)
+        self.assertAlmostEqual(100.0, diagnostics["field_gain"], places=6)
+
+    def test_component_config_can_override_vertical_defaults(self):
+        ue_xyz = np.array([2.0, 2.5, 1.5], dtype=float)
+        ru_xyz = np.array([2.0, 2.5, 3.5], dtype=float)
+        component_config = {
+            "antenna": {
+                "ue_boresight_az_deg": 0.0,
+                "ue_boresight_el_deg": 0.0,
+                "ru_boresight_az_deg": 180.0,
+                "ru_boresight_el_deg": 0.0,
+            }
+        }
+
+        diagnostics = Channel._compute_link_pattern_diagnostics(
+            pattern="tr38901",
+            ue_xyz=ue_xyz,
+            ru_xyz=ru_xyz,
+            component_config=component_config,
+        )
+
+        self.assertAlmostEqual(-3.006, diagnostics["tx_power_gain_db"], places=3)
+        self.assertAlmostEqual(-3.006, diagnostics["rx_power_gain_db"], places=3)
+        self.assertAlmostEqual(0.5005048428325315, diagnostics["field_gain"], places=9)

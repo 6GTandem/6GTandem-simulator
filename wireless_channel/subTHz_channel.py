@@ -292,25 +292,47 @@ class Channel:
             return "tr38901"
         raise ValueError(f"Unsupported LOS antenna pattern '{pattern}'. Supported: isotropic, tr38901.")
 
+    @staticmethod
+    def _resolve_los_boresight_angles(component_config: dict | None) -> tuple[float, float, float, float]:
+        antenna_cfg = (component_config or {}).get("antenna", {})
+        ue_az = float(antenna_cfg.get("ue_boresight_az_deg", 0.0))
+        ue_el = float(antenna_cfg.get("ue_boresight_el_deg", 90.0))
+        ru_az = float(antenna_cfg.get("ru_boresight_az_deg", 0.0))
+        ru_el = float(antenna_cfg.get("ru_boresight_el_deg", -90.0))
+        return ue_az, ue_el, ru_az, ru_el
+
     @classmethod
-    def _compute_link_pattern_field_gain(
+    def _compute_link_pattern_diagnostics(
         cls,
         pattern: str,
         ue_xyz: np.ndarray,
         ru_xyz: np.ndarray,
         component_config: dict | None,
-    ) -> float:
+    ) -> dict:
         if pattern == "isotropic":
-            return 1.0
+            return {
+                "pattern": pattern,
+                "ue_boresight_az_deg": None,
+                "ue_boresight_el_deg": None,
+                "ru_boresight_az_deg": None,
+                "ru_boresight_el_deg": None,
+                "tx_theta_deg": None,
+                "tx_phi_deg": None,
+                "rx_theta_deg": None,
+                "rx_phi_deg": None,
+                "tx_power_gain_lin": 1.0,
+                "rx_power_gain_lin": 1.0,
+                "tx_power_gain_db": 0.0,
+                "rx_power_gain_db": 0.0,
+                "total_power_gain_lin": 1.0,
+                "total_power_gain_db": 0.0,
+                "field_gain": 1.0,
+            }
 
         if pattern != "tr38901":
             raise ValueError(f"Unsupported LOS antenna pattern '{pattern}'.")
 
-        antenna_cfg = (component_config or {}).get("antenna", {})
-        ue_az = float(antenna_cfg.get("ue_boresight_az_deg", 0.0))
-        ue_el = float(antenna_cfg.get("ue_boresight_el_deg", 0.0))
-        ru_az = float(antenna_cfg.get("ru_boresight_az_deg", 180.0))
-        ru_el = float(antenna_cfg.get("ru_boresight_el_deg", 0.0))
+        ue_az, ue_el, ru_az, ru_el = cls._resolve_los_boresight_angles(component_config)
 
         ue_frame = cls._local_frame_from_boresight(cls._unit_vector_from_az_el(ue_az, ue_el))
         ru_frame = cls._local_frame_from_boresight(cls._unit_vector_from_az_el(ru_az, ru_el))
@@ -324,7 +346,43 @@ class Channel:
 
         g_tx_lin = cls._tr38901_power_gain(tx_theta, tx_phi)
         g_rx_lin = cls._tr38901_power_gain(rx_theta, rx_phi)
-        return float(np.sqrt(g_tx_lin * g_rx_lin))
+        total_power_gain_lin = g_tx_lin * g_rx_lin
+        field_gain = float(np.sqrt(total_power_gain_lin))
+
+        return {
+            "pattern": pattern,
+            "ue_boresight_az_deg": ue_az,
+            "ue_boresight_el_deg": ue_el,
+            "ru_boresight_az_deg": ru_az,
+            "ru_boresight_el_deg": ru_el,
+            "tx_theta_deg": float(np.rad2deg(tx_theta)),
+            "tx_phi_deg": float(np.rad2deg(tx_phi)),
+            "rx_theta_deg": float(np.rad2deg(rx_theta)),
+            "rx_phi_deg": float(np.rad2deg(rx_phi)),
+            "tx_power_gain_lin": float(g_tx_lin),
+            "rx_power_gain_lin": float(g_rx_lin),
+            "tx_power_gain_db": float(10.0 * np.log10(g_tx_lin + 1e-30)),
+            "rx_power_gain_db": float(10.0 * np.log10(g_rx_lin + 1e-30)),
+            "total_power_gain_lin": float(total_power_gain_lin),
+            "total_power_gain_db": float(10.0 * np.log10(total_power_gain_lin + 1e-30)),
+            "field_gain": field_gain,
+        }
+
+    @classmethod
+    def _compute_link_pattern_field_gain(
+        cls,
+        pattern: str,
+        ue_xyz: np.ndarray,
+        ru_xyz: np.ndarray,
+        component_config: dict | None,
+    ) -> float:
+        diagnostics = cls._compute_link_pattern_diagnostics(
+            pattern=pattern,
+            ue_xyz=ue_xyz,
+            ru_xyz=ru_xyz,
+            component_config=component_config,
+        )
+        return float(diagnostics["field_gain"])
 
     @classmethod
     def from_los(
@@ -386,7 +444,7 @@ class Channel:
             phase = np.exp(-1j * 2.0 * np.pi * (carrier_frequency_hz + f_sub) * tau)
             h = gain * pattern_field_gain * phase
 
-            #print(f"Link {link_idx}: distance={distance:.3f}m, gain={gain:.3e}, pattern_gain={pattern_field_gain:.3f}")
+            print(f"Link {link_idx}: distance={distance:.3f}m, gain={gain:.3e}, pattern_gain={pattern_field_gain:.3f}")
 
             for rx_ant in range(Nr_ue_antennas):
                 for tx_ant in range(Nr_ru_antennas):

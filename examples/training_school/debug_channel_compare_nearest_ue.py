@@ -1,3 +1,11 @@
+"""
+debug_channel_compare_nearest_ue.py
+
+Variant of debug_channel_compare.py where the UE is selected automatically as
+the UE position from the environment config that is closest (in the horizontal
+x-y plane) to the chosen radio unit.  The stripe/RU selection and all channel
+comparisons / plots are otherwise identical to the original script.
+"""
 import os
 import sys
 from pathlib import Path
@@ -8,7 +16,6 @@ import yaml
 
 
 def resolve_repo_root() -> Path:
-    """Resolve repository root so this script can run from any working directory."""
     root = Path(__file__).resolve().parent
     while not (root / "wireless_channel").exists() and root != root.parent:
         root = root.parent
@@ -28,18 +35,18 @@ from wireless_channel.subTHz_channel import Channel, build_channel
 from wireless_channel.waveforms import Waveform
 
 
-# User settings: edit these values directly.
+# ---------------------------------------------------------------------------
+# User settings – only edit these.
+# ---------------------------------------------------------------------------
 ENVIRONMENT = "office_space_perpendicular"
 ENV_CONFIG_PATH = None
 WAVEFORM_CONFIG_PATH = "examples/training_school/configs/tutorial_waveform_config.yaml"
 COMPONENT_CONFIG_PATH = "examples/training_school/configs/tutorial_component_config.yaml"
 
-UE_INDEX = 940
-USE_MANUAL_UE_POSITION = False
-UE_POSITION = None
+# Select the RU of interest.  The UE is resolved automatically.
+STRIPE_IDX = 6
+RU_IDX = 15
 
-STRIPE_IDX = 0
-RU_IDX = 10
 RX_ANT = 0
 TX_ANT = 0
 
@@ -48,11 +55,11 @@ NUM_RUS_PER_STRIPE = None
 
 LOS_NORMALIZE_GAIN = False
 PLOT = True
-PLOT_OUTPUT_PATH = "examples/training_school/channel_compare_plot.png"
+PLOT_OUTPUT_PATH = "examples/training_school/channel_compare_nearest_ue_plot.png"
+# ---------------------------------------------------------------------------
 
 
 def truncate_radio_stripes(radio_stripes, n_stripes, n_rus):
-    """Keep only first n_stripes and first n_rus RUs per stripe."""
     if n_stripes is None:
         n_stripes = len(radio_stripes)
 
@@ -64,6 +71,21 @@ def truncate_radio_stripes(radio_stripes, n_stripes, n_rus):
             rus = rus[:n_rus]
         trimmed.append(central_units[:1] + rus)
     return trimmed
+
+
+def find_nearest_ue(ue_positions: list[dict], ru_pos: dict) -> tuple[int, dict]:
+    """Return (index, position) of the UE closest to ru_pos in the x-y plane."""
+    ru_x, ru_y = float(ru_pos["x"]), float(ru_pos["y"])
+    best_idx, best_dist, best_pos = 0, float("inf"), None
+    for i, ue in enumerate(ue_positions):
+        dx = float(ue["x"]) - ru_x
+        dy = float(ue["y"]) - ru_y
+        dist = dx * dx + dy * dy
+        if dist < best_dist:
+            best_dist = dist
+            best_idx = i
+            best_pos = ue
+    return best_idx, best_pos
 
 
 def summarize(name: str, values: np.ndarray) -> dict:
@@ -97,9 +119,7 @@ def ensure_index(name: str, value: int, size: int):
 
 def format_xyz(coords) -> str:
     if isinstance(coords, dict):
-        x = coords["x"]
-        y = coords["y"]
-        z = coords["z"]
+        x, y, z = coords["x"], coords["y"], coords["z"]
     else:
         x, y, z = coords
     return f"(x={x}, y={y}, z={z})"
@@ -133,17 +153,16 @@ def main():
     ensure_index("ru_idx", RU_IDX, len(rus_in_stripe))
     ru_pos = rus_in_stripe[RU_IDX]["radio_unit"]
 
-    if USE_MANUAL_UE_POSITION:
-        if UE_POSITION is None:
-            raise ValueError("UE_POSITION must be set when USE_MANUAL_UE_POSITION=True.")
-        ue_pos = UE_POSITION
-    else:
-        ensure_index("ue_index", UE_INDEX, len(env_config["ue_positions"]))
-        ue_pos = env_config["ue_positions"][UE_INDEX]
+    # Auto-select UE closest to the chosen RU in the horizontal plane.
+    ue_index, ue_pos = find_nearest_ue(env_config["ue_positions"], ru_pos)
+    ru_xy = np.array([ru_pos["x"], ru_pos["y"]])
+    ue_xy = np.array([ue_pos["x"], ue_pos["y"]])
+    horizontal_distance = float(np.linalg.norm(ru_xy - ue_xy))
 
     wf = Waveform.from_config(waveform_config, env_config["sub_thz"])
     n_antennas = int(env_config["antenna"]["N_antennas"])
 
+    # --- diagnostics header ---
     print(f"Repository root      : {ROOT}")
     print(f"Environment          : {ENVIRONMENT}")
     print(f"Environment config   : {env_config_path}")
@@ -152,7 +171,9 @@ def main():
     print(f"LOS antenna pattern  : {los_pattern}")
     print(f"Stripe/RU            : stripe={STRIPE_IDX}, ru={RU_IDX}")
     print(f"Selected RU coords   : {format_xyz(ru_pos)}")
-    print(f"Selected UE coords   : {format_xyz(ue_pos)}")
+    print(f"Nearest UE index     : {ue_index}")
+    print(f"Nearest UE coords    : {format_xyz(ue_pos)}")
+    print(f"Horizontal distance  : {horizontal_distance:.4f} m")
     print(f"Antennas (rx, tx)    : rx={RX_ANT}, tx={TX_ANT}")
     print(f"LOS normalize gain   : {LOS_NORMALIZE_GAIN}")
 
@@ -254,13 +275,17 @@ def main():
         subcarrier_idx = np.arange(h_sionna_sel.shape[0])
         fig, axes = plt.subplots(3, 1, figsize=(10, 9), sharex=True)
 
+        title = (
+            f"Channel comparison: stripe={STRIPE_IDX}, ru={RU_IDX}, "
+            f"rx={RX_ANT}, tx={TX_ANT}\n"
+            f"Nearest UE #{ue_index}  {format_xyz(ue_pos)}  "
+            f"(horiz. dist={horizontal_distance:.2f} m)"
+        )
+
         axes[0].plot(subcarrier_idx, 20.0 * np.log10(amp_sionna + eps), label="Sionna")
         axes[0].plot(subcarrier_idx, 20.0 * np.log10(amp_los + eps), label="LOS", alpha=0.8)
         axes[0].set_ylabel("|H| (dB)")
-        axes[0].set_title(
-            f"Channel comparison: stripe={STRIPE_IDX}, ru={RU_IDX}, "
-            f"rx={RX_ANT}, tx={TX_ANT}"
-        )
+        axes[0].set_title(title)
         axes[0].grid(True, alpha=0.3)
         axes[0].legend()
 

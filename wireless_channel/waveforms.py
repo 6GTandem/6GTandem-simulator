@@ -329,7 +329,7 @@ class Waveform():
             ofdm_time.append(ofdm_symbol)
         return np.array(ofdm_time) # shape: n_ofdm_symbols x ( n_carriers * oversampling + cp_length)
 
-    def channel_estimate_ls(self, rx_subcarriers):
+    def channel_estimate_ls(self, rx_subcarriers, interp_mode: str = "cartesian"):
         n_sym = rx_subcarriers.shape[0]
         H_est = np.zeros_like(rx_subcarriers, dtype=complex)
 
@@ -344,9 +344,18 @@ class Waveform():
                     continue
                 x = pilot_idx
                 xp = np.arange(self.n_carriers)
-                f_re = interp1d(x, np.real(h_p), kind='linear', bounds_error=False, fill_value='extrapolate')
-                f_im = interp1d(x, np.imag(h_p), kind='linear', bounds_error=False, fill_value='extrapolate')
-                H_est[si, :] = f_re(xp) + 1j * f_im(xp)
+                if interp_mode == "cartesian":
+                    f_re = interp1d(x, np.real(h_p), kind='linear', bounds_error=False, fill_value='extrapolate')
+                    f_im = interp1d(x, np.imag(h_p), kind='linear', bounds_error=False, fill_value='extrapolate')
+                    H_est[si, :] = f_re(xp) + 1j * f_im(xp)
+                elif interp_mode == "phase":
+                    mag_p = np.abs(h_p)
+                    phase_p = np.unwrap(np.angle(h_p))
+                    f_mag = interp1d(x, mag_p, kind='linear', bounds_error=False, fill_value='extrapolate')
+                    f_phase = interp1d(x, phase_p, kind='linear', bounds_error=False, fill_value='extrapolate')
+                    H_est[si, :] = f_mag(xp) * np.exp(1j * f_phase(xp))
+                else:
+                    raise ValueError("interp_mode must be 'cartesian' or 'phase'.")
         else:  # block pilot mode
             # Expect first symbol (index 0) to be full pilots
             # estimate H from first symbol and reuse for all OFDM symbols
