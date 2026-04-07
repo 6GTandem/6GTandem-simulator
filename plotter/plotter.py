@@ -814,8 +814,8 @@ def plot_amam_transition(sig_in, sig_out, title, ax=None):
 
     ax.scatter(np.abs(x), np.abs(y), s=2, alpha=0.3)
     # Ideal reference line (unity gain)
-    amp_max = max(np.max(np.abs(x)), 1e-12)
-    ax.plot([0, amp_max], [0, amp_max], 'k--', linewidth=0.8, alpha=0.5, label='ideal (unity)')
+    #amp_max = max(np.max(np.abs(x)), 1e-12)
+    #ax.plot([0, amp_max], [0, amp_max], 'k--', linewidth=0.8, alpha=0.5, label='ideal (unity)')
     ax.set_xlabel("|Input|")
     ax.set_ylabel("|Output|")
     ax.set_title(title, fontsize=9)
