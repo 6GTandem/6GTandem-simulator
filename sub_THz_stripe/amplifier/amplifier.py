@@ -124,7 +124,7 @@ class Amplifier(Component):
         noise = np.random.normal(0, np.sqrt(self.noise_var / 2), size=np.shape(x)) + 1j * numpy.random.normal(0, np.sqrt(self.noise_var / 2), size=np.shape(x))
         x_noise = x + noise
 
-        print(f'pa running with gain {self.gain} in mode: {self.mode}')
+        #print(f'pa running with gain {self.gain} in mode: {self.mode}')
 
         match self.mode:
             case 'ideal' | 'linear':

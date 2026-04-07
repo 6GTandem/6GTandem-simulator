@@ -444,7 +444,7 @@ class Channel:
             phase = np.exp(-1j * 2.0 * np.pi * (carrier_frequency_hz + f_sub) * tau)
             h = gain * pattern_field_gain * phase
 
-            print(f"Link {link_idx}: distance={distance:.3f}m, gain={gain:.3e}, pattern_gain={pattern_field_gain:.3f}")
+            #print(f"Link {link_idx}: distance={distance:.3f}m, gain={gain:.3e}, pattern_gain={pattern_field_gain:.3f}")
 
             for rx_ant in range(Nr_ue_antennas):
                 for tx_ant in range(Nr_ru_antennas):
