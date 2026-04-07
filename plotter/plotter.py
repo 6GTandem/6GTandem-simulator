@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import logging
 from itertools import combinations
-from scipy.signal import unit_impulse
+from scipy.signal import unit_impulse, welch
 
 from wireless_channel.waveforms import Waveform
 from utils import remove_oversampling, cp_ofdm_to_freq, calculate_psd_per_symbol
@@ -731,3 +731,120 @@ def verify_impulse_response(func, freqs: np.ndarray):
     ax.set_ylabel("S-parameter [dB]")
 
     return fig
+
+
+# ---------------------------------------------------------------------------
+# Functions merged from plotting/plotters.py
+# ---------------------------------------------------------------------------
+
+def plot_am_am(k: int, func, points):
+    """AM/AM plot: run *func* for k stages on a linear input sweep."""
+    fig, ax = plt.subplots()
+
+    x = np.linspace(0, 1, num=points)
+    ax.plot(np.abs(x), np.abs(x), 'o', label="ideal")
+
+    y = np.array([x])
+    for i in range(k):
+        y = func(y)
+        ax.plot(np.abs(x), np.abs(y[0]), 'o', label=f"K={i+1}")
+
+    ax.set_xlabel("Input amplitude |x(0)|")
+    ax.set_ylabel("Output amplitude |y(k)|")
+    ax.legend()
+
+    return fig
+
+
+def plot_am_pm(k: int, func, points):
+    """AM/PM plot: phase change vs input amplitude over k stages."""
+    fig, ax = plt.subplots()
+
+    x = np.linspace(0, 1, num=points)
+
+    y = np.array([x])
+    phase_in = np.angle(x)
+    for i in range(k):
+        y = func(y)
+
+        phase_out = np.angle(y[0])
+        phase_change = phase_out - phase_in
+
+        ax.plot(np.abs(x), phase_change, 'o', label=f"K={i+1}")
+
+    ax.set_xlabel("Input amplitude |x(0)|")
+    ax.set_ylabel("Phase change [rad]")
+    ax.legend()
+
+    return fig
+
+
+def plot_spars(freqs, spars):
+    """Plot S-parameters in dB vs frequency in GHz."""
+    fig, ax = plt.subplots()
+
+    ax.plot(freqs / 1e9, 20 * np.log10(np.abs(spars)))
+    ax.set_xlabel("Frequency [GHz]")
+    ax.set_ylabel("S-parameter [dB]")
+
+    return fig
+
+
+def plot_amam_transition(sig_in, sig_out, title, ax=None):
+    """Plot an AM/AM curve: |output| vs |input| for one component.
+
+    Handles shape mismatches that arise because different components may
+    reshape the signal (e.g., combiner reduces antenna dimensions, fiber
+    reshapes to OFDM symbols, coupler may flatten).  We always compare
+    the *total sample stream* by flattening both signals.
+    """
+    x = np.asarray(sig_in).flatten()
+    y = np.asarray(sig_out).flatten()
+
+    # Truncate to the shorter length (some components add/remove a few
+    # samples due to filtering transients, and the combiner reduces
+    # n_antennas × n_samples → n_samples so we compare antenna-0 only).
+    n = min(len(x), len(y))
+    x = x[:n]
+    y = y[:n]
+
+    standalone = ax is None
+    if standalone:
+        fig, ax = plt.subplots(figsize=(5, 4))
+
+    ax.scatter(np.abs(x), np.abs(y), s=2, alpha=0.3)
+    # Ideal reference line (unity gain)
+    amp_max = max(np.max(np.abs(x)), 1e-12)
+    ax.plot([0, amp_max], [0, amp_max], 'k--', linewidth=0.8, alpha=0.5, label='ideal (unity)')
+    ax.set_xlabel("|Input|")
+    ax.set_ylabel("|Output|")
+    ax.set_title(title, fontsize=9)
+    ax.legend(fontsize=7)
+    ax.grid(True, alpha=0.2)
+
+    if standalone:
+        plt.tight_layout()
+        plt.show()
+
+
+def plot_psd_transition(sig_in, sig_out, title, fs, ax, nperseg=1024):
+    """Plot the PSD of the input and output signal for one component."""
+    x = np.asarray(sig_in).flatten()
+    y = np.asarray(sig_out).flatten()
+
+    f_in, Pxx_in = welch(x, fs=fs, nperseg=nperseg, return_onesided=False)
+    f_out, Pxx_out = welch(y, fs=fs, nperseg=nperseg, return_onesided=False)
+
+    Pxx_in_db = 10 * np.log10(np.fft.fftshift(Pxx_in) + 1e-30)
+    Pxx_out_db = 10 * np.log10(np.fft.fftshift(Pxx_out) + 1e-30)
+    f_in_ghz = np.fft.fftshift(f_in) / 1e9
+    f_out_ghz = np.fft.fftshift(f_out) / 1e9
+
+    ax.plot(f_in_ghz, Pxx_in_db, label="Input", linewidth=1.0, alpha=0.8)
+    ax.plot(f_out_ghz, Pxx_out_db, label="Output", linewidth=1.0, alpha=0.8)
+    ax.set_xlabel("Frequency (GHz)")
+    ax.set_ylabel("PSD (dB)")
+    ax.set_title(title, fontsize=9)
+    ax.set_xlim(-10, 10)
+    ax.legend(fontsize=7)
+    ax.grid(True, alpha=0.2)
