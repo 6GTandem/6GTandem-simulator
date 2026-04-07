@@ -495,6 +495,31 @@ class Waveform():
         n_errors = np.sum(bits_tx != bits_rx)
         return n_errors / len(bits_tx)
 
+    def compute_evm(self, symbols_tx, symbols_rx):
+        """Compute Error Vector Magnitude (EVM) as an RMS percentage.
+
+        Parameters
+        ----------
+        symbols_tx : array_like
+            Reference (transmitted) constellation symbols.
+        symbols_rx : array_like
+            Received (equalized) constellation symbols, same length as *symbols_tx*.
+
+        Returns
+        -------
+        float
+            EVM in percent (0 = perfect, 100 = error power equals signal power).
+        """
+        symbols_tx = np.asarray(symbols_tx).ravel()
+        symbols_rx = np.asarray(symbols_rx).ravel()
+        if len(symbols_tx) != len(symbols_rx):
+            raise ValueError("Transmitted and received symbol arrays must have the same length.")
+        evm_rms = np.sqrt(
+            np.mean(np.abs(symbols_rx - symbols_tx) ** 2)
+            / np.mean(np.abs(symbols_tx) ** 2)
+        )
+        return 100.0 * evm_rms
+
     def plot_constellation(self, symbols_rx, title=None, symbols_tx=None):
         fig, ax = plt.subplots()
         ax.scatter(np.real(symbols_rx), np.imag(symbols_rx), label='Rx symbols')
