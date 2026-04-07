@@ -156,7 +156,7 @@ class Amplifier(Component):
                 xout[abs(x) > peakx] = peakx * (1 - alpha * abs(peakx)
                                                 ** 2) * np.exp(1j * np.angle(xout[abs(x) > peakx]))
             case 'poly5':
-                print(f'in poly case')
+                #print(f'in poly case')
                 if self.polynomial is None or self.max_input_amplitude is None or self.coeffs is None:
                     raise ValueError("Selected polynomial model but no coefficients configured")
                 xlim = x_noise.copy()
@@ -184,7 +184,7 @@ class Amplifier(Component):
             psat_txt = f"{psat_dbm:.2f} dBm"
         else:
             psat_txt = "n/a"
-        print(f"PA powers: Pin={p_in_dbm:.2f} dBm, Pout={p_out_dbm:.2f} dBm, Psat={psat_txt}")
+        #print(f"PA powers: Pin={p_in_dbm:.2f} dBm, Pout={p_out_dbm:.2f} dBm, Psat={psat_txt}")
 
 
         return xout
