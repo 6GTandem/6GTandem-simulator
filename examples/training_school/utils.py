@@ -228,16 +228,18 @@ def build_radio_stripe_config(
     # The Central Unit is placed at x=x_cu (wall side) at the Y of the first RU.
     # All units are at the ceiling height z=room_z.
     radio_stripes = []
-    for stripe_x in stripe_x_positions:
+    for s_idx, stripe_x in enumerate(stripe_x_positions):
         stripe_entries = []
 
         # Central Unit — one per stripe.
         # In a real deployment this represents the fibre head-end node that
         # aggregates the IQ streams from all RUs on that stripe.
+        # Each CU sits at the wall (x=x_cu) with its Y offset by
+        # s * stripe_spacing_m so that each stripe has its own CU position.
         stripe_entries.append({
             "central_unit": {
                 "x": float(x_cu),
-                "y": float(ru_y_positions[0]),
+                "y": float(ru_y_positions[0] + s_idx * stripe_spacing_m),
                 "z": float(room_z),
             }
         })

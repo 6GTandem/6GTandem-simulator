@@ -6,5 +6,5 @@ cp_length: 200
 pilot_spacing: 4
 pilot_symbol_re: 1
 pilot_symbol_imag: 0
-pilot_mode: 'block' #interleaved or block
+pilot_mode: 'interleaved' #interleaved or block
 tx_power: 30 # dBm
