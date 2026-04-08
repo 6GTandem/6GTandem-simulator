@@ -33,6 +33,7 @@ def select_active_radio_unit(
         Selection mode. Supported values:
         - ``"distance"``: choose the RU with minimum Euclidean distance
           to the UE (default).
+        - ``"random"``: choose a random RU uniformly across all stripes.
 
     Returns
     -------
@@ -40,36 +41,52 @@ def select_active_radio_unit(
         ``(stripe_idx, ru_idx, ru_position, distance_m)`` for the selected RU.
     """
     normalized_mode = str(mode).strip().lower()
-    if normalized_mode != "distance":
-        raise ValueError(f"Unsupported RU selection mode '{mode}'. Supported: distance")
+    if normalized_mode not in ("distance", "random"):
+        raise ValueError(f"Unsupported RU selection mode '{mode}'. Supported: distance, random")
 
     if not radio_stripes:
         raise ValueError("radio_stripes is empty.")
 
-    ue_x = float(ue_position["x"])
-    ue_y = float(ue_position["y"])
-    ue_z = float(ue_position["z"])
-
-    best = None
+    # Collect all RU candidates across all stripes.
+    all_rus: list[tuple[int, int, dict]] = []
     for stripe_idx, stripe in enumerate(radio_stripes):
         ru_idx = 0
         for entry in stripe:
             ru_pos = entry.get("radio_unit")
             if ru_pos is None:
                 continue
-
-            dx = float(ru_pos["x"]) - ue_x
-            dy = float(ru_pos["y"]) - ue_y
-            dz = float(ru_pos["z"]) - ue_z
-            distance = (dx * dx + dy * dy + dz * dz) ** 0.5
-
-            candidate = (distance, stripe_idx, ru_idx, ru_pos)
-            if best is None or candidate[0] < best[0]:
-                best = candidate
+            all_rus.append((stripe_idx, ru_idx, ru_pos))
             ru_idx += 1
 
-    if best is None:
+    if not all_rus:
         raise ValueError("No radio_unit entries found in radio_stripes.")
+
+    if normalized_mode == "random":
+        stripe_idx, ru_idx, ru_position = random.choice(all_rus)
+        ue_x = float(ue_position["x"])
+        ue_y = float(ue_position["y"])
+        ue_z = float(ue_position["z"])
+        dx = float(ru_position["x"]) - ue_x
+        dy = float(ru_position["y"]) - ue_y
+        dz = float(ru_position["z"]) - ue_z
+        distance_m = (dx * dx + dy * dy + dz * dz) ** 0.5
+        return stripe_idx, ru_idx, ru_position, float(distance_m)
+
+    # mode == "distance"
+    ue_x = float(ue_position["x"])
+    ue_y = float(ue_position["y"])
+    ue_z = float(ue_position["z"])
+
+    best = None
+    for stripe_idx, ru_idx, ru_pos in all_rus:
+        dx = float(ru_pos["x"]) - ue_x
+        dy = float(ru_pos["y"]) - ue_y
+        dz = float(ru_pos["z"]) - ue_z
+        distance = (dx * dx + dy * dy + dz * dz) ** 0.5
+
+        candidate = (distance, stripe_idx, ru_idx, ru_pos)
+        if best is None or candidate[0] < best[0]:
+            best = candidate
 
     distance_m, stripe_idx, ru_idx, ru_position = best
     return stripe_idx, ru_idx, ru_position, float(distance_m)
@@ -231,15 +248,11 @@ def build_radio_stripe_config(
     for s_idx, stripe_x in enumerate(stripe_x_positions):
         stripe_entries = []
 
-        # Central Unit — one per stripe.
-        # In a real deployment this represents the fibre head-end node that
-        # aggregates the IQ streams from all RUs on that stripe.
-        # Each CU sits at the wall (x=x_cu) with its Y offset by
-        # s * stripe_spacing_m so that each stripe has its own CU position.
+        # Central Unit — one per stripe, co-located with the first RU.
         stripe_entries.append({
             "central_unit": {
-                "x": float(x_cu),
-                "y": float(ru_y_positions[0] + s_idx * stripe_spacing_m),
+                "x": float(stripe_x),
+                "y": float(ru_y_positions[0]),
                 "z": float(room_z),
             }
         })

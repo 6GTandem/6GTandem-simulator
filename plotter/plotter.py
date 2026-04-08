@@ -471,16 +471,23 @@ def plot_room(config: dict):
 
     # Plot the stripes
     logger.debug("%d Stripes found", len(config["radio_stripes"]))
-    for stripe in config["radio_stripes"]:
+    for s_idx, stripe in enumerate(config["radio_stripes"]):
         units = []
         for unit in stripe:
+            if "central_unit" in unit:
+                cu = unit["central_unit"]
+                if "x" in cu:
+                    ax.scatter3D(cu["x"], cu["y"], cu["z"], c="black", marker="s",
+                                 s=60, facecolors="none", edgecolors="black",
+                                 label="CU" if s_idx == 0 else None)
             if "radio_unit" in unit:
                 unit = unit["radio_unit"]
                 if "x" in unit:
                     units.append([unit["x"], unit["y"], unit["z"]])
         units = np.array(units)
         logger.debug("Stripe units: %s", units)
-        ax.scatter3D(units[:, 0], units[:, 1], units[:, 2], c="red")
+        ax.scatter3D(units[:, 0], units[:, 1], units[:, 2], c="red",
+                     label="RU" if s_idx == 0 else None)
         ax.plot3D(units[:, 0], units[:, 1], units[:, 2], color="red")
 
     # Plot the UEs
@@ -491,7 +498,9 @@ def plot_room(config: dict):
             ues.append([ue_pos["x"], ue_pos["y"], ue_pos["z"]])
     ues = np.array(ues)
     logger.debug("UE positions: %s", ues)
-    ax.scatter3D(ues[:, 0], ues[:, 1], ues[:, 2], c="blue", alpha=0.2)
+    ax.scatter3D(ues[:, 0], ues[:, 1], ues[:, 2], c="blue", alpha=0.2, label="UE")
+
+    ax.legend()
 
 
 def plot_room_with_active_selection(
@@ -819,7 +828,7 @@ def plot_amam_transition(sig_in, sig_out, title, ax=None):
     ax.set_xlabel("|Input|")
     ax.set_ylabel("|Output|")
     ax.set_title(title, fontsize=9)
-    ax.legend(fontsize=7)
+    #ax.legend(fontsize=7)
     ax.grid(True, alpha=0.2)
 
     if standalone:
