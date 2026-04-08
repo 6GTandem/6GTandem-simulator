@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import random
 
+import numpy as np
+
 
 def select_active_radio_unit(
     ue_position: dict,
@@ -360,4 +362,57 @@ def generate_random_ue_positions(
                 "z": float(z_height),
             }
         )
+    return positions
+
+
+def generate_grid_ue_positions(
+    n_x: int,
+    n_y: int,
+    room_x: float,
+    room_y: float,
+    *,
+    z_height: float = 1.5,
+    wall_margin: float = 0.1,
+) -> list[dict]:
+    """Generate a uniform grid of UE positions inside the room bounds.
+
+    Parameters
+    ----------
+    n_x, n_y : int
+        Number of grid points along x and y axes.
+    room_x, room_y : float
+        Room dimensions in metres.
+    z_height : float
+        Fixed UE height in metres.
+    wall_margin : float
+        Keep UEs at least this many metres away from each wall.
+    """
+    if n_x < 1 or n_y < 1:
+        raise ValueError(f"n_x and n_y must be >= 1, got n_x={n_x}, n_y={n_y}")
+    if room_x <= 0 or room_y <= 0:
+        raise ValueError("room_x and room_y must be > 0")
+    if wall_margin < 0:
+        raise ValueError(f"wall_margin must be >= 0, got {wall_margin}")
+    if wall_margin * 2 >= room_x or wall_margin * 2 >= room_y:
+        raise ValueError(
+            "wall_margin is too large for the room dimensions; need "
+            "2*wall_margin < room_x and room_y"
+        )
+
+    x_min, x_max = wall_margin, room_x - wall_margin
+    y_min, y_max = wall_margin, room_y - wall_margin
+
+    xs = np.linspace(x_min, x_max, n_x) if n_x > 1 else [0.5 * (x_min + x_max)]
+    ys = np.linspace(y_min, y_max, n_y) if n_y > 1 else [0.5 * (y_min + y_max)]
+
+    positions = []
+    for y in ys:
+        for x in xs:
+            positions.append(
+                {
+                    "x": float(x),
+                    "y": float(y),
+                    "z": float(z_height),
+                }
+            )
     return positions

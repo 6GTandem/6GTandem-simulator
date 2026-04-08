@@ -26,13 +26,15 @@ import yaml
 from sub_THz_stripe.radiostripe.radiostripe import RadioStripe
 from sub_THz_stripe.central_unit.central_unit import CentralUnit
 from sub_THz_stripe.radio_unit.radio_unit import RadioUnit
-from wireless_channel.subTHz_channel import Channel
+from wireless_channel.subTHz_channel import build_channel
 from wireless_channel.waveforms import Waveform
 from utils import setup_logging
 from plotter import plotter
 
 booster_stages = ["fiber", "coupler", "amplifier", "coupler"]
 tx_stages = ["fiber", "coupler", "splitter", "shifter", "amplifier"]
+channel_model = "sionna"  # "sionna" or "los"
+los_normalize_gain = False
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
@@ -81,7 +83,17 @@ if __name__ == "__main__":
     # load channels. Select only a single UE position to start with. Same indexing remark
     # applies here as for the stripes.
     ue_pos = config["ue_positions"][0]
-    channel = Channel.from_sionna(ue_pos, "office1_smoothed")
+    channel = build_channel(
+        channel_model=channel_model,
+        ue_coordinates=ue_pos,
+        sim_env="office1_smoothed",
+        stripe_positions=config["radio_stripes"][0:2],
+        waveform=wf,
+        Nr_ue_antennas=nr_antennas,
+        Nr_ru_antennas=nr_antennas,
+        debug=False,
+        los_normalize_gain=los_normalize_gain,
+    )
     channel.Nr_stripes = 2
     logger.debug(f"{channel}")
 
