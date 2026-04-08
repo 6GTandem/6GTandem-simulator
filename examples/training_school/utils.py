@@ -213,8 +213,9 @@ def build_radio_stripe_config(
     # ------------------------------------------------------------------ #
     # 1.  Compute RU and stripe positions.                                #
     # ------------------------------------------------------------------ #
-    # Y coordinates of the n_rus_per_stripe Radio Units along a stripe.
-    ru_y_positions = [y_margin + i * ru_spacing_m for i in range(n_rus_per_stripe)]
+    # The CU sits at y_margin; RUs start one ru_spacing_m further along Y.
+    cu_y = y_margin
+    ru_y_positions = [y_margin + (i + 1) * ru_spacing_m for i in range(n_rus_per_stripe)]
 
     # X coordinates of the n_stripes stripes.
     stripe_x_positions = [x_first_stripe + s * stripe_spacing_m for s in range(n_stripes)]
@@ -242,17 +243,18 @@ def build_radio_stripe_config(
     # radio_stripes is a list-of-lists (one inner list per stripe).
     # Each inner list starts with the Central Unit followed by the Radio Units.
     #
-    # The Central Unit is placed at x=x_cu (wall side) at the Y of the first RU.
+    # The Central Unit is placed one fiber length before the first RU
+    # along the stripe direction (Y), connected via fiber.
     # All units are at the ceiling height z=room_z.
     radio_stripes = []
     for s_idx, stripe_x in enumerate(stripe_x_positions):
         stripe_entries = []
 
-        # Central Unit — one per stripe, co-located with the first RU.
+        # Central Unit — one per stripe, at the start of the stripe.
         stripe_entries.append({
             "central_unit": {
                 "x": float(stripe_x),
-                "y": float(ru_y_positions[0]),
+                "y": float(cu_y),
                 "z": float(room_z),
             }
         })

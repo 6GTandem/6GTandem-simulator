@@ -472,11 +472,13 @@ def plot_room(config: dict):
     # Plot the stripes
     logger.debug("%d Stripes found", len(config["radio_stripes"]))
     for s_idx, stripe in enumerate(config["radio_stripes"]):
+        cu_pos = None
         units = []
         for unit in stripe:
             if "central_unit" in unit:
                 cu = unit["central_unit"]
                 if "x" in cu:
+                    cu_pos = cu
                     ax.scatter3D(cu["x"], cu["y"], cu["z"], c="black", marker="s",
                                  s=60, facecolors="none", edgecolors="black",
                                  label="CU" if s_idx == 0 else None)
@@ -486,6 +488,12 @@ def plot_room(config: dict):
                     units.append([unit["x"], unit["y"], unit["z"]])
         units = np.array(units)
         logger.debug("Stripe units: %s", units)
+        # Draw fiber between CU and first RU
+        if cu_pos is not None and len(units) > 0:
+            ax.plot3D([cu_pos["x"], units[0, 0]],
+                      [cu_pos["y"], units[0, 1]],
+                      [cu_pos["z"], units[0, 2]],
+                      color="red", linestyle="-")
         ax.scatter3D(units[:, 0], units[:, 1], units[:, 2], c="red",
                      label="RU" if s_idx == 0 else None)
         ax.plot3D(units[:, 0], units[:, 1], units[:, 2], color="red")
