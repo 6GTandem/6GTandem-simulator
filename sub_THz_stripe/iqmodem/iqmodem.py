@@ -36,3 +36,6 @@ class IQModem(Component):
                 yout = yout + self.iqi_coef * np.conj(yout) + self.dc_offset
 
         return yout * phasor
+
+    def __str__(self):
+        return (f"IQModem(iqi_coef={self.iqi_coef}, iqi_filter={self.iqi_filter}, iqi_delay_imbalance={self.iqi_delay_imbalance}, dc_offset={self.dc_offset}, mode={self.mode})")

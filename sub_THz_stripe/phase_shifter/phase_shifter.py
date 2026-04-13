@@ -18,6 +18,9 @@ class PhaseShifter(Component):
 
         super().__init__(*args, **kwargs)
 
+    def __str__(self):
+        return (f"PhaseShifter(num_shifters={self.num_shifters}, resolution={self.resolution}, in_degrees={self.in_degrees}, mode={self.mode})")
+
     def run(self, x, shifts: list[int] | np.ndarray):
         """Apply the phase shift to the input data.
 

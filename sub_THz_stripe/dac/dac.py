@@ -24,3 +24,6 @@ class Dac(Component):
                 np.round(yin / step) * step, self.trunc_level)
 
         return yout
+
+    def __str__(self):
+        return (f"Dac(trunc_level={self.trunc_level}, nobits={self.nobits}, mode={self.mode})")

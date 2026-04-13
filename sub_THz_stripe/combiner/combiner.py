@@ -7,3 +7,6 @@ class Combiner(Component):
         """Combines incoming data into one stream by adding everything up.
         """
         return np.sum(x, axis=0)
+
+    def __str__(self):
+        return (f"Combiner(mode={self.mode})")

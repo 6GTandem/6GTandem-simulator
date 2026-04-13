@@ -82,3 +82,6 @@ class Coupler(Component):
             coup = Coupler(damping=damping, wf=wf)
 
         return coup
+
+    def __str__(self):
+        return (f"Coupler(damping={self.damping}, filter_mode={self.filter_mode}, filter_shape={self.filter.shape if hasattr(self.filter, 'shape') else type(self.filter)}, mode={self.mode})")

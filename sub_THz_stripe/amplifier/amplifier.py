@@ -188,3 +188,6 @@ class Amplifier(Component):
 
 
         return xout
+
+    def __str__(self):
+        return (f"Amplifier(gain={self.gain}, max_gain={self.max_gain}, noise_fig={self.noise_fig}, smoothness={self.smoothness}, mode={self.mode})")

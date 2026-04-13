@@ -44,6 +44,9 @@ class Fiber(Component):
 
         super().__init__(*args, **kwargs)
 
+    def __str__(self):
+        return (f"Fiber(length={self.length}, damping_per_meter={self.damping_per_meter}, filter_mode={self.filter_mode}, filter_shape={self.filter.shape if hasattr(self.filter, 'shape') else type(self.filter)}, mode={self.mode})")
+
     @property
     def extra_length_for_damping(self):
         """Return the fiber length (m) that still needs explicit damping.

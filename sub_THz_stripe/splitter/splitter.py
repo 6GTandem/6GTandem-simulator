@@ -10,6 +10,9 @@ class Splitter(Component):
         self.splits = num_splits
         super().__init__(*args, **kwargs)
 
+    def __str__(self):
+        return (f"Splitter(splits={self.splits}, mode={self.mode})")
+
     def run(self, x):
         """Returns the data split into `num_splits` branches.
 

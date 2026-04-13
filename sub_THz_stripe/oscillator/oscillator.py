@@ -38,7 +38,6 @@ class Oscillator(Component):
         self.f3db = f3db
         self.freq = freq
         self.spec = spec
-
         self.last_phasor = 0
         self.current_phase = numpy.random.normal() * 2 * np.pi
 
@@ -156,3 +155,6 @@ class Oscillator(Component):
         self.current_phase = fi[-1]
 
         return fi
+
+    def __str__(self):
+        return (f"Oscillator(fs={self.fs}, cfo={self.cfo}, cfo_std={self.cfo_std}, l100_db={self.l100_db}, linf_db={self.linf_db}, f3db={self.f3db}, mode={self.mode})")
