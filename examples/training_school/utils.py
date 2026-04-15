@@ -103,7 +103,7 @@ def build_radio_stripe_config(
     *,
     ru_spacing_m: float = 1.0,
     stripe_spacing_m: float = 1.0,
-    y_margin: float = 1.0,
+    y_first_stripe: float = 1.0,
     x_cu: float = 1.0,
     x_first_stripe: float = 2.0,
     n_antennas: int = 4,
@@ -121,7 +121,7 @@ def build_radio_stripe_config(
         - Stripes are spaced ``stripe_spacing_m`` apart in *X*, starting from
             ``x_first_stripe``.
         - Radio Units along each stripe are spaced ``ru_spacing_m`` apart in *Y*,
-            starting from ``y_margin`` (distance from the front wall at y=0).
+            starting from ``y_first_stripe`` (distance from the front wall at y=0).
     - All RUs (and the Central Unit) are ceiling-mounted at z = ``room_z``.
     - The Central Unit for each stripe sits at x = ``x_cu`` (against the wall),
       at the same Y as the first RU of that stripe.
@@ -145,7 +145,7 @@ def build_radio_stripe_config(
         Room dimensions in metres.  ``room_z`` is the ceiling height.
     n_stripes : int
         Number of RadioStripes.  Each stripe runs the full Y-length of the room
-        (bounded by ``y_margin`` at the front and the last RU at the back).
+        (bounded by ``y_first_stripe`` at the front and the last RU at the back).
     n_rus_per_stripe : int
         Number of Radio Units placed along each stripe.
     ru_spacing_m : float
@@ -153,7 +153,7 @@ def build_radio_stripe_config(
         Default is 1.0 m.
     stripe_spacing_m : float
         Distance between adjacent stripes in metres. Default is 1.0 m.
-    y_margin : float
+    y_first_stripe : float
         Gap (in metres) between the front wall (y=0) and the first RU.
         Default is 1.0 m.
     x_cu : float
@@ -202,11 +202,11 @@ def build_radio_stripe_config(
         raise ValueError(f"n_stripes must be >= 1, got {n_stripes}")
     if n_rus_per_stripe < 1:
         raise ValueError(f"n_rus_per_stripe must be >= 1, got {n_rus_per_stripe}")
-    if x_first_stripe <= x_cu:
-        raise ValueError(
-            f"x_first_stripe ({x_first_stripe}) must be greater than x_cu ({x_cu}) "
-            "so that the Central Unit sits on the wall side of each stripe."
-        )
+    # if x_first_stripe <= x_cu:
+    #     raise ValueError(
+    #         f"x_first_stripe ({x_first_stripe}) must be greater than x_cu ({x_cu}) "
+    #         "so that the Central Unit sits on the wall side of each stripe."
+    #     )
     if ru_spacing_m <= 0:
         raise ValueError(f"ru_spacing_m must be > 0, got {ru_spacing_m}")
     if stripe_spacing_m <= 0:
@@ -215,9 +215,9 @@ def build_radio_stripe_config(
     # ------------------------------------------------------------------ #
     # 1.  Compute RU and stripe positions.                                #
     # ------------------------------------------------------------------ #
-    # The CU sits at y_margin; RUs start one ru_spacing_m further along Y.
-    cu_y = y_margin
-    ru_y_positions = [y_margin + (i + 1) * ru_spacing_m for i in range(n_rus_per_stripe)]
+    # The CU sits at y_first_stripe; RUs start one ru_spacing_m further along Y.
+    cu_y = y_first_stripe
+    ru_y_positions = [y_first_stripe + (i + 1) * ru_spacing_m for i in range(n_rus_per_stripe)]
 
     # X coordinates of the n_stripes stripes.
     stripe_x_positions = [x_first_stripe + s * stripe_spacing_m for s in range(n_stripes)]
@@ -309,6 +309,18 @@ def build_radio_stripe_config(
         #   config["ue_positions"].append({"x": …, "y": …, "z": …})
         "ue_positions": [],
     }
+
+    # ------------------------------------------------------------------ #
+    # 7.  Assert all units are within room bounds.                       #
+    # ------------------------------------------------------------------ #
+    for stripe in radio_stripes:
+        for entry in stripe:
+            unit = entry.get("central_unit") or entry.get("radio_unit")
+            if unit is not None:
+                x, y, z = unit["x"], unit["y"], unit["z"]
+                assert 0 <= x <= room_x, f"Unit x={x} out of bounds (0, {room_x})"
+                assert 0 <= y <= room_y, f"Unit y={y} out of bounds (0, {room_y})"
+                assert 0 <= z <= room_z, f"Unit z={z} out of bounds (0, {room_z})"
 
     return config
 
