@@ -318,9 +318,9 @@ def build_radio_stripe_config(
             unit = entry.get("central_unit") or entry.get("radio_unit")
             if unit is not None:
                 x, y, z = unit["x"], unit["y"], unit["z"]
-                assert 0 <= x <= room_x, f"Unit x={x} out of bounds (0, {room_x})"
-                assert 0 <= y <= room_y, f"Unit y={y} out of bounds (0, {room_y})"
-                assert 0 <= z <= room_z, f"Unit z={z} out of bounds (0, {room_z})"
+                assert 0 <= x <= room_x, f"Radio or central unit out of room limits, Unit x={x} out of bounds (0, {room_x})"
+                assert 0 <= y <= room_y, f"Radio or central unit out of room limits, Unit y={y} out of bounds (0, {room_y})"
+                assert 0 <= z <= room_z, f"Radio or central unit out of room limits, Unit z={z} out of bounds (0, {room_z})"
 
     return config
 

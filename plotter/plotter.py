@@ -508,6 +508,13 @@ def plot_room(config: dict):
     logger.debug("UE positions: %s", ues)
     ax.scatter3D(ues[:, 0], ues[:, 1], ues[:, 2], c="blue", alpha=0.2, label="UE")
 
+    # Add X and Y axis arrows at the origin.
+    arrow_length = 0.15 * max(x_size, y_size)
+    ax.quiver(0, 0, 0, arrow_length, 0, 0, color="k", arrow_length_ratio=0.2)
+    ax.quiver(0, 0, 0, 0, arrow_length, 0, color="k", arrow_length_ratio=0.2)
+    ax.text(arrow_length * 1.15, 0, 0, "X", color="k")
+    ax.text(0, arrow_length * 1.15, 0, "Y", color="k")
+
     ax.legend()
 
 
