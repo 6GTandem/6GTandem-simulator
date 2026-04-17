@@ -106,6 +106,7 @@ def build_radio_stripe_config(
     y_first_stripe: float = 1.0,
     x_cu: float = 1.0,
     x_first_stripe: float = 2.0,
+    stripes_spec: list[dict] | None = None,
     n_antennas: int = 4,
     fc: float = 157.75e9,
     bw: float = 3e9,
@@ -164,6 +165,25 @@ def build_radio_stripe_config(
         X position of the *first* RadioStripe.  Must satisfy
         ``x_first_stripe > x_cu`` so the CU is on the wall side.
         Default is 2.0 m.
+    stripes_spec : list[dict] | None
+        Optional per-stripe override for heterogeneous deployments.  When
+        provided, the uniform-grid parameters (``n_stripes``,
+        ``n_rus_per_stripe``, ``ru_spacing_m``, ``stripe_spacing_m``,
+        ``x_first_stripe``, ``y_first_stripe``) are ignored and each stripe
+        is built from its own dict.  Each entry must contain:
+
+        - ``x`` (float): X coordinate of the stripe (and its CU).
+        - ``y_start`` (float): Y coordinate of the CU; the first RU sits at
+          ``y_start + ru_spacing``.
+        - ``ru_spacing`` (float): spacing between adjacent RUs in metres.
+        - ``n_rus`` (int): number of RUs on this stripe.
+
+        Example::
+
+            stripes_spec=[
+                {"x": 2.0, "y_start": 1.0, "ru_spacing": 1.0, "n_rus": 4},
+                {"x": 4.5, "y_start": 0.5, "ru_spacing": 0.8, "n_rus": 6},
+            ]
     n_antennas : int
         Number of antenna elements per Radio Unit.  Default is 4.
     fc : float
@@ -196,46 +216,72 @@ def build_radio_stripe_config(
     """
 
     # ------------------------------------------------------------------ #
-    # Validate inputs early so errors are obvious.                        #
+    # 1.  Resolve per-stripe specs (either from stripes_spec or grid).    #
     # ------------------------------------------------------------------ #
-    if n_stripes < 1:
-        raise ValueError(f"n_stripes must be >= 1, got {n_stripes}")
-    if n_rus_per_stripe < 1:
-        raise ValueError(f"n_rus_per_stripe must be >= 1, got {n_rus_per_stripe}")
-    # if x_first_stripe <= x_cu:
-    #     raise ValueError(
-    #         f"x_first_stripe ({x_first_stripe}) must be greater than x_cu ({x_cu}) "
-    #         "so that the Central Unit sits on the wall side of each stripe."
-    #     )
-    if ru_spacing_m <= 0:
-        raise ValueError(f"ru_spacing_m must be > 0, got {ru_spacing_m}")
-    if stripe_spacing_m <= 0:
-        raise ValueError(f"stripe_spacing_m must be > 0, got {stripe_spacing_m}")
+    # Regardless of input mode we produce `specs`: a list of dicts with
+    # keys x, y_start, ru_spacing, n_rus — one entry per stripe.
+    if stripes_spec is not None:
+        if len(stripes_spec) < 1:
+            raise ValueError("stripes_spec must contain at least one stripe.")
+        specs = []
+        for s_idx, entry in enumerate(stripes_spec):
+            required = {"x", "y_start", "ru_spacing", "n_rus"}
+            missing = required - set(entry)
+            if missing:
+                raise ValueError(
+                    f"stripes_spec[{s_idx}] is missing keys {sorted(missing)}; "
+                    f"required keys are {sorted(required)}."
+                )
+            if entry["n_rus"] < 1:
+                raise ValueError(f"stripes_spec[{s_idx}].n_rus must be >= 1, got {entry['n_rus']}")
+            if entry["ru_spacing"] <= 0:
+                raise ValueError(
+                    f"stripes_spec[{s_idx}].ru_spacing must be > 0, got {entry['ru_spacing']}"
+                )
+            specs.append({
+                "x": float(entry["x"]),
+                "y_start": float(entry["y_start"]),
+                "ru_spacing": float(entry["ru_spacing"]),
+                "n_rus": int(entry["n_rus"]),
+            })
+    else:
+        if n_stripes < 1:
+            raise ValueError(f"n_stripes must be >= 1, got {n_stripes}")
+        if n_rus_per_stripe < 1:
+            raise ValueError(f"n_rus_per_stripe must be >= 1, got {n_rus_per_stripe}")
+        if ru_spacing_m <= 0:
+            raise ValueError(f"ru_spacing_m must be > 0, got {ru_spacing_m}")
+        if stripe_spacing_m <= 0:
+            raise ValueError(f"stripe_spacing_m must be > 0, got {stripe_spacing_m}")
 
-    # ------------------------------------------------------------------ #
-    # 1.  Compute RU and stripe positions.                                #
-    # ------------------------------------------------------------------ #
-    # The CU sits at y_first_stripe; RUs start one ru_spacing_m further along Y.
-    cu_y = y_first_stripe
-    ru_y_positions = [y_first_stripe + (i + 1) * ru_spacing_m for i in range(n_rus_per_stripe)]
-
-    # X coordinates of the n_stripes stripes.
-    stripe_x_positions = [x_first_stripe + s * stripe_spacing_m for s in range(n_stripes)]
+        specs = [
+            {
+                "x": float(x_first_stripe + s * stripe_spacing_m),
+                "y_start": float(y_first_stripe),
+                "ru_spacing": float(ru_spacing_m),
+                "n_rus": int(n_rus_per_stripe),
+            }
+            for s in range(n_stripes)
+        ]
 
     # ------------------------------------------------------------------ #
     # 2.  Build stripe_config metadata block.                             #
     # ------------------------------------------------------------------ #
-    # The simulator uses this block to quickly look up topology parameters
-    # without having to parse the full radio_stripes list.
+    # For heterogeneous deployments the legacy scalar fields reflect the
+    # *first* stripe so that consumers expecting a single number still
+    # work; authoritative per-stripe info lives in radio_stripes itself.
+    first = specs[0]
+    first_ru_y = [first["y_start"] + (i + 1) * first["ru_spacing"] for i in range(first["n_rus"])]
     stripe_cfg = {
-        "N_RUs": n_rus_per_stripe,
-        "N_stripes": n_stripes,
-        "space_between_RUs": float(ru_spacing_m),
-        "space_between_stripes": float(stripe_spacing_m),
+        "N_RUs": max(s["n_rus"] for s in specs),
+        "N_stripes": len(specs),
+        "space_between_RUs": first["ru_spacing"],
+        "space_between_stripes": (
+            float(specs[1]["x"] - specs[0]["x"]) if len(specs) > 1 else float(stripe_spacing_m)
+        ),
         "stripe_direction": "y",          # stripes are oriented along the Y axis
-        # stripe_start_pos / stripe_end_pos describe the first stripe's extent
-        "stripe_start_pos": [stripe_x_positions[0], ru_y_positions[0], room_z],
-        "stripe_end_pos": [stripe_x_positions[0], ru_y_positions[-1], room_z],
+        "stripe_start_pos": [first["x"], first_ru_y[0], room_z],
+        "stripe_end_pos": [first["x"], first_ru_y[-1], room_z],
         "array_direction": "x",           # antenna array elements are spaced along X
     }
 
@@ -244,28 +290,22 @@ def build_radio_stripe_config(
     # ------------------------------------------------------------------ #
     # radio_stripes is a list-of-lists (one inner list per stripe).
     # Each inner list starts with the Central Unit followed by the Radio Units.
-    #
-    # The Central Unit is placed one fiber length before the first RU
-    # along the stripe direction (Y), connected via fiber.
     # All units are at the ceiling height z=room_z.
     radio_stripes = []
-    for s_idx, stripe_x in enumerate(stripe_x_positions):
-        stripe_entries = []
-
-        # Central Unit — one per stripe, at the start of the stripe.
-        stripe_entries.append({
+    for spec in specs:
+        stripe_entries = [{
             "central_unit": {
-                "x": float(stripe_x),
-                "y": float(cu_y),
+                "x": spec["x"],
+                "y": spec["y_start"],
                 "z": float(room_z),
             }
-        })
+        }]
 
-        # Radio Units — ceiling-mounted, spaced 1 m apart along Y.
-        for ru_y in ru_y_positions:
+        for i in range(spec["n_rus"]):
+            ru_y = spec["y_start"] + (i + 1) * spec["ru_spacing"]
             stripe_entries.append({
                 "radio_unit": {
-                    "x": float(stripe_x),
+                    "x": spec["x"],
                     "y": float(ru_y),
                     "z": float(room_z),
                 }
