@@ -445,7 +445,6 @@ def plot_room(config: dict):
     """
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
-    ax.set_aspect("auto")
 
     points = []
 
@@ -456,6 +455,10 @@ def plot_room(config: dict):
     ax.set_xlim([0, config["room"]["x"]])
     ax.set_ylim([0, config["room"]["y"]])
     ax.set_zlim([0, config["room"]["z"]])
+
+    # Preserve real-world proportions: one metre is the same visual length
+    # on every axis, so a long narrow room looks long and narrow.
+    ax.set_box_aspect((x_size, y_size, z_size))
 
     for x in [0, x_size]:
         for y in [0, y_size]:
